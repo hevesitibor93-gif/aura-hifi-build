@@ -1,45 +1,27 @@
 
-name: AURA Hi-Fi APK Build
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+android {
+    namespace 'com.aura.hifi'
+    compileSdk 35
 
-permissions:
-  contents: read
+    defaultConfig {
+        applicationId 'com.aura.hifi'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
 
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-
-      - name: Build debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AURA-HiFi-APK
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
