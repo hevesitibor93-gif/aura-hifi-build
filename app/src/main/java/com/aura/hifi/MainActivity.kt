@@ -53,6 +53,8 @@ class MainActivity : Activity() {
     private val queue = mutableListOf<Uri>()
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String)
     private val librarySongs = mutableListOf<LibrarySong>()
+    private var libraryDisplayLimit = 100
+    private val librarySongByUri = mutableMapOf<String, LibrarySong>()
     private lateinit var libraryContainer: LinearLayout
     private var currentIndex = 0
     private lateinit var nextTrackLabel: TextView
@@ -211,6 +213,8 @@ class MainActivity : Activity() {
             return
         }
         librarySongs.clear()
+        librarySongByUri.clear()
+        libraryDisplayLimit = 100
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST)
         val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
@@ -223,7 +227,9 @@ class MainActivity : Activity() {
                     val id = cursor.getLong(idCol)
                     val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
                     val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
-                    librarySongs.add(LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist))
+                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist)
+                    librarySongs.add(song)
+                    librarySongByUri[song.uri.toString()] = song
                 }
             }
         } catch (_: Exception) { toast("A zenetár beolvasása nem sikerült.") }
@@ -232,12 +238,14 @@ class MainActivity : Activity() {
     private fun renderLibrary() {
         if (!::libraryContainer.isInitialized) return
         libraryContainer.removeAllViews()
-        libraryContainer.addView(label("TALÁLATOK: " + librarySongs.size, 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
+        libraryContainer.addView(label("TALÁLATOK: ${librarySongs.size}  •  MEGJELENÍTVE: ${minOf(libraryDisplayLimit, librarySongs.size)}", 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
         if (librarySongs.isEmpty()) {
-            libraryContainer.addView(label("Nem található zene a megosztott zenetárban. Használd a kézi hozzáadást, vagy frissítsd a könyvtárat.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
+            libraryContainer.addView(label("Nem található zene. Használd a kézi hozzáadást, vagy frissítsd a könyvtárat.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
             return
         }
-        librarySongs.forEachIndexed { index, song ->
+        val end = minOf(libraryDisplayLimit, librarySongs.size)
+        for (index in 0 until end) {
+            val song = librarySongs[index]
             val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(9), dp(8), dp(9)); isClickable = true; isFocusable = true }
             item.addView(label(song.title, 12f, Color.WHITE))
             item.addView(label(song.artist, 10f, Color.rgb(150, 160, 175)))
@@ -247,11 +255,16 @@ class MainActivity : Activity() {
                 currentIndex = index
                 startTrack(song.uri)
                 updateNextTrack()
-                renderQueue()
                 toast("Zenetár: " + song.title)
             }
             libraryContainer.addView(item)
-            if (index < librarySongs.lastIndex) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
+            if (index < end - 1) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
+        }
+        if (end < librarySongs.size) {
+            libraryContainer.addView(button("TOVÁBBI 100 ZENE BETÖLTÉSE", gold, Color.BLACK) {
+                libraryDisplayLimit = minOf(libraryDisplayLimit + 100, librarySongs.size)
+                renderLibrary()
+            }, LinearLayout.LayoutParams(-1, dp(46)))
         }
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -293,14 +306,9 @@ class MainActivity : Activity() {
         }
     }
     private fun metadataTitle(uri: Uri): String {
-        val retriever = MediaMetadataRetriever()
-        return try {
-            retriever.setDataSource(this, uri)
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                ?: uri.lastPathSegment?.substringAfterLast('/') ?: "Ismeretlen cím"
-        } catch (_: Exception) {
-            uri.lastPathSegment?.substringAfterLast('/') ?: "Ismeretlen cím"
-        } finally { try { retriever.release() } catch (_: Exception) {} }
+        return librarySongByUri[uri.toString()]?.title
+            ?: uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+            ?: "Ismeretlen cím"
     }
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
@@ -315,7 +323,11 @@ class MainActivity : Activity() {
             queueContainer.addView(label("Még nincs zeneszám a listában.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
             return
         }
-        queue.forEachIndexed { index, uri ->
+        val visibleStart = if (currentIndex >= 100) (currentIndex / 100) * 100 else 0
+        val visibleEnd = minOf(queue.size, visibleStart + 100)
+        if (visibleStart > 0) queueContainer.addView(label("… ${visibleStart} korábbi szám", 10f, Color.GRAY))
+        for (index in visibleStart until visibleEnd) {
+            val uri = queue[index]
             val item = TextView(this).apply {
                 text = (if (index == currentIndex) "▶  " else "${index + 1}.  ") + metadataTitle(uri)
                 textSize = 12f
@@ -330,11 +342,12 @@ class MainActivity : Activity() {
                 }
             }
             queueContainer.addView(item)
-            if (index < queue.lastIndex) {
+            if (index < visibleEnd - 1) {
                 val line = View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }
                 queueContainer.addView(line, LinearLayout.LayoutParams(-1, dp(1)))
             }
         }
+        if (visibleEnd < queue.size) queueContainer.addView(label("… ${queue.size - visibleEnd} további szám", 10f, Color.GRAY))
     }
     private fun playPrevious() {
         if (queue.isEmpty()) return
