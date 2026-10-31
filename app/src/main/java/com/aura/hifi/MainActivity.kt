@@ -89,26 +89,26 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURIX"; textSize = 27f; letterSpacing = 0.12f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
-        val hi = TextView(this).apply { text = "  V50"; textSize = 13f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
+        val brand = TextView(this).apply { text = "AURIX"; textSize = 21f; letterSpacing = 0.10f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val hi = TextView(this).apply { text = "  V50"; textSize = 11f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val live = TextView(this).apply { text = "● LIVE AUDIO"; textSize = 10f; setTextColor(Color.rgb(90, 220, 150)) }
         header.addView(live); body.addView(header)
-        body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(8), 0, dp(14)) })
-        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 24); setPadding(dp(14), dp(14), dp(14), dp(14)); elevation = dp(8).toFloat() }
+        body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(2), 0, dp(4)) })
+        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
-        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
+        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(100), dp(100)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
-        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(4)) })
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(112)).apply { setMargins(dp(2), 0, dp(2), 0) })
         applyArtworkMode()
-        body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
-        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(62)).apply { setMargins(dp(60), 0, dp(60), 0); gravity = Gravity.CENTER })
-        trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
+        body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(2), 0, dp(2)) })
+        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
+        trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1 }
         body.addView(trackLabel)
-        metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(8)) }
+        metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(2)) }
         body.addView(metadataLabel)
         seekBar = SeekBar(this).apply {
             max = 1000
@@ -120,7 +120,7 @@ class MainActivity : Activity() {
                 override fun onStopTrackingTouch(sb: SeekBar?) {}
             })
         }
-        body.addView(seekBar, LinearLayout.LayoutParams(-1, dp(24)))
+        body.addView(seekBar, LinearLayout.LayoutParams(-1, dp(20)))
         timeLabel = label("00:00  /  00:00", 11f, Color.WHITE).apply { gravity = Gravity.CENTER; setOnClickListener { showRemaining = !showRemaining; updateProgress() } }
         body.addView(timeLabel)
         technicalLabel = label("AUDIO INFO  •  —", 9f, Color.rgb(125, 137, 155)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) }
@@ -131,16 +131,16 @@ class MainActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
             marqueeRepeatLimit = -1
             isSelected = true
-            setPadding(dp(8), dp(8), dp(8), dp(4))
+            setPadding(dp(4), dp(2), dp(4), 0)
         }
         body.addView(nextTrackLabel)
-        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(14)) }
+        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(2)) }
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
         val previous = button("⏮", Color.rgb(35, 41, 53), Color.WHITE) { playPrevious() }
         val next = button("⏭", Color.rgb(35, 41, 53), Color.WHITE) { playNext() }
-        controls.addView(previous, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) })
-        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(8) })
-        controls.addView(next, LinearLayout.LayoutParams(dp(42), dp(42)))
+        controls.addView(previous, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(5) })
+        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(5) })
+        controls.addView(next, LinearLayout.LayoutParams(dp(36), dp(36)))
         body.addView(controls)
         body.addView(sectionTitle("LEJÁTSZÁSI SOR  •  ${queue.size} ZENESZÁM"))
         queueContainer = LinearLayout(this).apply {
@@ -165,6 +165,12 @@ class MainActivity : Activity() {
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val pages = listOf(playerPage, songsPage, eqPage, settingsPage)
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
+        // A lejátszó cockpit fekvő módban egyetlen, nem görgethető képernyő. A többi lap marad görgethető.
+        pageScrolls[0].isVerticalScrollBarEnabled = false
+        pageScrolls[0].overScrollMode = View.OVER_SCROLL_NEVER
+        if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            pageScrolls[0].setOnTouchListener { _, event -> event.action == android.view.MotionEvent.ACTION_MOVE }
+        }
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -183,20 +189,20 @@ class MainActivity : Activity() {
             }
             playerPage.addView(cockpitLeft, LinearLayout.LayoutParams(0, -2, 1.05f))
             playerPage.addView(cockpitRight, LinearLayout.LayoutParams(0, -2, 1f))
-            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(142)).apply { setMargins(dp(2), 0, dp(2), dp(2)) }
+            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(112)).apply { setMargins(dp(2), 0, dp(2), dp(2)) }
             artFrame.setPadding(dp(6), dp(6), dp(6), dp(6))
-            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(118); height = dp(118) }
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(96); height = dp(96) }
             (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(118); height = dp(118) }
             trackLabel.textSize = 12f
             trackLabel.setPadding(dp(4), dp(5), dp(4), dp(3))
             metadataLabel.textSize = 9f
             metadataLabel.setPadding(0, 0, 0, dp(2))
-            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(54)).apply { setMargins(dp(4), 0, dp(4), 0) }
+            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(42)).apply { setMargins(dp(4), 0, dp(4), 0) }
             seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(20))
             controls.setPadding(0, dp(2), 0, dp(3))
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(5) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(5) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply { marginEnd = dp(5) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
         } else {
             original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
