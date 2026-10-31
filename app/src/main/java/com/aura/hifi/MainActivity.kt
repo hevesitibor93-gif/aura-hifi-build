@@ -66,8 +66,8 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURA"; textSize = 29f; setTextColor(Color.WHITE); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
-        val hi = TextView(this).apply { text = "  HI-FI"; textSize = 13f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
+        val brand = TextView(this).apply { text = "AURIX"; textSize = 29f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val hi = TextView(this).apply { text = "  V50"; textSize = 13f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val live = TextView(this).apply { text = "● LIVE AUDIO"; textSize = 10f; setTextColor(Color.rgb(90, 220, 150)) }
         header.addView(live); body.addView(header)
@@ -111,7 +111,7 @@ class MainActivity : Activity() {
         controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.2f).apply { marginEnd = dp(6) })
         controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(controls)
-        body.addView(sectionTitle("LEJÁTSZÁSI SOR"))
+        body.addView(sectionTitle("LEJÁTSZÁSI SOR  •  ${queue.size} ZENESZÁM"))
         queueContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(panel, 16)
@@ -188,6 +188,7 @@ class MainActivity : Activity() {
     private fun renderQueue() {
         if (!::queueContainer.isInitialized) return
         queueContainer.removeAllViews()
+        queueContainer.addView(label("ÖSSZESEN: ${queue.size} ZENESZÁM  •  ${if (queue.isEmpty()) 0 else currentIndex + 1} / ${queue.size}", 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
         if (queue.isEmpty()) {
             queueContainer.addView(label("Még nincs zeneszám a listában.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
             return
