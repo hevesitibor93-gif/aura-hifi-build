@@ -102,7 +102,7 @@ class MainActivity : Activity() {
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
-        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(112)).apply { setMargins(dp(2), 0, dp(2), 0) })
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
         applyArtworkMode()
         body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(2), 0, dp(2)) })
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
@@ -254,7 +254,7 @@ class MainActivity : Activity() {
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         settingsPage.addView(vuStyleRow)
-        settingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        settingsPage.addView(label("Mindkét mód: 7 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
@@ -738,16 +738,16 @@ class MainActivity : Activity() {
             p.shader = null
             p.style = Paint.Style.FILL
             p.color = if (style == "car") Color.rgb(12, 15, 19) else Color.rgb(17, 23, 29)
-            c.drawRoundRect(outer, dp(if (style == "car") 11 else 17).toFloat(), dp(if (style == "car") 11 else 17).toFloat(), p)
+            c.drawRoundRect(outer, dp(if (style == "car") 6 else 17).toFloat(), dp(if (style == "car") 6 else 17).toFloat(), p)
             p.style = Paint.Style.STROKE
-            p.strokeWidth = dp(if (style == "car") 2 else 1).toFloat()
+            p.strokeWidth = dp(1).toFloat()
             p.color = Color.argb(brightness * 2, if (style == "car") 232 else 92, if (style == "car") 166 else 202, if (style == "car") 66 else 194)
             c.drawRoundRect(outer, dp(if (style == "car") 11 else 17).toFloat(), dp(if (style == "car") 11 else 17).toFloat(), p)
             p.style = Paint.Style.FILL
             if (style == "car") {
                 val inner = RectF(dp(7).toFloat(), dp(7).toFloat(), w - dp(7), h - dp(7))
                 p.color = Color.rgb(19, 22, 27)
-                c.drawRoundRect(inner, dp(7).toFloat(), dp(7).toFloat(), p)
+                c.drawRoundRect(inner, dp(4).toFloat(), dp(4).toFloat(), p)
                 p.color = Color.rgb(95, 73, 42)
                 p.strokeWidth = dp(1).toFloat()
                 p.style = Paint.Style.STROKE
@@ -758,9 +758,9 @@ class MainActivity : Activity() {
             val inset = dp(12).toFloat()
             val labelW = dp(13).toFloat()
             val barW = w - inset * 2 - labelW
-            val barH = if (style == "car") dp(14).toFloat() else dp(10).toFloat()
-            val top = if (style == "car") h * .34f else h * .29f
-            val bottom = if (style == "car") h * .69f else h * .70f
+            val barH = if (style == "car") dp(8).toFloat() else dp(7).toFloat()
+            val top = if (style == "car") h * .27f else h * .29f
+            val bottom = if (style == "car") h * .61f else h * .70f
             drawBar(c, inset + labelW, top, barW, barH, left)
             drawBar(c, inset + labelW, bottom, barW, barH, right)
 
@@ -776,7 +776,7 @@ class MainActivity : Activity() {
                 p.textSize = dp(10).toFloat()
                 p.typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
                 p.textAlign = Paint.Align.CENTER
-                c.drawText("AURIX", w / 2f, h - dp(7).toFloat(), p)
+                c.drawText("A U R I X   //   S T E R E O", w / 2f, h - dp(5).toFloat(), p)
                 p.textAlign = Paint.Align.LEFT
             } else {
                 p.color = Color.rgb(104, 91, 69)
@@ -798,10 +798,10 @@ class MainActivity : Activity() {
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
-                val base = if (i >= 5) Color.rgb(255, 65, 48) else Color.rgb(255, 190, 35)
+                val base = if (i >= 7) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
                 p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
                     else Color.rgb(43, 45, 49)
-                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(3).toFloat(), dp(3).toFloat(), p)
+                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(1).toFloat(), dp(1).toFloat(), p)
             }
         }
     }
