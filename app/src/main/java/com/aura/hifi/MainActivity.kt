@@ -35,6 +35,9 @@ class MainActivity : Activity() {
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
+    private lateinit var vinylView: VinylView
+    private lateinit var coverToggle: Button
+    private var showCover = true
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
@@ -87,8 +90,15 @@ class MainActivity : Activity() {
         body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(8), 0, dp(14)) })
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 24); setPadding(dp(14), dp(14), dp(14), dp(14)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageResource(android.R.drawable.ic_media_play); imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(224, 184, 103)); setPadding(dp(62), dp(62), dp(62), dp(62)) }
+        vinylView = VinylView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
-        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(12)) })
+        artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
+        showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
+        applyArtworkMode()
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(4)) })
+        coverToggle = button("", Color.rgb(35, 41, 53), gold) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }
+        body.addView(coverToggle, LinearLayout.LayoutParams(-1, dp(38)).apply { setMargins(dp(12), 0, dp(12), dp(8)) })
+        applyArtworkMode()
         body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(94)))
         trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
@@ -147,6 +157,14 @@ class MainActivity : Activity() {
         body.addView(actions)
         body.addView(label("Az EQ és a basszuskiemelés az Android eszközén elérhető hanghatásoktól függ. Más alkalmazások (YouTube/Spotify) teljes rendszerhangját ez az app nem tudja garantáltan módosítani.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
         scroll.addView(body); root.addView(scroll); setContentView(root)
+    }
+
+    private fun applyArtworkMode() {
+        if (!::artworkView.isInitialized || !::vinylView.isInitialized) return
+        artworkView.visibility = if (showCover) View.VISIBLE else View.GONE
+        vinylView.visibility = if (showCover) View.GONE else View.VISIBLE
+        if (::coverToggle.isInitialized) coverToggle.text = if (showCover) "BORÍTÓ: BE  •  VINYL NÉZETRE VÁLTÁS" else "BORÍTÓ: KI  •  AURIX VINYL MEGJELENÍTÉSE"
+        vinylView.invalidate()
     }
 
     private fun sectionTitle(s: String) = label(s, 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(20), 0, dp(9)) }
@@ -252,7 +270,7 @@ class MainActivity : Activity() {
             player = MediaPlayer().apply {
                 setDataSource(this@MainActivity, uri)
                 setOnPreparedListener { mp ->
-                    mp.start(); playButton.text = "Ⅱ SZÜNET"
+                    mp.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate()
                     setupEffects(mp.audioSessionId)
                     handler.removeCallbacks(progressTask); handler.post(progressTask)
                 }
@@ -265,7 +283,7 @@ class MainActivity : Activity() {
     private fun togglePlayback() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
-        try { if (p.isPlaying) { p.pause(); playButton.text = "▶ FOLYTATÁS" } else { p.start(); playButton.text = "Ⅱ SZÜNET" } } catch (_: Exception) {}
+        try { if (p.isPlaying) { p.pause(); playButton.text = "▶ FOLYTATÁS"; vinylView.invalidate() } else { p.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate() } } catch (_: Exception) {}
     }
     private fun setupEffects(session: Int) {
         try {
@@ -368,6 +386,32 @@ class MainActivity : Activity() {
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() { releaseAudio(); super.onDestroy() }
+
+    private inner class VinylView : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var angle = 0f
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f; val cy = height / 2f
+            val radius = min(width, height) * 0.47f
+            paint.shader = null; paint.color = Color.rgb(8, 9, 12)
+            canvas.drawCircle(cx, cy, radius, paint)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(65, 59, 46)
+            for (i in 1..13) canvas.drawCircle(cx, cy, radius * (0.42f + i * 0.041f), paint)
+            paint.style = Paint.Style.FILL
+            canvas.save(); canvas.rotate(angle, cx, cy)
+            paint.color = Color.rgb(183, 132, 42); canvas.drawCircle(cx, cy, radius * 0.34f, paint)
+            paint.color = Color.rgb(22, 22, 23); canvas.drawCircle(cx, cy, radius * 0.30f, paint)
+            paint.color = Color.rgb(235, 190, 105); paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD); paint.textSize = dp(19).toFloat()
+            canvas.drawText("AURIX", cx, cy + dp(3), paint)
+            paint.textSize = dp(7).toFloat(); paint.typeface = Typeface.DEFAULT_BOLD
+            canvas.drawText("V50  •  HI-FI", cx, cy + dp(17), paint)
+            paint.color = Color.rgb(235, 190, 105); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
+            canvas.restore()
+            if (player?.isPlaying == true && visibility == View.VISIBLE) { angle = (angle + 1.2f) % 360f; postInvalidateDelayed(30) }
+        }
+    }
 
     private inner class VuView : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
