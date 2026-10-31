@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
+    private lateinit var artworkView: ImageView
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
@@ -329,6 +330,8 @@ class MainActivity : Activity() {
         try {
             r.setDataSource(this, uri)
             trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Ismeretlen cím"
+            val cover = r.embeddedPicture
+            if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) { artworkView.setImageBitmap(bitmap); artworkView.setPadding(0, 0, 0, 0) } } else { artworkView.setImageResource(android.R.drawable.ic_media_play); artworkView.setPadding(dp(62), dp(62), dp(62), dp(62)) }
             val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
             metadataLabel.text = "$artist  •  $album"
