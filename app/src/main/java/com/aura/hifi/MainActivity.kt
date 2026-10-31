@@ -3,6 +3,7 @@ package com.aura.hifi
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.provider.MediaStore
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -50,6 +51,9 @@ class MainActivity : Activity() {
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
     private val queue = mutableListOf<Uri>()
+    private data class LibrarySong(val uri: Uri, val title: String, val artist: String)
+    private val librarySongs = mutableListOf<LibrarySong>()
+    private lateinit var libraryContainer: LinearLayout
     private var currentIndex = 0
     private lateinit var nextTrackLabel: TextView
     private lateinit var queueContainer: LinearLayout
@@ -162,7 +166,12 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
-        songsPage.addView(button("＋ ZENÉK KERESÉSE / HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
+        songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
+        songsPage.addView(sectionTitle("ESZKÖZÖN TALÁLHATÓ ZENÉK"))
+        songsPage.addView(button("KÖNYVTÁR FRISSÍTÉSE", Color.rgb(35, 41, 53), Color.WHITE) { loadMusicLibrary() }, LinearLayout.LayoutParams(-1, dp(44)))
+        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 16); setPadding(dp(10), dp(6), dp(10), dp(6)) }
+        songsPage.addView(libraryContainer)
+        loadMusicLibrary()
         settingsPage.addView(sectionTitle("MEGJELENÉS"))
         settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
@@ -188,6 +197,68 @@ class MainActivity : Activity() {
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
+    private fun hasAudioPermission(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= 33) "android.permission.READ_MEDIA_AUDIO" else Manifest.permission.READ_EXTERNAL_STORAGE
+        return Build.VERSION.SDK_INT < 23 || checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    }
+    private fun loadMusicLibrary() {
+        if (!::libraryContainer.isInitialized) return
+        if (!hasAudioPermission()) {
+            val permission = if (Build.VERSION.SDK_INT >= 33) "android.permission.READ_MEDIA_AUDIO" else Manifest.permission.READ_EXTERNAL_STORAGE
+            if (Build.VERSION.SDK_INT >= 23) requestPermissions(arrayOf(permission), 78)
+            libraryContainer.removeAllViews()
+            libraryContainer.addView(label("A zenetár megjelenítéséhez engedélyezd a zene- és hangfájlok hozzáférését.", 12f, Color.WHITE).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+            return
+        }
+        librarySongs.clear()
+        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST)
+        val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
+        try {
+            contentResolver.query(collection, projection, selection, null, MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idCol)
+                    val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
+                    val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
+                    librarySongs.add(LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist))
+                }
+            }
+        } catch (_: Exception) { toast("A zenetár beolvasása nem sikerült.") }
+        renderLibrary()
+    }
+    private fun renderLibrary() {
+        if (!::libraryContainer.isInitialized) return
+        libraryContainer.removeAllViews()
+        libraryContainer.addView(label("TALÁLATOK: " + librarySongs.size, 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
+        if (librarySongs.isEmpty()) {
+            libraryContainer.addView(label("Nem található zene a megosztott zenetárban. Használd a kézi hozzáadást, vagy frissítsd a könyvtárat.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
+            return
+        }
+        librarySongs.forEachIndexed { index, song ->
+            val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(9), dp(8), dp(9)); isClickable = true; isFocusable = true }
+            item.addView(label(song.title, 12f, Color.WHITE))
+            item.addView(label(song.artist, 10f, Color.rgb(150, 160, 175)))
+            item.setOnClickListener {
+                queue.clear()
+                queue.addAll(librarySongs.map { it.uri })
+                currentIndex = index
+                startTrack(song.uri)
+                updateNextTrack()
+                renderQueue()
+                toast("Zenetár: " + song.title)
+            }
+            libraryContainer.addView(item)
+            if (index < librarySongs.lastIndex) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
+        }
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
+        else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
+    }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
         startActivityForResult(i, 1)
