@@ -66,6 +66,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg; window.navigationBarColor = bg
+        val allowRotation = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("screen_rotation", true)
+        requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 77)
@@ -172,6 +174,18 @@ class MainActivity : Activity() {
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 16); setPadding(dp(10), dp(6), dp(10), dp(6)) }
         songsPage.addView(libraryContainer)
         loadMusicLibrary()
+        settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
+        val rotationSwitch = Switch(this).apply {
+            text = "KÉPERNYŐ ELFORGATÁS ENGEDÉLYEZÉSE"
+            setTextColor(Color.WHITE)
+            isChecked = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("screen_rotation", true)
+            setOnCheckedChangeListener { _, checked ->
+                getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("screen_rotation", checked).apply()
+                requestedOrientation = if (checked) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+        settingsPage.addView(rotationSwitch)
+        settingsPage.addView(label("Automatikus váltás álló és fekvő nézet között.", 10f, Color.rgb(145, 153, 166)).apply { setPadding(dp(4), dp(2), 0, dp(10)) })
         settingsPage.addView(sectionTitle("MEGJELENÉS"))
         settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
         settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
@@ -252,7 +266,24 @@ class MainActivity : Activity() {
 
     private fun sectionTitle(s: String) = label(s, 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(20), 0, dp(9)) }
     private fun label(s: String, size: Float, color: Int) = TextView(this).apply { text = s; textSize = size; setTextColor(color) }
-    private fun button(s: String, color: Int, textColor: Int, click: () -> Unit) = Button(this).apply { text = s; textSize = 11f; setTextColor(textColor); background = rounded(color, 13); isAllCaps = false; setOnClickListener { click() } }
+    private fun button(s: String, color: Int, textColor: Int, click: () -> Unit) = Button(this).apply {
+        text = s
+        textSize = 10.5f
+        setTextColor(textColor)
+        isAllCaps = false
+        minHeight = dp(34)
+        minimumHeight = dp(34)
+        minWidth = 0
+        minimumWidth = 0
+        setPadding(dp(8), dp(4), dp(8), dp(4))
+        background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(43, 39, 31), Color.rgb(25, 29, 37))).apply {
+            cornerRadius = dp(10).toFloat()
+            setStroke(dp(1), Color.rgb(116, 87, 43))
+        }
+        elevation = dp(3).toFloat()
+        stateListAnimator = null
+        setOnClickListener { click() }
+    }
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
