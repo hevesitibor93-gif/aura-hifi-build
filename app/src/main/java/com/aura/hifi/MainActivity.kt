@@ -44,6 +44,9 @@ class MainActivity : Activity() {
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
+    private val queue = mutableListOf<Uri>()
+    private var currentIndex = 0
+    private lateinit var nextTrackLabel: TextView
     private val bg = Color.rgb(9, 11, 16)
     private val panel = Color.rgb(20, 24, 33)
     private val gold = Color.rgb(255, 184, 0)
@@ -88,6 +91,15 @@ class MainActivity : Activity() {
         body.addView(timeLabel)
         technicalLabel = label("AUDIO INFO  •  —", 9f, Color.rgb(125, 137, 155)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) }
         body.addView(technicalLabel)
+        nextTrackLabel = label("NEXT TRACK  •  Nincs következő szám", 10f, gold).apply {
+            gravity = Gravity.CENTER
+            isSingleLine = true
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            marqueeRepeatLimit = -1
+            isSelected = true
+            setPadding(dp(8), dp(8), dp(8), dp(4))
+        }
+        body.addView(nextTrackLabel)
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(14)) }
         val choose = button("ZENÉK +", gold, Color.BLACK) { openAudio() }
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
@@ -113,7 +125,7 @@ class MainActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun openAudio() {
-        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
         startActivityForResult(i, 1)
     }
     private fun openImage() {
@@ -123,21 +135,47 @@ class MainActivity : Activity() {
     @Deprecated("Legacy callback used for broad Android compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
+        if (resultCode != RESULT_OK || data == null) return
         if (requestCode == 2) {
+            val uri = data.data ?: return
             try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); window.decorView.background = android.graphics.drawable.Drawable.createFromStream(contentResolver.openInputStream(uri), null) } catch (_: Exception) { toast("A háttérkép nem tölthető be.") }
         } else if (requestCode == 1) {
-            selectedUri = uri
-            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
-            trackLabel.text = uri.lastPathSegment?.substringAfterLast('/') ?: "Kiválasztott zenefájl"
-            startTrack(uri)
+            val chosen = mutableListOf<Uri>()
+            val clip = data.clipData
+            if (clip != null) {
+                for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let { chosen.add(it) }
+            } else data.data?.let { chosen.add(it) }
+            if (chosen.isEmpty()) return
+            queue.clear()
+            queue.addAll(chosen.distinct())
+            queue.forEach { uri -> try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {} }
+            currentIndex = 0
+            selectedUri = queue.first()
+            updateNextTrack()
+            startTrack(queue[currentIndex])
+            toast("${queue.size} szám a várólistában")
         }
+    }
+    private fun metadataTitle(uri: Uri): String {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(this, uri)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                ?: uri.lastPathSegment?.substringAfterLast('/') ?: "Ismeretlen cím"
+        } catch (_: Exception) {
+            uri.lastPathSegment?.substringAfterLast('/') ?: "Ismeretlen cím"
+        } finally { try { retriever.release() } catch (_: Exception) {} }
+    }
+    private fun updateNextTrack() {
+        val next = queue.getOrNull(currentIndex + 1)
+        nextTrackLabel.text = if (next != null) "NEXT TRACK  •  ${metadataTitle(next)}" else "NEXT TRACK  •  Nincs következő szám"
     }
     private fun startTrack(uri: Uri) {
         releaseAudio()
         try {
+            selectedUri = uri
             readMetadata(uri)
+            updateNextTrack()
             player = MediaPlayer().apply {
                 setDataSource(this@MainActivity, uri)
                 setOnPreparedListener { mp ->
@@ -145,7 +183,7 @@ class MainActivity : Activity() {
                     setupEffects(mp.audioSessionId)
                     handler.removeCallbacks(progressTask); handler.post(progressTask)
                 }
-                setOnCompletionListener { playButton.text = "▶ LEJÁTSZÁS"; vu.setLevels(0f, 0f) }
+                setOnCompletionListener { vu.setLevels(0f, 0f); if (currentIndex + 1 < queue.size) { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) } else { playButton.text = "▶ LEJÁTSZÁS"; updateNextTrack() } }
                 prepareAsync()
             }
             trackLabel.text = "Betöltés…"
