@@ -254,7 +254,7 @@ class MainActivity : Activity() {
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         settingsPage.addView(vuStyleRow)
-        settingsPage.addView(label("Mindkét mód: 7 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        settingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
@@ -798,7 +798,7 @@ class MainActivity : Activity() {
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
-                val base = if (i >= 7) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
+                val base = if (i >= 5) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
                 p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
                     else Color.rgb(43, 45, 49)
                 c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(1).toFloat(), dp(1).toFloat(), p)
