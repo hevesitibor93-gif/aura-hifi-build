@@ -17,6 +17,8 @@ import android.media.audiofx.Equalizer
 import android.media.audiofx.Visualizer
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.view.WindowInsets
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -62,7 +64,17 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg); setPadding(dp(18), dp(12), dp(18), dp(12)) }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(bg)
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setOnApplyWindowInsetsListener { view, insets ->
+                val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
+                val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
+                view.setPadding(dp(18), dp(12) + topInset, dp(18), dp(12) + bottomInset)
+                insets
+            }
+        }
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
