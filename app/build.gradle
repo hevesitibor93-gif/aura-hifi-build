@@ -12,8 +12,23 @@ android {
         applicationId 'com.aura.hifi'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '1.3'
+        versionCode 4
+        versionName '1.4'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("AURIX_KEYSTORE_PATH") ?: "")
+            storePassword System.getenv("AURIX_KEYSTORE_PASSWORD")
+            keyAlias System.getenv("AURIX_KEY_ALIAS")
+            keyPassword System.getenv("AURIX_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
     }
 
     compileOptions {
