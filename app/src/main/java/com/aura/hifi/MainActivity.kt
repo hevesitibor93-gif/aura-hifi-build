@@ -178,13 +178,31 @@ class MainActivity : Activity() {
         settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
         settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
         val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        val vuStyleRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        vuStyleRow.addView(button("AUTÓS", Color.rgb(48, 42, 29), gold) {
+        val vuStyleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(13, 16, 22), 14)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val carModeButton = button("◉  AUTÓS", Color.TRANSPARENT, Color.WHITE) {}
+        val simpleModeButton = button("Ⅱ  LETISZTULT", Color.TRANSPARENT, Color.WHITE) {}
+        fun refreshVuStyleButtons(style: String) {
+            val carSelected = style == "car"
+            carModeButton.background = rounded(if (carSelected) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
+            carModeButton.setTextColor(if (carSelected) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
+            simpleModeButton.background = rounded(if (!carSelected) Color.rgb(31, 69, 76) else Color.TRANSPARENT, 10)
+            simpleModeButton.setTextColor(if (!carSelected) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
+        }
+        carModeButton.setOnClickListener {
             vu.setStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { marginEnd = dp(8) })
-        vuStyleRow.addView(button("LETISZTULT", Color.rgb(35, 41, 53), Color.WHITE) {
+            refreshVuStyleButtons("car")
+        }
+        simpleModeButton.setOnClickListener {
             vu.setStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f))
+            refreshVuStyleButtons("simple")
+        }
+        vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
+        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         settingsPage.addView(vuStyleRow)
         settingsPage.addView(label("Mindkét mód: 7 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
@@ -212,7 +230,9 @@ class MainActivity : Activity() {
             }
         }
         settingsPage.addView(vuAnimation)
-        vu.setStyle(vuPrefs.getString("vu_style", "car") ?: "car")
+        val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
+        vu.setStyle(savedVuStyle)
+        refreshVuStyleButtons(savedVuStyle)
         vu.setBrightness(vuPrefs.getInt("vu_brightness", 80))
         vu.setAnimationEnabled(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
@@ -608,13 +628,23 @@ class MainActivity : Activity() {
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
             p.style = Paint.Style.FILL
-            p.color = panel
-            c.drawRoundRect(outer, dp(15).toFloat(), dp(15).toFloat(), p)
+            p.color = if (style == "car") Color.rgb(12, 15, 19) else Color.rgb(17, 23, 29)
+            c.drawRoundRect(outer, dp(if (style == "car") 11 else 17).toFloat(), dp(if (style == "car") 11 else 17).toFloat(), p)
             p.style = Paint.Style.STROKE
-            p.strokeWidth = dp(1).toFloat()
-            p.color = Color.argb(brightness * 2, 211, 164, 78)
-            c.drawRoundRect(outer, dp(15).toFloat(), dp(15).toFloat(), p)
+            p.strokeWidth = dp(if (style == "car") 2 else 1).toFloat()
+            p.color = Color.argb(brightness * 2, if (style == "car") 232 else 92, if (style == "car") 166 else 202, if (style == "car") 66 else 194)
+            c.drawRoundRect(outer, dp(if (style == "car") 11 else 17).toFloat(), dp(if (style == "car") 11 else 17).toFloat(), p)
             p.style = Paint.Style.FILL
+            if (style == "car") {
+                val inner = RectF(dp(7).toFloat(), dp(7).toFloat(), w - dp(7), h - dp(7))
+                p.color = Color.rgb(19, 22, 27)
+                c.drawRoundRect(inner, dp(7).toFloat(), dp(7).toFloat(), p)
+                p.color = Color.rgb(95, 73, 42)
+                p.strokeWidth = dp(1).toFloat()
+                p.style = Paint.Style.STROKE
+                c.drawRoundRect(inner, dp(7).toFloat(), dp(7).toFloat(), p)
+                p.style = Paint.Style.FILL
+            }
 
             val inset = dp(12).toFloat()
             val labelW = dp(13).toFloat()
