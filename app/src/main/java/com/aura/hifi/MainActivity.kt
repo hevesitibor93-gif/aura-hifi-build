@@ -592,13 +592,14 @@ class MainActivity : Activity() {
         private var animationEnabled = true
 
         fun setLevels(l: Float, r: Float) {
+            if (!animationEnabled) return
             left = l.coerceIn(0f, 1f)
             right = r.coerceIn(0f, 1f)
             invalidate()
         }
         fun setStyle(value: String) { style = if (value == "simple") "simple" else "car"; invalidate() }
         fun setBrightness(value: Int) { brightness = value.coerceIn(20, 100); invalidate() }
-        fun setAnimationEnabled(value: Boolean) { animationEnabled = value; invalidate() }
+        fun setAnimationEnabled(value: Boolean) { animationEnabled = value; if (!value) { left = 0f; right = 0f }; invalidate() }
 
         override fun onDraw(c: Canvas) {
             super.onDraw(c)
