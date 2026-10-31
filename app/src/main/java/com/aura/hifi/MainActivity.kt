@@ -36,7 +36,7 @@ class MainActivity : Activity() {
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
-    private lateinit var vinylView: VinylView
+    private lateinit var vinylView: CassetteView
     private var showCover = true
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
@@ -97,7 +97,7 @@ class MainActivity : Activity() {
         body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(2), 0, dp(4)) })
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
-        vinylView = VinylView()
+        vinylView = CassetteView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(100), dp(100)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
@@ -225,7 +225,7 @@ class MainActivity : Activity() {
         rotationRow.addView(rotationSwitch)
         settingsPage.addView(rotationRow)
         settingsPage.addView(sectionTitle("MEGJELENÉS"))
-        settingsPage.addView(button("◈  BORÍTÓ / VINYL", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
+        settingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
         val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val vuStyleRow = LinearLayout(this).apply {
@@ -664,29 +664,47 @@ class MainActivity : Activity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() { releaseAudio(); super.onDestroy() }
 
-    private inner class VinylView : View(this@MainActivity) {
+    private inner class CassetteView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var angle = 0f
+        private var phase = 0f
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val cx = width / 2f; val cy = height / 2f
-            val radius = min(width, height) * 0.47f
-            paint.shader = null; paint.color = Color.rgb(8, 9, 12)
-            canvas.drawCircle(cx, cy, radius, paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(65, 59, 46)
-            for (i in 1..13) canvas.drawCircle(cx, cy, radius * (0.42f + i * 0.041f), paint)
-            paint.style = Paint.Style.FILL
-            canvas.save(); canvas.rotate(angle, cx, cy)
-            paint.color = Color.rgb(183, 132, 42); canvas.drawCircle(cx, cy, radius * 0.34f, paint)
-            paint.color = Color.rgb(22, 22, 23); canvas.drawCircle(cx, cy, radius * 0.30f, paint)
-            paint.color = Color.rgb(235, 190, 105); paint.textAlign = Paint.Align.CENTER
-            paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD); paint.textSize = dp(19).toFloat()
-            canvas.drawText("AURIX", cx, cy + dp(3), paint)
-            paint.textSize = dp(7).toFloat(); paint.typeface = Typeface.DEFAULT_BOLD
-            canvas.drawText("V50  •  HI-FI", cx, cy + dp(17), paint)
-            paint.color = Color.rgb(235, 190, 105); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
-            canvas.restore()
-            if (player?.isPlaying == true && visibility == View.VISIBLE) { angle = (angle + 1.2f) % 360f; postInvalidateDelayed(30) }
+            val w=width.toFloat(); val h=height.toFloat()
+            if(w<=0f||h<=0f)return
+            val duration=(player?.duration?:0).coerceAtLeast(0)
+            val position=(player?.currentPosition?:0).coerceAtLeast(0)
+            val progress=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f) else 0f
+            val playing=try{player?.isPlaying==true}catch(_:Exception){false}
+            fun fill(c:Int){paint.color=c;paint.style=Paint.Style.FILL;paint.shader=null}
+            val shell=RectF(w*.035f,h*.13f,w*.965f,h*.87f)
+            fill(Color.rgb(29,31,35));canvas.drawRoundRect(shell,h*.09f,h*.09f,paint)
+            paint.style=Paint.Style.STROKE;paint.strokeWidth=(h*.012f).coerceAtLeast(1f);paint.color=Color.rgb(190,145,66)
+            canvas.drawRoundRect(shell,h*.09f,h*.09f,paint);paint.style=Paint.Style.FILL
+            fill(Color.rgb(48,49,48));canvas.drawRoundRect(RectF(w*.09f,h*.22f,w*.91f,h*.76f),h*.045f,h*.045f,paint)
+            fill(Color.rgb(17,19,22));canvas.drawRoundRect(RectF(w*.15f,h*.29f,w*.85f,h*.69f),h*.035f,h*.035f,paint)
+            fill(Color.rgb(191,145,69));canvas.drawRoundRect(RectF(w*.29f,h*.17f,w*.71f,h*.34f),h*.025f,h*.025f,paint)
+            paint.color=Color.rgb(31,27,21);paint.textAlign=Paint.Align.CENTER;paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
+            paint.textSize=(h*.105f).coerceAtLeast(dp(7).toFloat());canvas.drawText("AURIX",w*.5f,h*.285f,paint)
+            paint.textSize=(h*.045f).coerceAtLeast(dp(4).toFloat());paint.typeface=Typeface.DEFAULT_BOLD
+            canvas.drawText("SIDE A  •  HI-FI CHROME",w*.5f,h*.325f,paint)
+            val ry=h*.49f;val lx=w*.365f;val rx=w*.635f;val rr=h*.105f
+            for((x,amount) in listOf(lx to (1f-progress),rx to progress)){
+                fill(Color.rgb(9,10,12));canvas.drawCircle(x,ry,rr,paint)
+                paint.style=Paint.Style.STROKE;paint.strokeWidth=(h*.018f).coerceAtLeast(1f);paint.color=Color.rgb(196,151,75);canvas.drawCircle(x,ry,rr*.91f,paint);paint.style=Paint.Style.FILL
+                fill(Color.rgb(117,79,37));canvas.drawCircle(x,ry,rr*.70f,paint)
+                fill(Color.rgb(28,29,31));canvas.drawCircle(x,ry,rr*.48f,paint)
+                canvas.save();canvas.rotate(if(playing)phase else 0f,x,ry)
+                for(i in 0..5){canvas.save();canvas.rotate(i*60f,x,ry);fill(Color.rgb(205,166,96));canvas.drawRoundRect(RectF(x-rr*.10f,ry-rr*.40f,x+rr*.10f,ry-rr*.17f),rr*.05f,rr*.05f,paint);canvas.restore()}
+                canvas.restore()
+                paint.color=Color.rgb(232,193,125);paint.textAlign=Paint.Align.CENTER;paint.textSize=(h*.052f).coerceAtLeast(dp(5).toFloat())
+                canvas.drawText("${(amount*100).toInt()}%",x,ry+rr*1.42f,paint)
+            }
+            paint.color=Color.rgb(183,133,58);paint.strokeWidth=(h*.012f).coerceAtLeast(1f)
+            canvas.drawLine(lx+rr*.55f,ry,rx-rr*.55f,ry,paint)
+            fill(Color.rgb(190,145,66));canvas.drawRoundRect(RectF(w*.39f,h*.73f,w*.61f,h*.79f),h*.02f,h*.02f,paint)
+            paint.color=Color.rgb(25,23,20);paint.textSize=(h*.045f).coerceAtLeast(dp(4).toFloat());paint.textAlign=Paint.Align.CENTER
+            canvas.drawText(if(duration>0) "${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.775f,paint)
+            if(playing&&visibility==View.VISIBLE){phase=(phase+5f)%360f;postInvalidateDelayed(40)}
         }
     }
 
