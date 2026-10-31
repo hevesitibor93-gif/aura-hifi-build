@@ -47,6 +47,7 @@ class MainActivity : Activity() {
     private val queue = mutableListOf<Uri>()
     private var currentIndex = 0
     private lateinit var nextTrackLabel: TextView
+    private lateinit var queueContainer: LinearLayout
     private val bg = Color.rgb(9, 11, 16)
     private val panel = Color.rgb(20, 24, 33)
     private val gold = Color.rgb(255, 184, 0)
@@ -103,9 +104,21 @@ class MainActivity : Activity() {
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(14)) }
         val choose = button("ZENÉK +", gold, Color.BLACK) { openAudio() }
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
-        controls.addView(choose, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) })
-        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.2f))
+        val previous = button("⏮", Color.rgb(35, 41, 53), Color.WHITE) { playPrevious() }
+        val next = button("⏭", Color.rgb(35, 41, 53), Color.WHITE) { playNext() }
+        controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(6) })
+        controls.addView(choose, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(6) })
+        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.2f).apply { marginEnd = dp(6) })
+        controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(controls)
+        body.addView(sectionTitle("LEJÁTSZÁSI SOR"))
+        queueContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(panel, 16)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        body.addView(queueContainer)
+        renderQueue()
         body.addView(sectionTitle("HANGSZÍNSZABÁLYZÓ"))
         eqContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
         body.addView(eqContainer)
@@ -152,6 +165,7 @@ class MainActivity : Activity() {
             currentIndex = 0
             selectedUri = queue.first()
             updateNextTrack()
+            renderQueue()
             startTrack(queue[currentIndex])
             toast("${queue.size} szám a várólistában")
         }
@@ -169,8 +183,48 @@ class MainActivity : Activity() {
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
         nextTrackLabel.text = if (next != null) "NEXT TRACK  •  ${metadataTitle(next)}" else "NEXT TRACK  •  Nincs következő szám"
+        renderQueue()
+    }
+    private fun renderQueue() {
+        if (!::queueContainer.isInitialized) return
+        queueContainer.removeAllViews()
+        if (queue.isEmpty()) {
+            queueContainer.addView(label("Még nincs zeneszám a listában.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
+            return
+        }
+        queue.forEachIndexed { index, uri ->
+            val item = TextView(this).apply {
+                text = (if (index == currentIndex) "▶  " else "${index + 1}.  ") + metadataTitle(uri)
+                textSize = 12f
+                setTextColor(if (index == currentIndex) gold else Color.rgb(220, 225, 235))
+                setPadding(dp(8), dp(11), dp(8), dp(11))
+                isSingleLine = true
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setOnClickListener {
+                    currentIndex = index
+                    startTrack(queue[currentIndex])
+                    updateNextTrack()
+                }
+            }
+            queueContainer.addView(item)
+            if (index < queue.lastIndex) {
+                val line = View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }
+                queueContainer.addView(line, LinearLayout.LayoutParams(-1, dp(1)))
+            }
+        }
+    }
+    private fun playPrevious() {
+        if (queue.isEmpty()) return
+        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0
+        startTrack(queue[currentIndex])
+    }
+    private fun playNext() {
+        if (queue.isEmpty()) return
+        if (currentIndex < queue.lastIndex) currentIndex++
+        startTrack(queue[currentIndex])
     }
     private fun startTrack(uri: Uri) {
+        renderQueue()
         releaseAudio()
         try {
             selectedUri = uri
