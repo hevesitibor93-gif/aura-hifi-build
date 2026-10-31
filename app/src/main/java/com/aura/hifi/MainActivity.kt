@@ -103,7 +103,7 @@ class MainActivity : Activity() {
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(4)) })
         applyArtworkMode()
         body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
-        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(94)))
+        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(78)).apply { setMargins(dp(34), 0, dp(34), 0); gravity = Gravity.CENTER })
         trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
         body.addView(trackLabel)
         metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(8)) }
@@ -133,12 +133,10 @@ class MainActivity : Activity() {
         }
         body.addView(nextTrackLabel)
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(14)) }
-        val choose = button("ZENÉK +", gold, Color.BLACK) { openAudio() }
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
         val previous = button("⏮", Color.rgb(35, 41, 53), Color.WHITE) { playPrevious() }
         val next = button("⏭", Color.rgb(35, 41, 53), Color.WHITE) { playNext() }
         controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(6) })
-        controls.addView(choose, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(6) })
         controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.2f).apply { marginEnd = dp(6) })
         controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(controls)
@@ -204,7 +202,7 @@ class MainActivity : Activity() {
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         settingsPage.addView(vuStyleRow)
-        settingsPage.addView(label("Mindkét mód: 7 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        settingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
@@ -495,7 +493,7 @@ class MainActivity : Activity() {
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                }, (Visualizer.getMaxCaptureRate() / 4).coerceAtLeast(1000), true, false)
+                }, (Visualizer.getMaxCaptureRate() / 2).coerceAtLeast(1000), true, false)
                 enabled = true
             }
             renderEqualizer()
@@ -682,14 +680,14 @@ class MainActivity : Activity() {
         }
 
         private fun drawBar(c: Canvas, x: Float, y: Float, width: Float, height: Float, level: Float) {
-            val segments = 10
+            val segments = 8
             val gap = dp(3).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
             val lit = (level.coerceIn(0f, 1f) * segments).toInt()
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
-                val base = if (i >= 7) Color.rgb(255, 65, 48) else Color.rgb(255, 190, 35)
+                val base = if (i >= 5) Color.rgb(255, 65, 48) else Color.rgb(255, 190, 35)
                 p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
                     else Color.rgb(43, 45, 49)
                 c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(3).toFloat(), dp(3).toFloat(), p)
