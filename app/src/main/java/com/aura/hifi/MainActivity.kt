@@ -676,15 +676,15 @@ class MainActivity : Activity() {
             val playing=try{player?.isPlaying==true}catch(_:Exception){false}
             fun fill(c:Int){paint.color=c;paint.style=Paint.Style.FILL;paint.shader=null}
             fun line(c:Int,sw:Float){paint.color=c;paint.style=Paint.Style.STROKE;paint.strokeWidth=sw}
-            val shell=RectF(w*.035f,h*.12f,w*.965f,h*.88f)
+            val shell=RectF(w*.025f,h*.045f,w*.975f,h*.955f)
             fill(Color.rgb(31,33,35));canvas.drawRoundRect(shell,h*.055f,h*.055f,paint)
             line(Color.rgb(184,147,83),h*.009f);canvas.drawRoundRect(shell,h*.055f,h*.055f,paint)
-            fill(Color.rgb(62,64,62));canvas.drawRoundRect(RectF(w*.075f,h*.17f,w*.925f,h*.83f),h*.035f,h*.035f,paint)
+            fill(Color.rgb(62,64,62));canvas.drawRoundRect(RectF(w*.065f,h*.095f,w*.935f,h*.905f),h*.035f,h*.035f,paint)
             line(Color.rgb(112,114,108),h*.005f)
             for(i in 0..5){val x=w*(.15f+i*.14f);canvas.drawLine(x,h*.19f,x,h*.27f,paint);canvas.drawLine(x,h*.73f,x,h*.81f,paint)}
-            fill(Color.rgb(12,14,15));canvas.drawRoundRect(RectF(w*.13f,h*.30f,w*.87f,h*.70f),h*.03f,h*.03f,paint)
-            fill(Color.rgb(5,7,8));canvas.drawRoundRect(RectF(w*.17f,h*.335f,w*.83f,h*.665f),h*.02f,h*.02f,paint)
-            val cy=h*.49f;val lx=w*.34f;val rx=w*.66f;val r=h*.115f
+            fill(Color.rgb(12,14,15));canvas.drawRoundRect(RectF(w*.12f,h*.31f,w*.88f,h*.72f),h*.03f,h*.03f,paint)
+            fill(Color.rgb(5,7,8));canvas.drawRoundRect(RectF(w*.16f,h*.345f,w*.84f,h*.685f),h*.02f,h*.02f,paint)
+            val cy=h*.515f;val lx=w*.34f;val rx=w*.66f;val r=h*.105f
             for((x,amount) in listOf(lx to (1f-progress),rx to progress)){
                 fill(Color.rgb(24,26,27));canvas.drawCircle(x,cy,r,paint)
                 line(Color.rgb(174,177,169),h*.008f);canvas.drawCircle(x,cy,r*.94f,paint)
@@ -697,17 +697,17 @@ class MainActivity : Activity() {
             }
             line(Color.rgb(190,157,101),h*.012f)
             canvas.drawLine(lx+r*.72f,cy+r*.55f,w*.46f,h*.64f,paint);canvas.drawLine(w*.46f,h*.64f,w*.54f,h*.64f,paint);canvas.drawLine(w*.54f,h*.64f,rx-r*.72f,cy+r*.55f,paint)
-            fill(Color.rgb(214,210,191));canvas.drawRoundRect(RectF(w*.27f,h*.19f,w*.73f,h*.30f),h*.012f,h*.012f,paint)
+            fill(Color.rgb(214,210,191));canvas.drawRoundRect(RectF(w*.22f,h*.105f,w*.78f,h*.285f),h*.012f,h*.012f,paint)
             paint.color=Color.rgb(35,40,39);paint.textAlign=Paint.Align.CENTER;paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
-            paint.textSize=(h*.075f).coerceAtLeast(dp(8).toFloat());canvas.drawText("FE",w*.39f,h*.275f,paint)
-            paint.textSize=(h*.034f).coerceAtLeast(dp(4).toFloat());paint.typeface=Typeface.DEFAULT_BOLD
-            canvas.drawText("AURIX  •  TYPE I",w*.59f,h*.245f,paint);canvas.drawText("NORMAL POSITION  •  SIDE A",w*.59f,h*.282f,paint)
+            paint.textSize=(h*.095f).coerceAtLeast(dp(10).toFloat());canvas.drawText("FE",w*.34f,h*.225f,paint)
+            paint.textSize=(h*.043f).coerceAtLeast(dp(6).toFloat());paint.typeface=Typeface.DEFAULT_BOLD
+            canvas.drawText("AURIX  •  TYPE I",w*.59f,h*.18f,paint);canvas.drawText("NORMAL POSITION  •  SIDE A",w*.59f,h*.235f,paint)
             for((x,y) in listOf(w*.105f to h*.205f,w*.895f to h*.205f,w*.105f to h*.795f,w*.895f to h*.795f)){
                 fill(Color.rgb(18,20,21));canvas.drawCircle(x,y,h*.018f,paint);line(Color.rgb(143,145,138),h*.004f);canvas.drawCircle(x,y,h*.018f,paint)
             }
-            fill(Color.rgb(190,151,87));canvas.drawRoundRect(RectF(w*.34f,h*.735f,w*.66f,h*.805f),h*.012f,h*.012f,paint)
+            fill(Color.rgb(190,151,87));canvas.drawRoundRect(RectF(w*.31f,h*.79f,w*.69f,h*.88f),h*.012f,h*.012f,paint)
             paint.color=Color.rgb(29,27,23);paint.textSize=(h*.043f).coerceAtLeast(dp(5).toFloat());paint.textAlign=Paint.Align.CENTER
-            canvas.drawText(if(duration>0) "${(progress*100).toInt()}%  •  ${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.782f,paint)
+            canvas.drawText(if(duration>0) "${(progress*100).toInt()}%  •  ${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.85f,paint)
             if(playing&&visibility==View.VISIBLE){phase=(phase+5f)%360f;postInvalidateDelayed(40)}
         }
     }
@@ -792,7 +792,7 @@ class MainActivity : Activity() {
 
         private fun drawBar(c: Canvas, x: Float, y: Float, width: Float, height: Float, level: Float) {
             val segments = 8
-            val gap = dp(3).toFloat()
+            val gap = dp(1).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
             val lit = (level.coerceIn(0f, 1f) * segments).toInt()
             for (i in 0 until segments) {
