@@ -35,7 +35,6 @@ class MainActivity : Activity() {
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
-    private lateinit var artworkView: ImageView
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
