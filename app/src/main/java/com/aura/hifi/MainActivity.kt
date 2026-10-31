@@ -421,7 +421,8 @@ class MainActivity : Activity() {
             bassBoost?.release(); bassBoost = BassBoost(0, session).apply { enabled = true }
             visualizer?.release()
             visualizer = Visualizer(session).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
+                // A VU-mérő ritkább mintavételezése csökkenti a főszál terhelését.
+                captureSize = Visualizer.getCaptureSizeRange()[0]
                 setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                     override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
                         if (waveform != null && waveform.isNotEmpty()) {
@@ -431,11 +432,11 @@ class MainActivity : Activity() {
                             val targetGain = if (rms > 0.006f) (0.24f / rms).coerceIn(0.7f, 18f) else vuAutoGain
                             vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
                             val level = (rms * vuAutoGain * 1.45f).coerceIn(0f, 1f)
-                            runOnUiThread { vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f)) }
+                            vu.post { vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f)) }
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                }, Visualizer.getMaxCaptureRate() / 2, true, false)
+                }, (Visualizer.getMaxCaptureRate() / 4).coerceAtLeast(1000), true, false)
                 enabled = true
             }
             renderEqualizer()
