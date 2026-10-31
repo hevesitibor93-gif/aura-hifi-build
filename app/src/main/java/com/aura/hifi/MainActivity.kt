@@ -353,18 +353,49 @@ class MainActivity : Activity() {
             selectedUri = uri
             readMetadata(uri)
             updateNextTrack()
+            val descriptor = contentResolver.openFileDescriptor(uri, "r")
+                ?: throw IllegalStateException("A fájl nem nyitható meg.")
             player = MediaPlayer().apply {
-                setDataSource(this@MainActivity, uri)
+                setDataSource(descriptor.fileDescriptor)
+                descriptor.close()
                 setOnPreparedListener { mp ->
-                    mp.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate()
-                    setupEffects(mp.audioSessionId)
-                    handler.removeCallbacks(progressTask); handler.post(progressTask)
+                    try {
+                        mp.start()
+                        playButton.text = "Ⅱ SZÜNET"
+                        vinylView.invalidate()
+                        setupEffects(mp.audioSessionId)
+                        handler.removeCallbacks(progressTask)
+                        handler.post(progressTask)
+                    } catch (_: Exception) {
+                        toast("A lejátszás indítása nem sikerült.")
+                    }
                 }
-                setOnCompletionListener { vu.setLevels(0f, 0f); if (currentIndex + 1 < queue.size) { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) } else { playButton.text = "▶ LEJÁTSZÁS"; updateNextTrack() } }
+                setOnErrorListener { _, what, extra ->
+                    playButton.text = "▶ LEJÁTSZÁS"
+                    toast("Lejátszási hiba ($what/$extra).")
+                    true
+                }
+                setOnCompletionListener {
+                    vu.setLevels(0f, 0f)
+                    if (currentIndex + 1 < queue.size) {
+                        currentIndex++
+                        selectedUri = queue[currentIndex]
+                        updateNextTrack()
+                        startTrack(queue[currentIndex])
+                    } else {
+                        playButton.text = "▶ LEJÁTSZÁS"
+                        updateNextTrack()
+                    }
+                }
                 prepareAsync()
             }
             trackLabel.text = "Betöltés…"
-        } catch (e: Exception) { toast("Nem sikerült megnyitni ezt a zenét.") }
+        } catch (e: Exception) {
+            try { player?.release() } catch (_: Exception) {}
+            player = null
+            playButton.text = "▶ LEJÁTSZÁS"
+            toast("Nem sikerült megnyitni: " + (e.message ?: "ismeretlen hiba"))
+        }
     }
     private fun togglePlayback() {
         val p = player
