@@ -167,7 +167,39 @@ class MainActivity : Activity() {
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
-        original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (landscape) {
+            playerPage.orientation = LinearLayout.HORIZONTAL
+            val cockpitLeft = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(4), 0, dp(8), 0) }
+            val cockpitRight = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), 0, dp(4), 0) }
+            original.forEachIndexed { i, child ->
+                when (i) {
+                    in 0..4 -> cockpitLeft.addView(child)
+                    in 5..11 -> cockpitRight.addView(child)
+                    12, 13 -> songsPage.addView(child)
+                    14, 15 -> eqPage.addView(child)
+                    else -> settingsPage.addView(child)
+                }
+            }
+            playerPage.addView(cockpitLeft, LinearLayout.LayoutParams(0, -2, 1.05f))
+            playerPage.addView(cockpitRight, LinearLayout.LayoutParams(0, -2, 1f))
+            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(142)).apply { setMargins(dp(2), 0, dp(2), dp(2)) }
+            artFrame.setPadding(dp(6), dp(6), dp(6), dp(6))
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(118); height = dp(118) }
+            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(118); height = dp(118) }
+            trackLabel.textSize = 12f
+            trackLabel.setPadding(dp(4), dp(5), dp(4), dp(3))
+            metadataLabel.textSize = 9f
+            metadataLabel.setPadding(0, 0, 0, dp(2))
+            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(54)).apply { setMargins(dp(4), 0, dp(4), 0) }
+            seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(20))
+            controls.setPadding(0, dp(2), 0, dp(3))
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(5) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+        } else {
+            original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+        }
         songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
         songsPage.addView(sectionTitle("ESZKÖZÖN TALÁLHATÓ ZENÉK"))
         songsPage.addView(button("KÖNYVTÁR FRISSÍTÉSE", Color.rgb(35, 41, 53), Color.WHITE) { loadMusicLibrary() }, LinearLayout.LayoutParams(-1, dp(44)))
