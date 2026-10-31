@@ -138,9 +138,9 @@ class MainActivity : Activity() {
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
         val previous = button("⏮", Color.rgb(35, 41, 53), Color.WHITE) { playPrevious() }
         val next = button("⏭", Color.rgb(35, 41, 53), Color.WHITE) { playNext() }
-        controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(6) })
-        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.2f).apply { marginEnd = dp(6) })
-        controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
+        controls.addView(previous, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) })
+        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(8) })
+        controls.addView(next, LinearLayout.LayoutParams(dp(42), dp(42)))
         body.addView(controls)
         body.addView(sectionTitle("LEJÁTSZÁSI SOR  •  ${queue.size} ZENESZÁM"))
         queueContainer = LinearLayout(this).apply {
@@ -175,19 +175,19 @@ class MainActivity : Activity() {
         songsPage.addView(libraryContainer)
         loadMusicLibrary()
         settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
+        val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
         val rotationSwitch = Switch(this).apply {
-            text = "KÉPERNYŐ ELFORGATÁS ENGEDÉLYEZÉSE"
-            setTextColor(Color.WHITE)
+            text = ""
             isChecked = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("screen_rotation", true)
             setOnCheckedChangeListener { _, checked ->
                 getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("screen_rotation", checked).apply()
                 requestedOrientation = if (checked) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
         }
-        settingsPage.addView(rotationSwitch)
-        settingsPage.addView(label("Automatikus váltás álló és fekvő nézet között.", 10f, Color.rgb(145, 153, 166)).apply { setPadding(dp(4), dp(2), 0, dp(10)) })
+        rotationRow.addView(rotationSwitch)
+        settingsPage.addView(rotationRow)
         settingsPage.addView(sectionTitle("MEGJELENÉS"))
-        settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
+        settingsPage.addView(button("◈  BORÍTÓ / VINYL", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
         val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val vuStyleRow = LinearLayout(this).apply {
@@ -232,16 +232,17 @@ class MainActivity : Activity() {
             })
         }
         settingsPage.addView(vuBrightness)
+        val animationRow = settingRow("VU-ANIMÁCIÓ", "LED mozgás")
         val vuAnimation = Switch(this).apply {
-            text = "VU-ANIMÁCIÓ"
-            setTextColor(Color.WHITE)
+            text = ""
             isChecked = vuPrefs.getBoolean("vu_animation", true)
             setOnCheckedChangeListener { _, checked ->
                 vu.setAnimationEnabled(checked)
                 vuPrefs.edit().putBoolean("vu_animation", checked).apply()
             }
         }
-        settingsPage.addView(vuAnimation)
+        animationRow.addView(vuAnimation)
+        settingsPage.addView(animationRow)
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
         vu.setStyle(savedVuStyle)
         refreshVuStyleButtons(savedVuStyle)
@@ -264,13 +265,32 @@ class MainActivity : Activity() {
         vinylView.invalidate()
     }
 
+    private fun settingRow(title: String, subtitle: String): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(34, 35, 38), Color.rgb(19, 23, 30))).apply {
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(91, 69, 39))
+            }
+            setPadding(dp(12), dp(5), dp(10), dp(5))
+            val labels = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            labels.addView(label(title, 11f, Color.rgb(238, 202, 137)).apply { typeface = Typeface.DEFAULT_BOLD })
+            labels.addView(label(subtitle, 9f, Color.rgb(145, 153, 166)))
+            addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
+            layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(7) }
+        }
+    }
+
     private fun sectionTitle(s: String) = label(s, 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(20), 0, dp(9)) }
     private fun label(s: String, size: Float, color: Int) = TextView(this).apply { text = s; textSize = size; setTextColor(color) }
     private fun button(s: String, color: Int, textColor: Int, click: () -> Unit) = Button(this).apply {
         text = s
-        textSize = 10.5f
+        textSize = 10f
         setTextColor(textColor)
+        backgroundTintList = null
         isAllCaps = false
+        includeFontPadding = false
         minHeight = dp(34)
         minimumHeight = dp(34)
         minWidth = 0
