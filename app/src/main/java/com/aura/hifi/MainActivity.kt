@@ -103,7 +103,7 @@ class MainActivity : Activity() {
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(4)) })
         applyArtworkMode()
         body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
-        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(78)).apply { setMargins(dp(34), 0, dp(34), 0); gravity = Gravity.CENTER })
+        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(62)).apply { setMargins(dp(60), 0, dp(60), 0); gravity = Gravity.CENTER })
         trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
         body.addView(trackLabel)
         metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(8)) }
