@@ -176,6 +176,45 @@ class MainActivity : Activity() {
         loadMusicLibrary()
         settingsPage.addView(sectionTitle("MEGJELENÉS"))
         settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
+        settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
+        val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val vuStyleRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        vuStyleRow.addView(button("AUTÓS", Color.rgb(48, 42, 29), gold) {
+            vu.setStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
+        }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { marginEnd = dp(8) })
+        vuStyleRow.addView(button("LETISZTULT", Color.rgb(35, 41, 53), Color.WHITE) {
+            vu.setStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
+        }, LinearLayout.LayoutParams(0, dp(46), 1f))
+        settingsPage.addView(vuStyleRow)
+        settingsPage.addView(label("Mindkét mód: 7 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
+        val vuBrightness = SeekBar(this).apply {
+            max = 100
+            progress = vuPrefs.getInt("vu_brightness", 80).coerceIn(20, 100)
+            progressTintList = android.content.res.ColorStateList.valueOf(gold)
+            thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar?, value: Int, fromUser: Boolean) {
+                    if (fromUser) { vu.setBrightness(value); vuPrefs.edit().putInt("vu_brightness", value).apply() }
+                }
+                override fun onStartTrackingTouch(seek: SeekBar?) {}
+                override fun onStopTrackingTouch(seek: SeekBar?) {}
+            })
+        }
+        settingsPage.addView(vuBrightness)
+        val vuAnimation = Switch(this).apply {
+            text = "VU-ANIMÁCIÓ"
+            setTextColor(Color.WHITE)
+            isChecked = vuPrefs.getBoolean("vu_animation", true)
+            setOnCheckedChangeListener { _, checked ->
+                vu.setAnimationEnabled(checked)
+                vuPrefs.edit().putBoolean("vu_animation", checked).apply()
+            }
+        }
+        settingsPage.addView(vuAnimation)
+        vu.setStyle(vuPrefs.getString("vu_style", "car") ?: "car")
+        vu.setBrightness(vuPrefs.getInt("vu_brightness", 80))
+        vu.setAnimationEnabled(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int) { pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }; navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) } }
@@ -546,33 +585,83 @@ class MainActivity : Activity() {
 
     private inner class VuView : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var left = 0f; private var right = 0f
-        fun setLevels(l: Float, r: Float) { left = l; right = r; invalidate() }
+        private var left = 0f
+        private var right = 0f
+        private var style = "car"
+        private var brightness = 80
+        private var animationEnabled = true
+
+        fun setLevels(l: Float, r: Float) {
+            left = l.coerceIn(0f, 1f)
+            right = r.coerceIn(0f, 1f)
+            invalidate()
+        }
+        fun setStyle(value: String) { style = if (value == "simple") "simple" else "car"; invalidate() }
+        fun setBrightness(value: Int) { brightness = value.coerceIn(20, 100); invalidate() }
+        fun setAnimationEnabled(value: Boolean) { animationEnabled = value; invalidate() }
+
         override fun onDraw(c: Canvas) {
             super.onDraw(c)
-            val w = width.toFloat(); val h = height.toFloat(); val gap = dp(12).toFloat(); val leftPad = dp(8).toFloat(); val rightPad = dp(8).toFloat()
-            p.color = panel; c.drawRoundRect(RectF(0f, 0f, w, h), dp(18).toFloat(), dp(18).toFloat(), p)
-            val labelW = dp(24).toFloat(); val barX = leftPad + labelW; val barW = w - barX - rightPad; val barH = dp(13).toFloat()
-            val y1 = h * .40f; val y2 = h * .72f
-            drawBar(c, "L", barX, y1, barW, barH, left)
-            drawBar(c, "R", barX, y2, barW, barH, right)
-            p.color = Color.rgb(145, 153, 168); p.textSize = dp(10).toFloat(); p.typeface = Typeface.DEFAULT_BOLD
-            c.drawText("L", leftPad, y1 + barH * .65f, p); c.drawText("R", leftPad, y2 + barH * .65f, p)
-            p.color = Color.rgb(105, 115, 132); p.textSize = dp(9).toFloat(); p.typeface = Typeface.DEFAULT
-            c.drawText("STEREO  •  LIVE", barX, dp(16).toFloat(), p)
+            val w = width.toFloat()
+            val h = height.toFloat()
+            val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
+            p.shader = null
+            p.style = Paint.Style.FILL
+            p.color = panel
+            c.drawRoundRect(outer, dp(15).toFloat(), dp(15).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 211, 164, 78)
+            c.drawRoundRect(outer, dp(15).toFloat(), dp(15).toFloat(), p)
+            p.style = Paint.Style.FILL
+
+            val inset = dp(12).toFloat()
+            val labelW = dp(13).toFloat()
+            val barW = w - inset * 2 - labelW
+            val barH = if (style == "car") dp(14).toFloat() else dp(10).toFloat()
+            val top = if (style == "car") h * .34f else h * .29f
+            val bottom = if (style == "car") h * .69f else h * .70f
+            drawBar(c, inset + labelW, top, barW, barH, left)
+            drawBar(c, inset + labelW, bottom, barW, barH, right)
+
+            p.shader = null
+            p.color = Color.rgb(185, 157, 105)
+            p.textSize = dp(9).toFloat()
+            p.typeface = Typeface.DEFAULT_BOLD
+            c.drawText("L", inset, top + barH * .78f, p)
+            c.drawText("R", inset, bottom + barH * .78f, p)
+
+            if (style == "car") {
+                p.color = Color.rgb(235, 196, 125)
+                p.textSize = dp(10).toFloat()
+                p.typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+                p.textAlign = Paint.Align.CENTER
+                c.drawText("AURIX", w / 2f, h - dp(7).toFloat(), p)
+                p.textAlign = Paint.Align.LEFT
+            } else {
+                p.color = Color.rgb(104, 91, 69)
+                p.strokeWidth = dp(1).toFloat()
+                c.drawLine(inset + labelW, h / 2f, w - inset, h / 2f, p)
+                p.color = Color.rgb(190, 160, 105)
+                p.textSize = dp(8).toFloat()
+                p.textAlign = Paint.Align.CENTER
+                c.drawText("AURIX  •  STEREO", w / 2f, h - dp(4).toFloat(), p)
+                p.textAlign = Paint.Align.LEFT
+            }
         }
-        private fun drawBar(c: Canvas, name: String, x: Float, y: Float, width: Float, height: Float, level: Float) {
-            val segments = 48
-            val gap = dp(1).toFloat()
+
+        private fun drawBar(c: Canvas, x: Float, y: Float, width: Float, height: Float, level: Float) {
+            val segments = 10
+            val gap = dp(3).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
             val lit = (level.coerceIn(0f, 1f) * segments).toInt()
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
-                p.shader = null
-                p.color = if (i < lit) {
-                    if (i >= segments * 0.82f) Color.rgb(255, 55, 42) else Color.rgb(255, 195, 20)
-                } else Color.rgb(39, 43, 50)
-                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), height / 2, height / 2, p)
+                val active = i < lit
+                val base = if (i >= 7) Color.rgb(255, 65, 48) else Color.rgb(255, 190, 35)
+                p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
+                    else Color.rgb(43, 45, 49)
+                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(3).toFloat(), dp(3).toFloat(), p)
             }
         }
     }
