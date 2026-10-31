@@ -34,8 +34,25 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
-      - name: Build debug APK
-        run: gradle assembleDebug
+      - name: Prepare persistent signing key
+        env:
+          AURIX_KEYSTORE_BASE64: ${{ secrets.AURIX_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$AURIX_KEYSTORE_BASE64" || (echo "Missing AURIX_KEYSTORE_BASE64 secret" && exit 1)
+          echo "$AURIX_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aurix-release.jks"
+          test -s "$RUNNER_TEMP/aurix-release.jks"
+
+      - name: Build debug APK with persistent signature
+        env:
+          AURIX_KEYSTORE_PATH: ${{ runner.temp }}/aurix-release.jks
+          AURIX_KEYSTORE_PASSWORD: ${{ secrets.AURIX_KEYSTORE_PASSWORD }}
+          AURIX_KEY_ALIAS: ${{ secrets.AURIX_KEY_ALIAS }}
+          AURIX_KEY_PASSWORD: ${{ secrets.AURIX_KEY_PASSWORD }}
+        run: |
+          test -n "$AURIX_KEYSTORE_PASSWORD" || (echo "Missing AURIX_KEYSTORE_PASSWORD secret" && exit 1)
+          test -n "$AURIX_KEY_ALIAS" || (echo "Missing AURIX_KEY_ALIAS secret" && exit 1)
+          test -n "$AURIX_KEY_PASSWORD" || (echo "Missing AURIX_KEY_PASSWORD secret" && exit 1)
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
