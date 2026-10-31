@@ -9,6 +9,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.media.MediaPlayer
+import android.media.MediaMetadataRetriever
+import android.os.Handler
+import android.os.Looper
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.Visualizer
@@ -32,6 +35,13 @@ class MainActivity : Activity() {
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
+    private lateinit var seekBar: SeekBar
+    private lateinit var timeLabel: TextView
+    private lateinit var metadataLabel: TextView
+    private lateinit var technicalLabel: TextView
+    private var showRemaining = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
     private var selectedUri: Uri? = null
     private val bg = Color.rgb(9, 11, 16)
     private val panel = Color.rgb(20, 24, 33)
@@ -57,9 +67,26 @@ class MainActivity : Activity() {
         val live = TextView(this).apply { text = "● LIVE AUDIO"; textSize = 10f; setTextColor(Color.rgb(90, 220, 150)) }
         header.addView(live); body.addView(header)
         body.addView(label("DUAL CHANNEL MONITOR", 11f, Color.LTGRAY).apply { setPadding(0, dp(4), 0, dp(10)) })
-        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(150)))
+        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(94)))
         trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
         body.addView(trackLabel)
+        metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(8)) }
+        body.addView(metadataLabel)
+        seekBar = SeekBar(this).apply {
+            max = 1000
+            progressTintList = android.content.res.ColorStateList.valueOf(gold)
+            thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) try { player?.let { if (it.duration > 0) it.seekTo((it.duration * value / 1000f).toInt()) } } catch (_: Exception) {} }
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {}
+            })
+        }
+        body.addView(seekBar, LinearLayout.LayoutParams(-1, dp(24)))
+        timeLabel = label("00:00  /  00:00", 11f, Color.WHITE).apply { gravity = Gravity.CENTER; setOnClickListener { showRemaining = !showRemaining; updateProgress() } }
+        body.addView(timeLabel)
+        technicalLabel = label("AUDIO INFO  •  —", 9f, Color.rgb(125, 137, 155)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) }
+        body.addView(technicalLabel)
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(14)) }
         val choose = button("ZENÉK +", gold, Color.BLACK) { openAudio() }
         playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
@@ -109,11 +136,13 @@ class MainActivity : Activity() {
     private fun startTrack(uri: Uri) {
         releaseAudio()
         try {
+            readMetadata(uri)
             player = MediaPlayer().apply {
                 setDataSource(this@MainActivity, uri)
                 setOnPreparedListener { mp ->
                     mp.start(); playButton.text = "Ⅱ SZÜNET"
                     setupEffects(mp.audioSessionId)
+                    handler.removeCallbacks(progressTask); handler.post(progressTask)
                 }
                 setOnCompletionListener { playButton.text = "▶ LEJÁTSZÁS"; vu.setLevels(0f, 0f) }
                 prepareAsync()
@@ -179,11 +208,42 @@ class MainActivity : Activity() {
         }) }
         row.addView(t); row.addView(seek); parent.addView(row)
     }
+
+    private fun readMetadata(uri: Uri) {
+        val r = MediaMetadataRetriever()
+        try {
+            r.setDataSource(this, uri)
+            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Ismeretlen cím"
+            val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
+            val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
+            metadataLabel.text = "$artist  •  $album"
+            val bitrate = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()?.div(1000)
+            technicalLabel.text = "AUDIO INFO  •  " + (bitrate?.let { "$it kbps" } ?: "bitráta —")
+        } catch (_: Exception) {
+            trackLabel.text = uri.lastPathSegment ?: "Kiválasztott zenefájl"
+            metadataLabel.text = "Ismeretlen előadó  •  Ismeretlen album"
+            technicalLabel.text = "AUDIO INFO  •  nem érhető el"
+        } finally { try { r.release() } catch (_: Exception) {} }
+    }
+    private fun formatTime(ms: Int): String {
+        val total = ms.coerceAtLeast(0) / 1000
+        return "%02d:%02d".format(total / 60, total % 60)
+    }
+    private fun updateProgress() {
+        val p = player ?: return
+        try {
+            val duration = p.duration; val position = p.currentPosition
+            if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
+            timeLabel.text = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
+        } catch (_: Exception) {}
+    }
+
     private fun resetEq() {
         try { equalizer?.let { e -> for (i in 0 until e.numberOfBands.toInt()) e.setBandLevel(i.toShort(), 0) }; bassBoost?.setStrength(0) } catch (_: Exception) {}
         toast("EQ visszaállítva, ahol a készülék ezt engedi.")
     }
     private fun releaseAudio() {
+        handler.removeCallbacks(progressTask)
         try { visualizer?.release() } catch (_: Exception) {}; visualizer = null
         try { equalizer?.release() } catch (_: Exception) {}; equalizer = null
         try { bassBoost?.release() } catch (_: Exception) {}; bassBoost = null
@@ -201,13 +261,13 @@ class MainActivity : Activity() {
             val w = width.toFloat(); val h = height.toFloat(); val gap = dp(12).toFloat(); val leftPad = dp(8).toFloat(); val rightPad = dp(8).toFloat()
             p.color = panel; c.drawRoundRect(RectF(0f, 0f, w, h), dp(18).toFloat(), dp(18).toFloat(), p)
             val labelW = dp(24).toFloat(); val barX = leftPad + labelW; val barW = w - barX - rightPad; val barH = dp(34).toFloat()
-            val y1 = h * .29f; val y2 = h * .66f
+            val y1 = h * .34f; val y2 = h * .70f
             drawBar(c, "L", barX, y1, barW, barH, left)
             drawBar(c, "R", barX, y2, barW, barH, right)
-            p.color = Color.rgb(145, 153, 168); p.textSize = dp(12).toFloat(); p.typeface = Typeface.DEFAULT_BOLD
+            p.color = Color.rgb(145, 153, 168); p.textSize = dp(10).toFloat(); p.typeface = Typeface.DEFAULT_BOLD
             c.drawText("L", leftPad, y1 + barH * .65f, p); c.drawText("R", leftPad, y2 + barH * .65f, p)
             p.color = Color.rgb(105, 115, 132); p.textSize = dp(9).toFloat(); p.typeface = Typeface.DEFAULT
-            c.drawText("STEREO LEVEL", barX, dp(19).toFloat(), p)
+            c.drawText("STEREO  •  LIVE", barX, dp(16).toFloat(), p)
         }
         private fun drawBar(c: Canvas, name: String, x: Float, y: Float, width: Float, height: Float, level: Float) {
             p.color = Color.rgb(34, 40, 51); c.drawRoundRect(RectF(x, y, x + width, y + height), height / 2, height / 2, p)
@@ -217,7 +277,8 @@ class MainActivity : Activity() {
                 p.shader = shader; c.drawRoundRect(RectF(x, y, x + fill, y + height), height / 2, height / 2, p); p.shader = null
             }
             p.color = Color.argb(45, 255, 255, 255)
-            for (i in 1..19) { val xx = x + width * i / 20f; c.drawRect(xx, y + dp(5), xx + dp(1), y + height - dp(5), p) }
+            p.color = Color.argb(24, 255, 255, 255)
+            for (i in 1..39) { val xx = x + width * i / 40f; c.drawRect(xx, y + dp(2), xx + dp(1), y + height - dp(2), p) }
         }
     }
 }
