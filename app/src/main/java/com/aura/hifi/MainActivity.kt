@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
     private var selectedUri: Uri? = null
+    private var vuAutoGain = 1f
     private val bg = Color.rgb(9, 11, 16)
     private val panel = Color.rgb(20, 24, 33)
     private val gold = Color.rgb(255, 184, 0)
@@ -167,8 +168,11 @@ class MainActivity : Activity() {
                         if (waveform != null && waveform.isNotEmpty()) {
                             var sum = 0.0
                             for (b in waveform) { val x = (b.toInt() and 0xff) - 128; sum += x * x }
-                            val level = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat().coerceIn(0f, 1f)
-                            runOnUiThread { vu.setLevels(level, (level * 0.91f).coerceIn(0f, 1f)) }
+                            val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
+                            val targetGain = if (rms > 0.006f) (0.24f / rms).coerceIn(0.7f, 18f) else vuAutoGain
+                            vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
+                            val level = (rms * vuAutoGain * 1.45f).coerceIn(0f, 1f)
+                            runOnUiThread { vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f)) }
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
@@ -260,8 +264,8 @@ class MainActivity : Activity() {
             super.onDraw(c)
             val w = width.toFloat(); val h = height.toFloat(); val gap = dp(12).toFloat(); val leftPad = dp(8).toFloat(); val rightPad = dp(8).toFloat()
             p.color = panel; c.drawRoundRect(RectF(0f, 0f, w, h), dp(18).toFloat(), dp(18).toFloat(), p)
-            val labelW = dp(24).toFloat(); val barX = leftPad + labelW; val barW = w - barX - rightPad; val barH = dp(34).toFloat()
-            val y1 = h * .34f; val y2 = h * .70f
+            val labelW = dp(24).toFloat(); val barX = leftPad + labelW; val barW = w - barX - rightPad; val barH = dp(13).toFloat()
+            val y1 = h * .40f; val y2 = h * .72f
             drawBar(c, "L", barX, y1, barW, barH, left)
             drawBar(c, "R", barX, y2, barW, barH, right)
             p.color = Color.rgb(145, 153, 168); p.textSize = dp(10).toFloat(); p.typeface = Typeface.DEFAULT_BOLD
@@ -270,15 +274,18 @@ class MainActivity : Activity() {
             c.drawText("STEREO  •  LIVE", barX, dp(16).toFloat(), p)
         }
         private fun drawBar(c: Canvas, name: String, x: Float, y: Float, width: Float, height: Float, level: Float) {
-            p.color = Color.rgb(34, 40, 51); c.drawRoundRect(RectF(x, y, x + width, y + height), height / 2, height / 2, p)
-            val fill = width * level.coerceIn(0f, 1f)
-            if (fill > 0) {
-                val shader = android.graphics.LinearGradient(x, y, x + width, y, intArrayOf(Color.rgb(54, 220, 119), Color.rgb(255, 207, 36), Color.rgb(255, 67, 54)), floatArrayOf(0f, .76f, 1f), android.graphics.Shader.TileMode.CLAMP)
-                p.shader = shader; c.drawRoundRect(RectF(x, y, x + fill, y + height), height / 2, height / 2, p); p.shader = null
+            val segments = 48
+            val gap = dp(1).toFloat()
+            val segmentW = (width - gap * (segments - 1)) / segments
+            val lit = (level.coerceIn(0f, 1f) * segments).toInt()
+            for (i in 0 until segments) {
+                val sx = x + i * (segmentW + gap)
+                p.shader = null
+                p.color = if (i < lit) {
+                    if (i >= segments * 0.82f) Color.rgb(255, 55, 42) else Color.rgb(255, 195, 20)
+                } else Color.rgb(39, 43, 50)
+                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), height / 2, height / 2, p)
             }
-            p.color = Color.argb(45, 255, 255, 255)
-            p.color = Color.argb(24, 255, 255, 255)
-            for (i in 1..39) { val xx = x + width * i / 40f; c.drawRect(xx, y + dp(2), xx + dp(1), y + height - dp(2), p) }
         }
     }
 }
