@@ -669,40 +669,11 @@ class MainActivity : Activity() {
 
     private inner class CassetteView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val cassetteBitmap: Bitmap? = try {
-            assets.open("cassette_aurix.jpg").use { BitmapFactory.decodeStream(it) }
-        } catch (_: Exception) { null }
         private var phase = 0f
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val w=width.toFloat(); val h=height.toFloat()
             if(w<=0f||h<=0f)return
-            cassetteBitmap?.let { bitmap ->
-                canvas.drawColor(Color.rgb(25, 27, 34))
-                val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
-                val dw = bitmap.width * scale
-                val dh = bitmap.height * scale
-                val dst = RectF((w-dw)/2f, (h-dh)/2f, (w+dw)/2f, (h+dh)/2f)
-                paint.color = Color.WHITE
-                paint.style = Paint.Style.FILL
-                paint.shader = null
-                canvas.drawBitmap(bitmap, null, dst, paint)
-                val duration = (player?.duration ?: 0).coerceAtLeast(0)
-                val position = (player?.currentPosition ?: 0).coerceAtLeast(0)
-                val progress = if (duration > 0) (position.toFloat()/duration).coerceIn(0f,1f) else 0f
-                val playing = try { player?.isPlaying == true } catch (_: Exception) { false }
-                if (duration > 0) {
-                    paint.color = Color.argb(205, 15, 17, 20)
-                    canvas.drawRoundRect(RectF(w*.28f,h*.82f,w*.72f,h*.94f), h*.025f,h*.025f,paint)
-                    paint.color = Color.WHITE
-                    paint.textAlign = Paint.Align.CENTER
-                    paint.typeface = Typeface.DEFAULT_BOLD
-                    paint.textSize = (h*.055f).coerceAtLeast(dp(9).toFloat())
-                    canvas.drawText("${(progress*100).toInt()}%  •  -${formatTime(duration-position)}",w*.5f,h*.895f,paint)
-                }
-                if (playing && visibility == View.VISIBLE) postInvalidateDelayed(500)
-                return
-            }
             val duration=(player?.duration?:0).coerceAtLeast(0);val position=(player?.currentPosition?:0).coerceAtLeast(0)
             val progress=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f) else 0f
             val playing=try{player?.isPlaying==true}catch(_:Exception){false}
@@ -739,7 +710,7 @@ class MainActivity : Activity() {
             }
             fill(Color.rgb(190,151,87));canvas.drawRoundRect(RectF(w*.31f,h*.79f,w*.69f,h*.88f),h*.012f,h*.012f,paint)
             paint.color=Color.rgb(29,27,23);paint.textSize=(h*.043f).coerceAtLeast(dp(5).toFloat());paint.textAlign=Paint.Align.CENTER
-            canvas.drawText(if(duration>0) "${(progress*100).toInt()}%  •  ${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.85f,paint)
+            canvas.drawText(if(duration>0) "${(progress*100).toInt()}%  •  -${formatTime((duration-position).coerceAtLeast(0))}" else "INSERT TAPE",w*.5f,h*.85f,paint)
             if(playing&&visibility==View.VISIBLE){phase=(phase+5f)%360f;postInvalidateDelayed(40)}
         }
     }
