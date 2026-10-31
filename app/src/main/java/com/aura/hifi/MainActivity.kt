@@ -98,7 +98,7 @@ class MainActivity : Activity() {
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
         vinylView = CassetteView()
-        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(100), dp(100)))
+        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
@@ -671,39 +671,43 @@ class MainActivity : Activity() {
             super.onDraw(canvas)
             val w=width.toFloat(); val h=height.toFloat()
             if(w<=0f||h<=0f)return
-            val duration=(player?.duration?:0).coerceAtLeast(0)
-            val position=(player?.currentPosition?:0).coerceAtLeast(0)
+            val duration=(player?.duration?:0).coerceAtLeast(0);val position=(player?.currentPosition?:0).coerceAtLeast(0)
             val progress=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f) else 0f
             val playing=try{player?.isPlaying==true}catch(_:Exception){false}
             fun fill(c:Int){paint.color=c;paint.style=Paint.Style.FILL;paint.shader=null}
-            val shell=RectF(w*.035f,h*.13f,w*.965f,h*.87f)
-            fill(Color.rgb(29,31,35));canvas.drawRoundRect(shell,h*.09f,h*.09f,paint)
-            paint.style=Paint.Style.STROKE;paint.strokeWidth=(h*.012f).coerceAtLeast(1f);paint.color=Color.rgb(190,145,66)
-            canvas.drawRoundRect(shell,h*.09f,h*.09f,paint);paint.style=Paint.Style.FILL
-            fill(Color.rgb(48,49,48));canvas.drawRoundRect(RectF(w*.09f,h*.22f,w*.91f,h*.76f),h*.045f,h*.045f,paint)
-            fill(Color.rgb(17,19,22));canvas.drawRoundRect(RectF(w*.15f,h*.29f,w*.85f,h*.69f),h*.035f,h*.035f,paint)
-            fill(Color.rgb(191,145,69));canvas.drawRoundRect(RectF(w*.29f,h*.17f,w*.71f,h*.34f),h*.025f,h*.025f,paint)
-            paint.color=Color.rgb(31,27,21);paint.textAlign=Paint.Align.CENTER;paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
-            paint.textSize=(h*.105f).coerceAtLeast(dp(7).toFloat());canvas.drawText("AURIX",w*.5f,h*.285f,paint)
-            paint.textSize=(h*.045f).coerceAtLeast(dp(4).toFloat());paint.typeface=Typeface.DEFAULT_BOLD
-            canvas.drawText("SIDE A  •  HI-FI CHROME",w*.5f,h*.325f,paint)
-            val ry=h*.49f;val lx=w*.365f;val rx=w*.635f;val rr=h*.105f
+            fun line(c:Int,sw:Float){paint.color=c;paint.style=Paint.Style.STROKE;paint.strokeWidth=sw}
+            val shell=RectF(w*.035f,h*.12f,w*.965f,h*.88f)
+            fill(Color.rgb(31,33,35));canvas.drawRoundRect(shell,h*.055f,h*.055f,paint)
+            line(Color.rgb(184,147,83),h*.009f);canvas.drawRoundRect(shell,h*.055f,h*.055f,paint)
+            fill(Color.rgb(62,64,62));canvas.drawRoundRect(RectF(w*.075f,h*.17f,w*.925f,h*.83f),h*.035f,h*.035f,paint)
+            line(Color.rgb(112,114,108),h*.005f)
+            for(i in 0..5){val x=w*(.15f+i*.14f);canvas.drawLine(x,h*.19f,x,h*.27f,paint);canvas.drawLine(x,h*.73f,x,h*.81f,paint)}
+            fill(Color.rgb(12,14,15));canvas.drawRoundRect(RectF(w*.13f,h*.30f,w*.87f,h*.70f),h*.03f,h*.03f,paint)
+            fill(Color.rgb(5,7,8));canvas.drawRoundRect(RectF(w*.17f,h*.335f,w*.83f,h*.665f),h*.02f,h*.02f,paint)
+            val cy=h*.49f;val lx=w*.34f;val rx=w*.66f;val r=h*.115f
             for((x,amount) in listOf(lx to (1f-progress),rx to progress)){
-                fill(Color.rgb(9,10,12));canvas.drawCircle(x,ry,rr,paint)
-                paint.style=Paint.Style.STROKE;paint.strokeWidth=(h*.018f).coerceAtLeast(1f);paint.color=Color.rgb(196,151,75);canvas.drawCircle(x,ry,rr*.91f,paint);paint.style=Paint.Style.FILL
-                fill(Color.rgb(117,79,37));canvas.drawCircle(x,ry,rr*.70f,paint)
-                fill(Color.rgb(28,29,31));canvas.drawCircle(x,ry,rr*.48f,paint)
-                canvas.save();canvas.rotate(if(playing)phase else 0f,x,ry)
-                for(i in 0..5){canvas.save();canvas.rotate(i*60f,x,ry);fill(Color.rgb(205,166,96));canvas.drawRoundRect(RectF(x-rr*.10f,ry-rr*.40f,x+rr*.10f,ry-rr*.17f),rr*.05f,rr*.05f,paint);canvas.restore()}
-                canvas.restore()
-                paint.color=Color.rgb(232,193,125);paint.textAlign=Paint.Align.CENTER;paint.textSize=(h*.052f).coerceAtLeast(dp(5).toFloat())
-                canvas.drawText("${(amount*100).toInt()}%",x,ry+rr*1.42f,paint)
+                fill(Color.rgb(24,26,27));canvas.drawCircle(x,cy,r,paint)
+                line(Color.rgb(174,177,169),h*.008f);canvas.drawCircle(x,cy,r*.94f,paint)
+                fill(Color.rgb(105,108,102));canvas.drawCircle(x,cy,r*.72f,paint)
+                val pack=r*(.28f+.55f*amount);fill(Color.rgb(21,23,24));canvas.drawCircle(x,cy,pack,paint)
+                line(Color.rgb(197,199,187),h*.006f);canvas.drawCircle(x,cy,pack,paint)
+                canvas.save();canvas.rotate(if(playing)phase else 0f,x,cy)
+                for(i in 0..5){canvas.save();canvas.rotate(i*60f,x,cy);fill(Color.rgb(185,187,177));canvas.drawRoundRect(RectF(x-r*.075f,cy-r*.62f,x+r*.075f,cy-r*.22f),r*.04f,r*.04f,paint);canvas.restore()}
+                canvas.restore();fill(Color.rgb(13,15,16));canvas.drawCircle(x,cy,r*.19f,paint)
             }
-            paint.color=Color.rgb(183,133,58);paint.strokeWidth=(h*.012f).coerceAtLeast(1f)
-            canvas.drawLine(lx+rr*.55f,ry,rx-rr*.55f,ry,paint)
-            fill(Color.rgb(190,145,66));canvas.drawRoundRect(RectF(w*.39f,h*.73f,w*.61f,h*.79f),h*.02f,h*.02f,paint)
-            paint.color=Color.rgb(25,23,20);paint.textSize=(h*.045f).coerceAtLeast(dp(4).toFloat());paint.textAlign=Paint.Align.CENTER
-            canvas.drawText(if(duration>0) "${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.775f,paint)
+            line(Color.rgb(190,157,101),h*.012f)
+            canvas.drawLine(lx+r*.72f,cy+r*.55f,w*.46f,h*.64f,paint);canvas.drawLine(w*.46f,h*.64f,w*.54f,h*.64f,paint);canvas.drawLine(w*.54f,h*.64f,rx-r*.72f,cy+r*.55f,paint)
+            fill(Color.rgb(214,210,191));canvas.drawRoundRect(RectF(w*.27f,h*.19f,w*.73f,h*.30f),h*.012f,h*.012f,paint)
+            paint.color=Color.rgb(35,40,39);paint.textAlign=Paint.Align.CENTER;paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
+            paint.textSize=(h*.075f).coerceAtLeast(dp(8).toFloat());canvas.drawText("FE",w*.39f,h*.275f,paint)
+            paint.textSize=(h*.034f).coerceAtLeast(dp(4).toFloat());paint.typeface=Typeface.DEFAULT_BOLD
+            canvas.drawText("AURIX  •  TYPE I",w*.59f,h*.245f,paint);canvas.drawText("NORMAL POSITION  •  SIDE A",w*.59f,h*.282f,paint)
+            for((x,y) in listOf(w*.105f to h*.205f,w*.895f to h*.205f,w*.105f to h*.795f,w*.895f to h*.795f)){
+                fill(Color.rgb(18,20,21));canvas.drawCircle(x,y,h*.018f,paint);line(Color.rgb(143,145,138),h*.004f);canvas.drawCircle(x,y,h*.018f,paint)
+            }
+            fill(Color.rgb(190,151,87));canvas.drawRoundRect(RectF(w*.34f,h*.735f,w*.66f,h*.805f),h*.012f,h*.012f,paint)
+            paint.color=Color.rgb(29,27,23);paint.textSize=(h*.043f).coerceAtLeast(dp(5).toFloat());paint.textAlign=Paint.Align.CENTER
+            canvas.drawText(if(duration>0) "${(progress*100).toInt()}%  •  ${formatTime(position)} / ${formatTime(duration)}" else "INSERT TAPE",w*.5f,h*.782f,paint)
             if(playing&&visibility==View.VISIBLE){phase=(phase+5f)%360f;postInvalidateDelayed(40)}
         }
     }
