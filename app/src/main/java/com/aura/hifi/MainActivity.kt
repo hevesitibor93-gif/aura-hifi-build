@@ -36,7 +36,6 @@ class MainActivity : Activity() {
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
-    private lateinit var coverToggle: Button
     private var showCover = true
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
@@ -89,15 +88,13 @@ class MainActivity : Activity() {
         header.addView(live); body.addView(header)
         body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(8), 0, dp(14)) })
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 24); setPadding(dp(14), dp(14), dp(14), dp(14)); elevation = dp(8).toFloat() }
-        artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageResource(android.R.drawable.ic_media_play); imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(224, 184, 103)); setPadding(dp(62), dp(62), dp(62), dp(62)) }
+        artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(4)) })
-        coverToggle = button("", Color.rgb(35, 41, 53), gold) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }
-        body.addView(coverToggle, LinearLayout.LayoutParams(-1, dp(38)).apply { setMargins(dp(12), 0, dp(12), dp(8)) })
         applyArtworkMode()
         body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(94)))
@@ -156,14 +153,32 @@ class MainActivity : Activity() {
         actions.addView(button("EQ ALAPHELYZET", Color.rgb(35, 41, 53), Color.WHITE) { resetEq() }, LinearLayout.LayoutParams(0, dp(44), 1f))
         body.addView(actions)
         body.addView(label("Az EQ és a basszuskiemelés az Android eszközén elérhető hanghatásoktól függ. Más alkalmazások (YouTube/Spotify) teljes rendszerhangját ez az app nem tudja garantáltan módosítani.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
-        scroll.addView(body); root.addView(scroll); setContentView(root)
+        val playerPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val pages = listOf(playerPage, songsPage, eqPage, settingsPage)
+        val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
+        val original = (0 until body.childCount).map { body.getChildAt(it) }
+        body.removeAllViews()
+        original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+        songsPage.addView(button("＋ ZENÉK KERESÉSE / HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
+        settingsPage.addView(sectionTitle("MEGJELENÉS"))
+        settingsPage.addView(button("BORÍTÓ / AURIX VINYL VÁLTÁSA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(48)))
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val navButtons = mutableListOf<Button>()
+        fun showPage(index: Int) { pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }; navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) } }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
+        root.addView(nav)
+        pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        showPage(0)
+        setContentView(root)
     }
 
     private fun applyArtworkMode() {
         if (!::artworkView.isInitialized || !::vinylView.isInitialized) return
         artworkView.visibility = if (showCover) View.VISIBLE else View.GONE
         vinylView.visibility = if (showCover) View.GONE else View.VISIBLE
-        if (::coverToggle.isInitialized) coverToggle.text = if (showCover) "BORÍTÓ: BE  •  VINYL NÉZETRE VÁLTÁS" else "BORÍTÓ: KI  •  AURIX VINYL MEGJELENÍTÉSE"
         vinylView.invalidate()
     }
 
@@ -348,7 +363,7 @@ class MainActivity : Activity() {
             r.setDataSource(this, uri)
             trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Ismeretlen cím"
             val cover = r.embeddedPicture
-            if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) { artworkView.setImageBitmap(bitmap); artworkView.setPadding(0, 0, 0, 0) } } else { artworkView.setImageResource(android.R.drawable.ic_media_play); artworkView.setPadding(dp(62), dp(62), dp(62), dp(62)) }
+            if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
             val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
             metadataLabel.text = "$artist  •  $album"
