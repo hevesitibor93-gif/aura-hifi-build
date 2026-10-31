@@ -6,6 +6,8 @@ import android.content.Intent
 import android.provider.MediaStore
 import android.content.pm.PackageManager
 import android.graphics.Canvas
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
@@ -646,6 +648,7 @@ class MainActivity : Activity() {
         try {
             val duration = p.duration; val position = p.currentPosition
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
+            vinylView.invalidate()
             timeLabel.text = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
         } catch (_: Exception) {}
     }
@@ -666,11 +669,40 @@ class MainActivity : Activity() {
 
     private inner class CassetteView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val cassetteBitmap: Bitmap? = try {
+            assets.open("cassette_aurix.jpg").use { BitmapFactory.decodeStream(it) }
+        } catch (_: Exception) { null }
         private var phase = 0f
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val w=width.toFloat(); val h=height.toFloat()
             if(w<=0f||h<=0f)return
+            cassetteBitmap?.let { bitmap ->
+                canvas.drawColor(Color.rgb(25, 27, 34))
+                val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
+                val dw = bitmap.width * scale
+                val dh = bitmap.height * scale
+                val dst = RectF((w-dw)/2f, (h-dh)/2f, (w+dw)/2f, (h+dh)/2f)
+                paint.color = Color.WHITE
+                paint.style = Paint.Style.FILL
+                paint.shader = null
+                canvas.drawBitmap(bitmap, null, dst, paint)
+                val duration = (player?.duration ?: 0).coerceAtLeast(0)
+                val position = (player?.currentPosition ?: 0).coerceAtLeast(0)
+                val progress = if (duration > 0) (position.toFloat()/duration).coerceIn(0f,1f) else 0f
+                val playing = try { player?.isPlaying == true } catch (_: Exception) { false }
+                if (duration > 0) {
+                    paint.color = Color.argb(205, 15, 17, 20)
+                    canvas.drawRoundRect(RectF(w*.28f,h*.82f,w*.72f,h*.94f), h*.025f,h*.025f,paint)
+                    paint.color = Color.WHITE
+                    paint.textAlign = Paint.Align.CENTER
+                    paint.typeface = Typeface.DEFAULT_BOLD
+                    paint.textSize = (h*.055f).coerceAtLeast(dp(9).toFloat())
+                    canvas.drawText("${(progress*100).toInt()}%  •  -${formatTime(duration-position)}",w*.5f,h*.895f,paint)
+                }
+                if (playing && visibility == View.VISIBLE) postInvalidateDelayed(500)
+                return
+            }
             val duration=(player?.duration?:0).coerceAtLeast(0);val position=(player?.currentPosition?:0).coerceAtLeast(0)
             val progress=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f) else 0f
             val playing=try{player?.isPlaying==true}catch(_:Exception){false}
