@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private var bassBoost: BassBoost? = null
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
+    private lateinit var artworkView: ImageView
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
@@ -66,7 +67,7 @@ class MainActivity : Activity() {
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg)
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
             setPadding(dp(18), dp(12), dp(18), dp(12))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
@@ -78,12 +79,17 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURIX"; textSize = 29f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val brand = TextView(this).apply { text = "AURIX"; textSize = 27f; letterSpacing = 0.12f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
         val hi = TextView(this).apply { text = "  V50"; textSize = 13f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val live = TextView(this).apply { text = "● LIVE AUDIO"; textSize = 10f; setTextColor(Color.rgb(90, 220, 150)) }
         header.addView(live); body.addView(header)
-        body.addView(label("DUAL CHANNEL MONITOR", 11f, Color.LTGRAY).apply { setPadding(0, dp(4), 0, dp(10)) })
+        body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(8), 0, dp(14)) })
+        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 24); setPadding(dp(14), dp(14), dp(14), dp(14)); elevation = dp(8).toFloat() }
+        artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageResource(android.R.drawable.ic_media_play); imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(224, 184, 103)); setPadding(dp(62), dp(62), dp(62), dp(62)) }
+        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(12), dp(2), dp(12), dp(12)) })
+        body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(6), 0, dp(8)) })
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(94)))
         trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(16), dp(8), dp(8)); maxLines = 2 }
         body.addView(trackLabel)
