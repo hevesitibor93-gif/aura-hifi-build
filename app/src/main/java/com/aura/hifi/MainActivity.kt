@@ -761,7 +761,7 @@ class MainActivity : Activity() {
                         val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
                         val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 2.85f).coerceIn(0f, 1f)
                         val targetLevel = linearLevel * linearLevel * linearLevel
-                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.70f else 0.32f
+                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.38f else 0.22f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
                         setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
                     }
