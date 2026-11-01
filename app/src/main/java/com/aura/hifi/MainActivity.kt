@@ -574,7 +574,10 @@ class MainActivity : Activity() {
                     val id = cursor.getLong(idCol)
                     val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
                     val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
-                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist, cursor.getLong(dateCol))
+                    val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Ismeretlen album" else "Ismeretlen album"
+                    val fullPath = if (pathCol >= 0) cursor.getString(pathCol) else null
+                    val folder = fullPath?.let { java.io.File(it).parentFile?.name }?.takeIf { it.isNotBlank() } ?: "Ismeretlen mappa"
+                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist, album, folder, cursor.getLong(dateCol))
                     librarySongs.add(song)
                     librarySongByUri[song.uri.toString()] = song
                 }
