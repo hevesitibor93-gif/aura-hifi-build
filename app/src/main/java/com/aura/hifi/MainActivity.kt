@@ -732,12 +732,12 @@ class MainActivity : Activity() {
                         // Csak az aktuális dal aktív Visualizerétől és tényleges lejátszásakor fogadunk adatot.
                         if (v == null || v !== visualizer || player?.isPlaying != true) return
                         val activePlayer = player ?: return
-                        // A dal utolsó 700 ms-ában már nem fogadunk FFT-adatot:
+                        // A dal utolsó 1 másodpercében már nem fogadunk FFT-adatot:
                         // így a lejátszás végi puffer/csendzaj és a következő szám
                         // esetlegesen későn érkező adata nem villanthatja fel a VU-t.
                         try {
                             val remainingMs = activePlayer.duration - activePlayer.currentPosition
-                            if (remainingMs <= 1500) {
+                            if (remainingMs <= 1000) {
                                 vuSmoothedLevel = 0f
                                 setVuLevels(0f, 0f)
                                 return
@@ -766,8 +766,9 @@ class MainActivity : Activity() {
                         // Stabil, fix skála: nincs automatikus erősítés, amely a halk részeket felhúzná.
                         val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 2.7f).coerceIn(0f, 1f)
                         // A köbös görbe megőrzi a különbséget a halk és hangos részek között.
+                        // A gyorsabb leengedés csökkenti a VU késését a hang megszűnésekor.
                         val targetLevel = linearLevel * linearLevel * linearLevel
-                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.70f else 0.24f
+                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.70f else 0.32f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
                         setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
                     }
