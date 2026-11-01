@@ -317,6 +317,11 @@ class MainActivity : Activity() {
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
         } else {
+            // Visszavaltas allo modba: a fekvo nezetben elrejtett fo VU visszaallitasa.
+            vu.visibility = View.VISIBLE
+            centerAurixVu = null
+            sideVuLeft = null
+            sideVuRight = null
             original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
