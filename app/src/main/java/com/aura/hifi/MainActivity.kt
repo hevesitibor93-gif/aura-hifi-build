@@ -723,9 +723,9 @@ class MainActivity : Activity() {
                             }
                             val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
                             // Valódi csendnél zárjon le: ne erősítse fel a digitális alapzajt.
-                            val level = if (rms < 0.012f && peak < 7) 0f else {
+                            val level = if (rms < 0.035f && peak < 14) 0f else {
                                 val clean = (rms - 0.008f).coerceAtLeast(0f)
-                                ((clean / 0.21f).coerceIn(0f, 1f)).let { it * (0.82f + 0.18f * it) }
+                                ((clean / 0.26f).coerceIn(0f, 1f)).let { it * (0.82f + 0.18f * it) }
                             }
                             setVuLevels(level, level)
                         }
