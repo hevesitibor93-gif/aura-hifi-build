@@ -759,7 +759,7 @@ class MainActivity : Activity() {
                         val mid = bandEnergy(9, 40)
                         val treble = bandEnergy(41, 120)
                         val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
-                        val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 2.7f).coerceIn(0f, 1f)
+                        val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 2.85f).coerceIn(0f, 1f)
                         val targetLevel = linearLevel * linearLevel * linearLevel
                         val smoothing = if (targetLevel > vuSmoothedLevel) 0.70f else 0.32f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
