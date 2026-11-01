@@ -1062,7 +1062,15 @@ class MainActivity : Activity() {
             val segments = 32
             val gap = dp(1).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
-            val lit = (level.coerceIn(0f, 1f) * segments).toInt()
+            // A 32 LED-es skála első 20 szegmense a jelszint 0–75%-át,
+            // a piros 12 szegmens pedig a felső 25%-át fedi le.
+            // A LED-ek száma, sorrendje és színei változatlanok.
+            val safeLevel = level.coerceIn(0f, 1f)
+            val lit = if (safeLevel <= 0.75f) {
+                (safeLevel / 0.75f * 20f).toInt()
+            } else {
+                (20f + (safeLevel - 0.75f) / 0.25f * 12f).toInt()
+            }.coerceIn(0, segments)
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
