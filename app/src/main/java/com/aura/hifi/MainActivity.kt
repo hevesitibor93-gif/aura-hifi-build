@@ -250,7 +250,7 @@ class MainActivity : Activity() {
                 }
             }
             leftPanel.addView(label("A", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuLeft = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)) }
+            sideVuLeft = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
@@ -258,7 +258,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("X", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuRight = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)) }
+            sideVuRight = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
@@ -670,7 +670,7 @@ class MainActivity : Activity() {
     private fun togglePlayback() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
-        try { if (p.isPlaying) { p.pause(); vu.setActive(false); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); vu.setActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() } } catch (_: Exception) {}
+        try { if (p.isPlaying) { p.pause(); setVuActive(false); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() } } catch (_: Exception) {}
     }
     private fun setupEffects(session: Int) {
         try {
