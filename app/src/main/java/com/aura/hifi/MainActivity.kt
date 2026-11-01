@@ -755,7 +755,7 @@ class MainActivity : Activity() {
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
                         // Ebben az egy tesztbuildben az FFT nem vezérli a VU-kijelzőt.
                     }
-                }, Visualizer.getMaxCaptureRate(), false, true)
+                }, Visualizer.getMaxCaptureRate(), true, false)
                 enabled = true
             }
             renderEqualizer()
