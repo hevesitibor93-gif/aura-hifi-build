@@ -737,7 +737,7 @@ class MainActivity : Activity() {
                         // esetlegesen későn érkező adata nem villanthatja fel a VU-t.
                         try {
                             val remainingMs = activePlayer.duration - activePlayer.currentPosition
-                            if (remainingMs <= 700) {
+                            if (remainingMs <= 1500) {
                                 vuSmoothedLevel = 0f
                                 setVuLevels(0f, 0f)
                                 return
