@@ -725,16 +725,10 @@ class MainActivity : Activity() {
                 captureSize = Visualizer.getCaptureSizeRange()[1]
                 setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                     override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-                        // A hullámforma-mérést nem használjuk a VU-LED-ek vezérlésére.
-                        // A kijelzőt kizárólag az FFT-mérés frissíti.
-                    }
-                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                        // Csak az aktuális dal aktív Visualizerétől és tényleges lejátszásakor fogadunk adatot.
+                        // Próba build: a VU-t most a közvetlen hullámforma-mérés vezérli, nem az FFT.
                         if (v == null || v !== visualizer || player?.isPlaying != true) return
                         val activePlayer = player ?: return
-                        // A dal utolsó 1 másodpercében már nem fogadunk FFT-adatot:
-                        // így a lejátszás végi puffer/csendzaj és a következő szám
-                        // esetlegesen későn érkező adata nem villanthatja fel a VU-t.
+                        // A szám utolsó 1 másodpercében nem veszünk át új mérési adatot.
                         try {
                             val remainingMs = activePlayer.duration - activePlayer.currentPosition
                             if (remainingMs <= 1000) {
@@ -743,34 +737,23 @@ class MainActivity : Activity() {
                                 return
                             }
                         } catch (_: Exception) { return }
-                        if (fft == null || fft.size < 16) return
-                        // FFT: külön mérjük a mély, közép és magas tartomány energiáját.
-                        fun bandEnergy(firstBin: Int, lastBin: Int): Float {
-                            var energy = 0.0
-                            var count = 0
-                            val end = minOf(lastBin, fft.size / 2 - 1)
-                            for (bin in firstBin..end) {
-                                val index = bin * 2
-                                val real = fft[index].toInt()
-                                val imaginary = fft[index + 1].toInt()
-                                energy += (real * real + imaginary * imaginary).toDouble()
-                                count++
-                            }
-                            return if (count == 0) 0f else
-                                (kotlin.math.sqrt(energy / count) / 128.0).toFloat().coerceIn(0f, 1f)
+                        if (waveform == null || waveform.isEmpty()) return
+                        // A hullámforma mintáiból RMS hangerőszintet számolunk.
+                        var energy = 0.0
+                        for (sample in waveform) {
+                            val value = (sample.toInt() and 0xFF) - 128
+                            energy += value * value.toDouble()
                         }
-                        val bass = bandEnergy(1, 8)
-                        val mid = bandEnergy(9, 40)
-                        val treble = bandEnergy(41, 120)
-                        val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
-                        // Stabil, fix skála: nincs automatikus erősítés, amely a halk részeket felhúzná.
-                        val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 2.7f).coerceIn(0f, 1f)
-                        // A köbös görbe megőrzi a különbséget a halk és hangos részek között.
-                        // A gyorsabb leengedés csökkenti a VU késését a hang megszűnésekor.
+                        val rms = (kotlin.math.sqrt(energy / waveform.size) / 128.0)
+                            .toFloat().coerceIn(0f, 1f)
+                        val linearLevel = ((rms - 0.012f).coerceAtLeast(0f) * 2.7f).coerceIn(0f, 1f)
                         val targetLevel = linearLevel * linearLevel * linearLevel
                         val smoothing = if (targetLevel > vuSmoothedLevel) 0.70f else 0.32f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
                         setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
+                    }
+                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                        // Ebben az egy tesztbuildben az FFT nem vezérli a VU-kijelzőt.
                     }
                 }, Visualizer.getMaxCaptureRate(), false, true)
                 enabled = true
