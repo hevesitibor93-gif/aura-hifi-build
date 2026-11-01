@@ -883,6 +883,15 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun blendVuColor(start: Int, end: Int, fraction: Float): Int {
+        val t = fraction.coerceIn(0f, 1f)
+        return Color.rgb(
+            (Color.red(start) + (Color.red(end) - Color.red(start)) * t).toInt(),
+            (Color.green(start) + (Color.green(end) - Color.green(start)) * t).toInt(),
+            (Color.blue(start) + (Color.blue(end) - Color.blue(start)) * t).toInt()
+        )
+    }
+
     private inner class AurixVuView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private var left = 0f
@@ -920,7 +929,14 @@ class MainActivity : Activity() {
             val n=32; val gap=dp(1).toFloat(); val sw=(width-gap*(n-1))/n
             val lit=(level*n).toInt()
             for(i in 0 until n) {
-                val sx=x+i*(sw+gap); val color=if(i>=20) Color.rgb(255,35,22) else Color.rgb(255,194,42)
+                val sx=x+i*(sw+gap)
+                val color = when {
+                    i >= 20 -> Color.rgb(255, 35, 22)
+                    i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
+                    i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
+                    i < 15 -> blendVuColor(Color.rgb(145, 215, 190), Color.rgb(135, 205, 235), (i - 10) / 5f)
+                    else -> blendVuColor(Color.rgb(135, 205, 235), Color.rgb(65, 155, 225), (i - 15) / 5f)
+                }
                 paint.style=Paint.Style.FILL
                 paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
                 c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(1).toFloat(),dp(1).toFloat(),paint)
@@ -1028,7 +1044,13 @@ class MainActivity : Activity() {
             val lit = ((left + right) * 0.5f * count).toInt()
             for (i in 0 until count) {
                 val y = bottom - (i+1)*segH - i*gap
-                val base = if (i >= 9) Color.rgb(255, 35, 24) else Color.rgb(255, 190, 35)
+                val base = when {
+                    i >= 20 -> Color.rgb(255, 35, 24)
+                    i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
+                    i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
+                    i < 15 -> blendVuColor(Color.rgb(145, 215, 190), Color.rgb(135, 205, 235), (i - 10) / 5f)
+                    else -> blendVuColor(Color.rgb(135, 205, 235), Color.rgb(65, 155, 225), (i - 15) / 5f)
+                }
                 p.color = if (i < lit) Color.argb(brightness*255/100, Color.red(base), Color.green(base), Color.blue(base)) else Color.rgb(42, 43, 45)
                 c.drawRoundRect(RectF(dp(6).toFloat(), y, w-dp(6).toFloat(), y+segH), dp(2).toFloat(), dp(2).toFloat(), p)
             }
@@ -1042,7 +1064,13 @@ class MainActivity : Activity() {
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
-                val base = if (i >= 20) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
+                val base = when {
+                    i >= 20 -> Color.rgb(255, 66, 48)
+                    i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
+                    i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
+                    i < 15 -> blendVuColor(Color.rgb(145, 215, 190), Color.rgb(135, 205, 235), (i - 10) / 5f)
+                    else -> blendVuColor(Color.rgb(135, 205, 235), Color.rgb(65, 155, 225), (i - 15) / 5f)
+                }
                 p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
                     else Color.rgb(43, 45, 49)
                 c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(1).toFloat(), dp(1).toFloat(), p)
