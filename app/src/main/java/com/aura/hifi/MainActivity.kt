@@ -715,12 +715,19 @@ class MainActivity : Activity() {
                     override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
                         if (waveform != null && waveform.isNotEmpty()) {
                             var sum = 0.0
-                            for (b in waveform) { val x = (b.toInt() and 0xff) - 128; sum += x * x }
+                            var peak = 0
+                            for (b in waveform) {
+                                val x = kotlin.math.abs((b.toInt() and 0xff) - 128)
+                                sum += x * x
+                                if (x > peak) peak = x
+                            }
                             val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
-                            val targetGain = if (rms > 0.006f) (0.24f / rms).coerceIn(0.7f, 18f) else vuAutoGain
-                            vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
-                            val level = (rms * vuAutoGain * 1.45f).coerceIn(0f, 1f)
-                            setVuLevels(level, (level * 0.97f).coerceIn(0f, 1f))
+                            // Valódi csendnél zárjon le: ne erősítse fel a digitális alapzajt.
+                            val level = if (rms < 0.012f && peak < 7) 0f else {
+                                val clean = (rms - 0.008f).coerceAtLeast(0f)
+                                ((clean / 0.115f).coerceIn(0f, 1f)).let { it * (0.72f + 0.28f * it) }
+                            }
+                            setVuLevels(level, level)
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
@@ -874,13 +881,13 @@ class MainActivity : Activity() {
             paint.textAlign=Paint.Align.LEFT
         }
         private fun drawGoldBar(c: Canvas,x:Float,y:Float,width:Float,height:Float,level:Float) {
-            val n=10; val gap=dp(2).toFloat(); val sw=(width-gap*(n-1))/n
+            val n=32; val gap=dp(0.7f).toFloat(); val sw=(width-gap*(n-1))/n
             val lit=(level*n).toInt()
             for(i in 0 until n) {
-                val sx=x+i*(sw+gap); val color=if(i>=7) Color.rgb(255,35,22) else Color.rgb(255,194,42)
+                val sx=x+i*(sw+gap); val color=if(i>=20) Color.rgb(255,35,22) else Color.rgb(255,194,42)
                 paint.style=Paint.Style.FILL
                 paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
-                c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(3).toFloat(),dp(3).toFloat(),paint)
+                c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(1).toFloat(),dp(1).toFloat(),paint)
             }
         }
     }
@@ -992,17 +999,17 @@ class MainActivity : Activity() {
         }
 
         private fun drawBar(c: Canvas, x: Float, y: Float, width: Float, height: Float, level: Float) {
-            val segments = 8
-            val gap = dp(1).toFloat()
+            val segments = 32
+            val gap = dp(0.6f).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
             val lit = (level.coerceIn(0f, 1f) * segments).toInt()
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
                 val active = i < lit
-                val base = if (i >= 5) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
+                val base = if (i >= 20) Color.rgb(255, 66, 48) else Color.rgb(255, 190, 45)
                 p.color = if (active) Color.argb(brightness * 255 / 100, Color.red(base), Color.green(base), Color.blue(base))
                     else Color.rgb(43, 45, 49)
-                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(1).toFloat(), dp(1).toFloat(), p)
+                c.drawRoundRect(RectF(sx, y, sx + segmentW, y + height), dp(0.7f).toFloat(), dp(0.7f).toFloat(), p)
             }
         }
     }
