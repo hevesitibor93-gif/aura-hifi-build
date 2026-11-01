@@ -56,6 +56,7 @@ class MainActivity : Activity() {
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
+    private var vuSmoothedLevel = 0f
     private val queue = mutableListOf<Uri>()
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String)
     private val librarySongs = mutableListOf<LibrarySong>()
@@ -760,12 +761,12 @@ class MainActivity : Activity() {
                         val mid = bandEnergy(9, 40)
                         val treble = bandEnergy(41, 120)
                         val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
-                        val level = if (combined < 0.018f) 0f else {
-                            val targetGain = (0.20f / combined.coerceAtLeast(0.018f)).coerceIn(0.7f, 18f)
-                            vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
-                            (combined * vuAutoGain * 1.55f).coerceIn(0f, 1f)
-                        }
-                        setVuLevels(level, level)
+                        // Fix skálázás: ne húzza vissza automatikus erősítés egy alacsony állandó szintre.
+                        val targetLevel = ((combined - 0.010f).coerceAtLeast(0f) * 4.2f).coerceIn(0f, 1f)
+                        // Gyors felfutás, finomabb lecsengés – a zene dinamikáját követi.
+                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.48f else 0.16f
+                        vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
+                        setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
                     }
                 }, Visualizer.getMaxCaptureRate(), false, true)
                 enabled = true
