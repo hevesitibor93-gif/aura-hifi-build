@@ -37,6 +37,8 @@ class MainActivity : Activity() {
     private var bassBoost: BassBoost? = null
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
+    private var sideVuLeft: VuView? = null
+    private var sideVuRight: VuView? = null
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
@@ -80,6 +82,23 @@ class MainActivity : Activity() {
         super.onConfigurationChanged(newConfig)
         // A lejátszó megmarad, csak a nézet épül újra az új tájoláshoz.
         buildUi()
+    }
+
+
+    private fun setVuActive(value: Boolean) {
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value)
+    }
+    private fun setVuLevels(left: Float, right: Float) {
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right)
+    }
+    private fun setVuStyle(value: String) {
+        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value)
+    }
+    private fun setVuBrightness(value: Int) {
+        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value)
+    }
+    private fun setVuAnimation(value: Boolean) {
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value)
     }
 
     private fun buildUi() {
@@ -231,12 +250,16 @@ class MainActivity : Activity() {
                 }
             }
             leftPanel.addView(label("A", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            sideVuLeft = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)) }
+            leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
             leftPanel.addView(neonRoundButton("−", 42, false) { player?.setVolume(0.65f, 0.65f) },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("X", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            sideVuRight = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)) }
+            rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
             rightPanel.addView(neonRoundButton("＋", 42, false) { player?.setVolume(1f, 1f) },
@@ -311,11 +334,11 @@ class MainActivity : Activity() {
             simpleModeButton.setTextColor(if (!carSelected) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
         }
         carModeButton.setOnClickListener {
-            vu.setStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
+            setVuStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
             refreshVuStyleButtons("car")
         }
         simpleModeButton.setOnClickListener {
-            vu.setStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
+            setVuStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
             refreshVuStyleButtons("simple")
         }
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
@@ -330,7 +353,7 @@ class MainActivity : Activity() {
             thumbTintList = android.content.res.ColorStateList.valueOf(gold)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seek: SeekBar?, value: Int, fromUser: Boolean) {
-                    if (fromUser) { vu.setBrightness(value); vuPrefs.edit().putInt("vu_brightness", value).apply() }
+                    if (fromUser) { setVuBrightness(value); vuPrefs.edit().putInt("vu_brightness", value).apply() }
                 }
                 override fun onStartTrackingTouch(seek: SeekBar?) {}
                 override fun onStopTrackingTouch(seek: SeekBar?) {}
@@ -342,17 +365,17 @@ class MainActivity : Activity() {
             text = ""
             isChecked = vuPrefs.getBoolean("vu_animation", true)
             setOnCheckedChangeListener { _, checked ->
-                vu.setAnimationEnabled(checked)
+                setVuAnimation(checked)
                 vuPrefs.edit().putBoolean("vu_animation", checked).apply()
             }
         }
         animationRow.addView(vuAnimation)
         settingsPage.addView(animationRow)
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
-        vu.setStyle(savedVuStyle)
+        setVuStyle(savedVuStyle)
         refreshVuStyleButtons(savedVuStyle)
-        vu.setBrightness(vuPrefs.getInt("vu_brightness", 80))
-        vu.setAnimationEnabled(vuPrefs.getBoolean("vu_animation", true))
+        setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
+        setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int) { pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }; navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) } }
@@ -607,7 +630,7 @@ class MainActivity : Activity() {
                 setOnPreparedListener { mp ->
                     try {
                         mp.start()
-                        vu.setActive(true)
+                        setVuActive(true)
                         playButton.text = "Ⅱ"
                         vinylView.invalidate()
                         setupEffects(mp.audioSessionId)
@@ -623,7 +646,7 @@ class MainActivity : Activity() {
                     true
                 }
                 setOnCompletionListener {
-                    vu.setActive(false)
+                    setVuActive(false)
                     if (currentIndex + 1 < queue.size) {
                         currentIndex++
                         selectedUri = queue[currentIndex]
@@ -666,7 +689,7 @@ class MainActivity : Activity() {
                             val targetGain = if (rms > 0.006f) (0.24f / rms).coerceIn(0.7f, 18f) else vuAutoGain
                             vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
                             val level = (rms * vuAutoGain * 1.45f).coerceIn(0f, 1f)
-                            vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f))
+                            setVuLevels(level, (level * 0.97f).coerceIn(0f, 1f))
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
