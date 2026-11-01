@@ -335,11 +335,45 @@ class MainActivity : Activity() {
             sideVuRight = null
             original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); 11, 12 -> songsPage.addView(child); 13, 14 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
-        songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
-        songsPage.addView(sectionTitle("ESZKÖZÖN TALÁLHATÓ ZENÉK"))
-        songsPage.addView(button("KÖNYVTÁR FRISSÍTÉSE", Color.rgb(35, 41, 53), Color.WHITE) { loadMusicLibrary() }, LinearLayout.LayoutParams(-1, dp(44)))
-        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 16); setPadding(dp(10), dp(6), dp(10), dp(6)) }
+        songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
+        songsPage.addView(label("AURIX  •  MUSIC LIBRARY", 11f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.12f; setPadding(dp(4), dp(5), 0, dp(3)) })
+        songsPage.addView(label("Zenei könyvtár", 25f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); setPadding(dp(4), dp(0), 0, dp(10)) })
+        val librarySearch = EditText(this).apply {
+            hint = "⌕  Keresés a zenék között..."
+            setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(126, 113, 221)) }
+            setPadding(dp(18), dp(4), dp(18), dp(4))
+        }
+        songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(14) })
+        val categoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(83, 48, 151), Color.rgb(24, 61, 133))).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.rgb(133, 116, 230)) }
+                setPadding(dp(5), dp(12), dp(5), dp(12)); isClickable = true; isFocusable = true
+                addView(label(icon, 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
+                addView(label(title, 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+                addView(label(subtitle, 9f, Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
+                setOnClickListener { action() }
+            }
+        }
+        categoryRow.addView(categoryCard("♫", "Összes dal", "Teljes lista") { librarySearch.setText("") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginEnd = dp(5) })
+        categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { toast("Az előadók nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginHorizontal = dp(3) })
+        categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { toast("Az albumok nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginHorizontal = dp(3) })
+        categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { toast("A mappanézet a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
+        songsPage.addView(categoryRow)
+        val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
+        recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
+        recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
+        songsPage.addView(recentHeader)
+        songsPage.addView(button("＋  Fájlok kézi hozzáadása", Color.rgb(83, 48, 151), Color.WHITE) { openAudio() }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(8) })
+        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }; setPadding(dp(9), dp(6), dp(9), dp(6)) }
         songsPage.addView(libraryContainer)
+        librarySearch.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { renderLibrary(s?.toString().orEmpty()) }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
         loadMusicLibrary()
         settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
@@ -530,20 +564,25 @@ class MainActivity : Activity() {
         } catch (_: Exception) { toast("A zenetár beolvasása nem sikerült.") }
         renderLibrary()
     }
-    private fun renderLibrary() {
+    private fun renderLibrary(query: String = "") {
         if (!::libraryContainer.isInitialized) return
         libraryContainer.removeAllViews()
-        libraryContainer.addView(label("TALÁLATOK: ${librarySongs.size}  •  MEGJELENÍTVE: ${minOf(libraryDisplayLimit, librarySongs.size)}", 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
-        if (librarySongs.isEmpty()) {
-            libraryContainer.addView(label("Nem található zene. Használd a kézi hozzáadást, vagy frissítsd a könyvtárat.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
+        val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }
+        libraryContainer.addView(label("${filtered.size} ZENESZÁM  •  KÖNYVTÁR", 10f, Color.rgb(194, 174, 255)).apply { setPadding(dp(7), dp(8), dp(7), dp(8)) })
+        if (filtered.isEmpty()) {
+            libraryContainer.addView(label(if (librarySongs.isEmpty()) "Még nincs zene a könyvtárban. Adj hozzá fájlokat vagy frissítsd a listát." else "Nincs találat erre a keresésre.", 12f, Color.rgb(190, 194, 215)).apply { setPadding(dp(8), dp(14), dp(8), dp(14)) })
             return
         }
-        val end = minOf(libraryDisplayLimit, librarySongs.size)
+        val end = minOf(libraryDisplayLimit, filtered.size)
         for (index in 0 until end) {
-            val song = librarySongs[index]
-            val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(9), dp(8), dp(9)); isClickable = true; isFocusable = true }
-            item.addView(label(song.title, 12f, Color.WHITE))
-            item.addView(label(song.artist, 10f, Color.rgb(150, 160, 175)))
+            val song = filtered[index]
+            val item = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(10), dp(8), dp(10)); isClickable = true; isFocusable = true; background = rounded(Color.argb(35, 255, 255, 255), 12) }
+            val coverIcon = label("♫", 20f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER }
+            item.addView(coverIcon, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(10) })
+            val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            names.addView(label(song.title, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+            names.addView(label(song.artist, 11f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+            item.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
             item.setOnClickListener {
                 queue.clear()
                 queue.addAll(librarySongs.map { it.uri })
