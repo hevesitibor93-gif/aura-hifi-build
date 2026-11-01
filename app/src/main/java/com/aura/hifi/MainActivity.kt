@@ -49,6 +49,7 @@ class MainActivity : Activity() {
     private lateinit var seekBar: SeekBar
     private lateinit var timeLabel: TextView
     private lateinit var metadataLabel: TextView
+    private lateinit var albumLabel: TextView
     private lateinit var technicalLabel: TextView
     private var showRemaining = false
     private val handler = Handler(Looper.getMainLooper())
@@ -117,12 +118,10 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURIX"; textSize = 21f; letterSpacing = 0.10f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
-        val hi = TextView(this).apply { text = "  V50"; textSize = 11f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
+        val brand = TextView(this).apply { text = "AURIX"; textSize = 23f; letterSpacing = 0.10f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val hi = TextView(this).apply { text = "  V50"; textSize = 12f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        val live = TextView(this).apply { text = "● LIVE AUDIO"; textSize = 10f; setTextColor(Color.rgb(90, 220, 150)) }
-        header.addView(live); body.addView(header)
-        body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(2), 0, dp(4)) })
+        body.addView(header)
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
@@ -132,12 +131,13 @@ class MainActivity : Activity() {
         applyArtworkMode()
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
         applyArtworkMode()
-        body.addView(label("DUAL CHANNEL MONITOR", 10f, Color.LTGRAY).apply { setPadding(0, dp(2), 0, dp(2)) })
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
-        trackLabel = label("Válassz egy zenefájlt a kezdéshez", 14f, Color.WHITE).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1 }
+        trackLabel = label("", 18f, Color.rgb(255, 190, 75)).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1 }
         body.addView(trackLabel)
-        metadataLabel = label("ELŐADÓ  —  ALBUM", 11f, Color.rgb(155, 163, 177)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(2)) }
+        metadataLabel = label("", 12f, Color.rgb(80, 165, 255)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
         body.addView(metadataLabel)
+        albumLabel = label("", 10f, Color.rgb(155, 205, 145)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(2)); maxLines = 1 }
+        body.addView(albumLabel)
         seekBar = SeekBar(this).apply {
             max = 1000
             progressTintList = android.content.res.ColorStateList.valueOf(gold)
@@ -245,8 +245,8 @@ class MainActivity : Activity() {
             original.forEachIndexed { i, child ->
                 when (i) {
                     in 0..11 -> headUnit.addView(child)
-                    12, 13 -> songsPage.addView(child)
-                    14, 15 -> eqPage.addView(child)
+                    in 13..14 -> songsPage.addView(child)
+                    15, 16 -> eqPage.addView(child)
                     else -> settingsPage.addView(child)
                 }
             }
@@ -281,7 +281,8 @@ class MainActivity : Activity() {
             (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(164); height = dp(164) }
             trackLabel.textSize = 12f
             trackLabel.setPadding(dp(3), dp(2), dp(3), 0)
-            metadataLabel.textSize = 9f
+            metadataLabel.textSize = 10f
+            albumLabel.textSize = 9f
             metadataLabel.setPadding(0, 0, 0, 0)
             vu.layoutParams = LinearLayout.LayoutParams(-1, dp(34)).apply { setMargins(dp(3), 0, dp(3), 0) }
             seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(18))
@@ -309,7 +310,10 @@ class MainActivity : Activity() {
             trackLabel.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
             trackLabel.isSelected = true
             headUnit.addView(trackLabel, LinearLayout.LayoutParams(-1, dp(27)))
+            metadataLabel.textSize = 11f
+            albumLabel.textSize = 9f
             headUnit.addView(metadataLabel, LinearLayout.LayoutParams(-1, dp(17)))
+            headUnit.addView(albumLabel, LinearLayout.LayoutParams(-1, dp(14)))
             headUnit.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
             headUnit.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(16)))
             headUnit.addView(controls, LinearLayout.LayoutParams(-1, dp(48)))
@@ -322,7 +326,7 @@ class MainActivity : Activity() {
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
-            original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+            original.forEachIndexed { i, child -> when (i) { in 0..12 -> playerPage.addView(child); 13, 14 -> songsPage.addView(child); 15, 16 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
         songsPage.addView(sectionTitle("ESZKÖZÖN TALÁLHATÓ ZENÉK"))
@@ -681,7 +685,7 @@ class MainActivity : Activity() {
                         updateNextTrack()
                         startTrack(queue[currentIndex])
                     } else {
-                        playButton.text = "▶ LEJÁTSZÁS"
+                        playButton.text = "▶"
                         updateNextTrack()
                     }
                 }
@@ -762,17 +766,19 @@ class MainActivity : Activity() {
         val r = MediaMetadataRetriever()
         try {
             r.setDataSource(this, uri)
-            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Ismeretlen cím"
+            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: (r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISPLAY_TITLE)?.takeIf { it.isNotBlank() } ?: (uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím"))
             val cover = r.embeddedPicture
             if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
             val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
-            metadataLabel.text = "$artist  •  $album"
+            metadataLabel.text = artist
+            albumLabel.text = album
             val bitrate = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()?.div(1000)
             technicalLabel.text = "AUDIO INFO  •  " + (bitrate?.let { "$it kbps" } ?: "bitráta —")
         } catch (_: Exception) {
-            trackLabel.text = uri.lastPathSegment ?: "Kiválasztott zenefájl"
-            metadataLabel.text = "Ismeretlen előadó  •  Ismeretlen album"
+            trackLabel.text = uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím"
+            metadataLabel.text = "Ismeretlen előadó"
+            albumLabel.text = "Ismeretlen album"
             technicalLabel.text = "AUDIO INFO  •  nem érhető el"
         } finally { try { r.release() } catch (_: Exception) {} }
     }
@@ -944,7 +950,7 @@ class MainActivity : Activity() {
                 p.textSize = dp(10).toFloat()
                 p.typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
                 p.textAlign = Paint.Align.CENTER
-                c.drawText("A U R I X   //   S T E R E O", w / 2f, h - dp(5).toFloat(), p)
+                // A feliratot eltávolítottuk a letisztult LED-képért.
                 p.textAlign = Paint.Align.LEFT
             } else {
                 p.color = Color.rgb(104, 91, 69)
@@ -953,7 +959,7 @@ class MainActivity : Activity() {
                 p.color = Color.rgb(190, 160, 105)
                 p.textSize = dp(8).toFloat()
                 p.textAlign = Paint.Align.CENTER
-                c.drawText("AURIX  •  STEREO", w / 2f, h - dp(4).toFloat(), p)
+                // Nincs alsó dekoratív felirat.
                 p.textAlign = Paint.Align.LEFT
             }
         }
