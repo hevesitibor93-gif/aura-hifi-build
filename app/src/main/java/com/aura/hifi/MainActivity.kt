@@ -76,6 +76,12 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // A lejátszó megmarad, csak a nézet épül újra az új tájoláshoz.
+        buildUi()
+    }
+
     private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
