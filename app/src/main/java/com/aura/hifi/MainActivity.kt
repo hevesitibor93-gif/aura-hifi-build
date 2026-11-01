@@ -729,12 +729,12 @@ class MainActivity : Activity() {
                             }
                             val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
                             // Az eredeti automatikus erősítés marad, csak a valódi csendet szűrjük.
-                            val level = if (rms < 0.006f && peak < 5) {
+                            val level = if (rms < 0.008f && peak < 7) {
                                 0f
                             } else {
                                 val targetGain = (0.24f / rms.coerceAtLeast(0.006f)).coerceIn(0.7f, 18f)
                                 vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
-                                (rms * vuAutoGain * 1.50f).coerceIn(0f, 1f)
+                                (rms * vuAutoGain * 1.55f).coerceIn(0f, 1f)
                             }
                             setVuLevels(level, level)
                         }
