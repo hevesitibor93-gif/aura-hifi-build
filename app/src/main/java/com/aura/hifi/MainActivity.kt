@@ -739,8 +739,35 @@ class MainActivity : Activity() {
                             setVuLevels(level, level)
                         }
                     }
-                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                }, Visualizer.getMaxCaptureRate(), true, false)
+                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                        if (fft == null || fft.size < 16) return
+                        // FFT: külön mérjük a mély, közép és magas tartomány energiáját.
+                        fun bandEnergy(firstBin: Int, lastBin: Int): Float {
+                            var energy = 0.0
+                            var count = 0
+                            val end = minOf(lastBin, fft.size / 2 - 1)
+                            for (bin in firstBin..end) {
+                                val index = bin * 2
+                                val real = fft[index].toInt()
+                                val imaginary = fft[index + 1].toInt()
+                                energy += (real * real + imaginary * imaginary).toDouble()
+                                count++
+                            }
+                            return if (count == 0) 0f else
+                                (kotlin.math.sqrt(energy / count) / 128.0).toFloat().coerceIn(0f, 1f)
+                        }
+                        val bass = bandEnergy(1, 8)
+                        val mid = bandEnergy(9, 40)
+                        val treble = bandEnergy(41, 120)
+                        val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
+                        val level = if (combined < 0.018f) 0f else {
+                            val targetGain = (0.20f / combined.coerceAtLeast(0.018f)).coerceIn(0.7f, 18f)
+                            vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
+                            (combined * vuAutoGain * 1.55f).coerceIn(0f, 1f)
+                        }
+                        setVuLevels(level, level)
+                    }
+                }, Visualizer.getMaxCaptureRate(), false, true)
                 enabled = true
             }
             renderEqualizer()
