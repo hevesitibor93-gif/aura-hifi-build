@@ -731,6 +731,18 @@ class MainActivity : Activity() {
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
                         // Csak az aktuális dal aktív Visualizerétől és tényleges lejátszásakor fogadunk adatot.
                         if (v == null || v !== visualizer || player?.isPlaying != true) return
+                        val activePlayer = player ?: return
+                        // A dal utolsó 700 ms-ában már nem fogadunk FFT-adatot:
+                        // így a lejátszás végi puffer/csendzaj és a következő szám
+                        // esetlegesen későn érkező adata nem villanthatja fel a VU-t.
+                        try {
+                            val remainingMs = activePlayer.duration - activePlayer.currentPosition
+                            if (remainingMs <= 700) {
+                                vuSmoothedLevel = 0f
+                                setVuLevels(0f, 0f)
+                                return
+                            }
+                        } catch (_: Exception) { return }
                         if (fft == null || fft.size < 16) return
                         // FFT: külön mérjük a mély, közép és magas tartomány energiáját.
                         fun bandEnergy(firstBin: Int, lastBin: Int): Float {
@@ -840,7 +852,10 @@ class MainActivity : Activity() {
     }
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
-        if (::vu.isInitialized) vu.setActive(false)
+        if (::vu.isInitialized) {
+            setVuActive(false)
+            setVuLevels(0f, 0f)
+        }
         try { visualizer?.release() } catch (_: Exception) {}; visualizer = null
         try { equalizer?.release() } catch (_: Exception) {}; equalizer = null
         try { bassBoost?.release() } catch (_: Exception) {}; bassBoost = null
