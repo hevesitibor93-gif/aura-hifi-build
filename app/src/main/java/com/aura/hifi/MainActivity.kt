@@ -725,7 +725,7 @@ class MainActivity : Activity() {
                             // Valódi csendnél zárjon le: ne erősítse fel a digitális alapzajt.
                             val level = if (rms < 0.012f && peak < 7) 0f else {
                                 val clean = (rms - 0.008f).coerceAtLeast(0f)
-                                ((clean / 0.115f).coerceIn(0f, 1f)).let { it * (0.72f + 0.28f * it) }
+                                ((clean / 0.21f).coerceIn(0f, 1f)).let { it * (0.82f + 0.18f * it) }
                             }
                             setVuLevels(level, level)
                         }
