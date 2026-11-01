@@ -82,8 +82,14 @@ class MainActivity : Activity() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        // A lejátszó megmarad, csak a nézet épül újra az új tájoláshoz.
+        // A lejátszó és a metaadatok maradjanak meg tájolásváltáskor is.
+        val savedTitle = if (::trackLabel.isInitialized) trackLabel.text.toString() else ""
+        val savedArtist = if (::metadataLabel.isInitialized) metadataLabel.text.toString() else ""
+        val savedAlbum = if (::albumLabel.isInitialized) albumLabel.text.toString() else ""
         buildUi()
+        trackLabel.text = savedTitle
+        metadataLabel.text = savedArtist
+        albumLabel.text = savedAlbum
     }
 
 
@@ -722,10 +728,13 @@ class MainActivity : Activity() {
                                 if (x > peak) peak = x
                             }
                             val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
-                            // Valódi csendnél zárjon le: ne erősítse fel a digitális alapzajt.
-                            val level = if (rms < 0.035f && peak < 14) 0f else {
-                                val clean = (rms - 0.008f).coerceAtLeast(0f)
-                                ((clean / 0.26f).coerceIn(0f, 1f)).let { it * (0.82f + 0.18f * it) }
+                            // Az eredeti automatikus erősítés marad, csak a valódi csendet szűrjük.
+                            val level = if (rms < 0.006f && peak < 5) {
+                                0f
+                            } else {
+                                val targetGain = (0.24f / rms.coerceAtLeast(0.006f)).coerceIn(0.7f, 18f)
+                                vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
+                                (rms * vuAutoGain * 1.50f).coerceIn(0f, 1f)
                             }
                             setVuLevels(level, level)
                         }
