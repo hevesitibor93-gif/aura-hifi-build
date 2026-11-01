@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
+    private var centerAurixVu: AurixVuView? = null
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
@@ -86,16 +87,16 @@ class MainActivity : Activity() {
 
 
     private fun setVuActive(value: Boolean) {
-        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value)
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
-        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right)
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value)
     }
     private fun setVuBrightness(value: Int) {
-        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value)
+        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
         vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value)
@@ -249,16 +250,16 @@ class MainActivity : Activity() {
                     else -> settingsPage.addView(child)
                 }
             }
-            leftPanel.addView(label("A", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuLeft = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            leftPanel.addView(label("L", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            sideVuLeft = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
             leftPanel.addView(neonRoundButton("−", 42, false) { player?.setVolume(0.65f, 0.65f) },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
-            rightPanel.addView(label("X", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuRight = VuView().apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            sideVuRight = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
@@ -291,8 +292,30 @@ class MainActivity : Activity() {
             controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(13) }
             controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)).apply { marginEnd = dp(13) }
             controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
-            (headUnit.getChildAt(0) as? View)?.layoutParams = LinearLayout.LayoutParams(-1, dp(27))
-            (headUnit.getChildAt(1) as? View)?.visibility = View.GONE
+            // Fekvő nézet: széles, arany AURIX VU középen, alatta jól olvasható cím.
+            val headerView = headUnit.getChildAt(0)
+            headUnit.removeAllViews()
+            headUnit.addView(headerView, LinearLayout.LayoutParams(-1, dp(25)))
+            centerAurixVu = AurixVuView().apply {
+                setActive(player?.isPlaying == true)
+                setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80))
+            }
+            headUnit.addView(centerAurixVu, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
+            trackLabel.textSize = 16f
+            trackLabel.setTextColor(Color.WHITE)
+            trackLabel.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            trackLabel.gravity = Gravity.CENTER
+            trackLabel.maxLines = 1
+            trackLabel.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            trackLabel.isSelected = true
+            headUnit.addView(trackLabel, LinearLayout.LayoutParams(-1, dp(27)))
+            headUnit.addView(metadataLabel, LinearLayout.LayoutParams(-1, dp(17)))
+            headUnit.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
+            headUnit.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(16)))
+            headUnit.addView(controls, LinearLayout.LayoutParams(-1, dp(48)))
+            vu.visibility = View.GONE
+            technicalLabel.visibility = View.GONE
+            nextTrackLabel.visibility = View.GONE
         } else {
             original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
@@ -803,7 +826,52 @@ class MainActivity : Activity() {
         }
     }
 
-    private inner class VuView : View(this@MainActivity) {
+    private inner class AurixVuView : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var left = 0f
+        private var right = 0f
+        private var active = false
+        private var brightness = 80
+        fun setActive(v: Boolean) { active = v; if (!v) { left = 0f; right = 0f }; invalidate() }
+        fun setLevels(l: Float, r: Float) { if (!active) return; left=l.coerceIn(0f,1f); right=r.coerceIn(0f,1f); invalidate() }
+        fun setBrightness(v: Int) { brightness=v.coerceIn(20,100); invalidate() }
+        override fun onDraw(c: Canvas) {
+            super.onDraw(c)
+            val w=width.toFloat(); val h=height.toFloat()
+            if (w<=0f || h<=0f) return
+            val frame=RectF(dp(3).toFloat(),dp(4).toFloat(),w-dp(3).toFloat(),h-dp(4).toFloat())
+            paint.style=Paint.Style.FILL
+            paint.shader=android.graphics.LinearGradient(0f,0f,0f,h,intArrayOf(Color.rgb(5,5,6),Color.rgb(24,18,10),Color.rgb(3,3,4)),null,android.graphics.Shader.TileMode.CLAMP)
+            c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint); paint.shader=null
+            paint.style=Paint.Style.STROKE; paint.strokeWidth=dp(3).toFloat()
+            paint.color=Color.rgb(255,190,75); c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint)
+            val pad=dp(8).toFloat()
+            val centerW=w*0.22f
+            val sideW=(w-centerW-pad*4)/2f
+            val barH=max(dp(5).toFloat(),h*0.17f)
+            drawGoldBar(c,pad,h*0.25f,sideW,barH,left)
+            drawGoldBar(c,w-pad-sideW,h*0.25f,sideW,barH,right)
+            paint.style=Paint.Style.FILL; paint.textAlign=Paint.Align.CENTER
+            paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
+            paint.color=Color.rgb(255,222,157); paint.textSize=h*0.31f
+            c.drawText("VU",w/2f,h*0.49f,paint)
+            paint.textSize=h*0.13f; paint.color=Color.rgb(238,190,112)
+            c.drawText("AURIX",w/2f,h*0.70f,paint)
+            paint.textAlign=Paint.Align.LEFT
+        }
+        private fun drawGoldBar(c: Canvas,x:Float,y:Float,width:Float,height:Float,level:Float) {
+            val n=10; val gap=dp(2).toFloat(); val sw=(width-gap*(n-1))/n
+            val lit=(level*n).toInt()
+            for(i in 0 until n) {
+                val sx=x+i*(sw+gap); val color=if(i>=7) Color.rgb(255,35,22) else Color.rgb(255,194,42)
+                paint.style=Paint.Style.FILL
+                paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
+                c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(3).toFloat(),dp(3).toFloat(),paint)
+            }
+        }
+    }
+
+    private inner class VuView(private val verticalSingle: Boolean = false) : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
         private var left = 0f
         private var right = 0f
@@ -828,6 +896,7 @@ class MainActivity : Activity() {
             if (!active) return
             val w = width.toFloat()
             val h = height.toFloat()
+            if (verticalSingle) { drawVerticalSingle(c, w, h); return }
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
             p.style = Paint.Style.FILL
@@ -881,6 +950,30 @@ class MainActivity : Activity() {
                 p.textAlign = Paint.Align.CENTER
                 c.drawText("AURIX  •  STEREO", w / 2f, h - dp(4).toFloat(), p)
                 p.textAlign = Paint.Align.LEFT
+            }
+        }
+
+        private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
+            val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w-dp(2).toFloat(), h-dp(2).toFloat())
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(8, 10, 14)
+            c.drawRoundRect(outer, dp(5).toFloat(), dp(5).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 238, 177, 67)
+            c.drawRoundRect(outer, dp(5).toFloat(), dp(5).toFloat(), p)
+            p.style = Paint.Style.FILL
+            val count = 12
+            val gap = dp(2).toFloat()
+            val top = dp(5).toFloat()
+            val bottom = h - dp(5).toFloat()
+            val segH = (bottom-top-gap*(count-1))/count
+            val lit = ((left + right) * 0.5f * count).toInt()
+            for (i in 0 until count) {
+                val y = bottom - (i+1)*segH - i*gap
+                val base = if (i >= 9) Color.rgb(255, 35, 24) else Color.rgb(255, 190, 35)
+                p.color = if (i < lit) Color.argb(brightness*255/100, Color.red(base), Color.green(base), Color.blue(base)) else Color.rgb(42, 43, 45)
+                c.drawRoundRect(RectF(dp(6).toFloat(), y, w-dp(6).toFloat(), y+segH), dp(2).toFloat(), dp(2).toFloat(), p)
             }
         }
 
