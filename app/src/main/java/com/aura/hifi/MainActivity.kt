@@ -714,7 +714,12 @@ class MainActivity : Activity() {
         try {
             equalizer?.release(); equalizer = Equalizer(0, session).apply { enabled = true }
             bassBoost?.release(); bassBoost = BassBoost(0, session).apply { enabled = true }
-            visualizer?.release()
+            // Új dalnál nullázzuk az előző dalból megmaradt mérési simítást.
+            vuSmoothedLevel = 0f
+            visualizer?.let { old ->
+                try { old.enabled = false } catch (_: Exception) {}
+                try { old.release() } catch (_: Exception) {}
+            }
             visualizer = Visualizer(session).apply {
                 // A VU-mérő ritkább mintavételezése csökkenti a főszál terhelését.
                 captureSize = Visualizer.getCaptureSizeRange()[1]
@@ -724,6 +729,8 @@ class MainActivity : Activity() {
                         // A kijelzőt kizárólag az FFT-mérés frissíti.
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                        // Csak az aktuális dal aktív Visualizerétől és tényleges lejátszásakor fogadunk adatot.
+                        if (v == null || v !== visualizer || player?.isPlaying != true) return
                         if (fft == null || fft.size < 16) return
                         // FFT: külön mérjük a mély, közép és magas tartomány energiáját.
                         fun bandEnergy(firstBin: Int, lastBin: Int): Float {
