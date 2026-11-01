@@ -239,6 +239,7 @@ class MainActivity : Activity() {
             playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(54), -1))
             playerPage.addView(headUnit, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(7), 0, dp(7), 0) })
             playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(54), -1))
+            artFrame.visibility = View.GONE
             artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(174)).apply { setMargins(dp(4), dp(2), dp(4), dp(3)) }
             artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply {
@@ -600,6 +601,7 @@ class MainActivity : Activity() {
                 setOnPreparedListener { mp ->
                     try {
                         mp.start()
+                        vu.setActive(true)
                         playButton.text = "Ⅱ"
                         vinylView.invalidate()
                         setupEffects(mp.audioSessionId)
@@ -615,7 +617,7 @@ class MainActivity : Activity() {
                     true
                 }
                 setOnCompletionListener {
-                    vu.setLevels(0f, 0f)
+                    vu.setActive(false)
                     if (currentIndex + 1 < queue.size) {
                         currentIndex++
                         selectedUri = queue[currentIndex]
@@ -639,7 +641,7 @@ class MainActivity : Activity() {
     private fun togglePlayback() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
-        try { if (p.isPlaying) { p.pause(); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate() } } catch (_: Exception) {}
+        try { if (p.isPlaying) { p.pause(); vu.setActive(false); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); vu.setActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() } } catch (_: Exception) {}
     }
     private fun setupEffects(session: Int) {
         try {
@@ -648,7 +650,7 @@ class MainActivity : Activity() {
             visualizer?.release()
             visualizer = Visualizer(session).apply {
                 // A VU-mérő ritkább mintavételezése csökkenti a főszál terhelését.
-                captureSize = Visualizer.getCaptureSizeRange()[0]
+                captureSize = Visualizer.getCaptureSizeRange()[1]
                 setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                     override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
                         if (waveform != null && waveform.isNotEmpty()) {
@@ -658,11 +660,11 @@ class MainActivity : Activity() {
                             val targetGain = if (rms > 0.006f) (0.24f / rms).coerceIn(0.7f, 18f) else vuAutoGain
                             vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
                             val level = (rms * vuAutoGain * 1.45f).coerceIn(0f, 1f)
-                            vu.post { vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f)) }
+                            vu.setLevels(level, (level * 0.97f).coerceIn(0f, 1f))
                         }
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                }, (Visualizer.getMaxCaptureRate() / 2).coerceAtLeast(1000), true, false)
+                }, Visualizer.getMaxCaptureRate(), true, false)
                 enabled = true
             }
             renderEqualizer()
@@ -737,6 +739,7 @@ class MainActivity : Activity() {
     }
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
+        if (::vu.isInitialized) vu.setActive(false)
         try { visualizer?.release() } catch (_: Exception) {}; visualizer = null
         try { equalizer?.release() } catch (_: Exception) {}; equalizer = null
         try { bassBoost?.release() } catch (_: Exception) {}; bassBoost = null
@@ -778,9 +781,11 @@ class MainActivity : Activity() {
         private var style = "car"
         private var brightness = 80
         private var animationEnabled = true
+        private var active = false
 
+        fun setActive(value: Boolean) { active = value; if (!value) { left = 0f; right = 0f }; invalidate() }
         fun setLevels(l: Float, r: Float) {
-            if (!animationEnabled) return
+            if (!animationEnabled || !active) return
             left = l.coerceIn(0f, 1f)
             right = r.coerceIn(0f, 1f)
             invalidate()
@@ -791,6 +796,7 @@ class MainActivity : Activity() {
 
         override fun onDraw(c: Canvas) {
             super.onDraw(c)
+            if (!active) return
             val w = width.toFloat()
             val h = height.toFloat()
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
