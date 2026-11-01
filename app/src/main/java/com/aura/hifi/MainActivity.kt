@@ -720,25 +720,8 @@ class MainActivity : Activity() {
                 captureSize = Visualizer.getCaptureSizeRange()[1]
                 setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                     override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-                        if (waveform != null && waveform.isNotEmpty()) {
-                            var sum = 0.0
-                            var peak = 0
-                            for (b in waveform) {
-                                val x = kotlin.math.abs((b.toInt() and 0xff) - 128)
-                                sum += x * x
-                                if (x > peak) peak = x
-                            }
-                            val rms = (kotlin.math.sqrt(sum / waveform.size) / 128.0).toFloat()
-                            // Az eredeti automatikus erősítés marad, csak a valódi csendet szűrjük.
-                            val level = if (rms < 0.008f && peak < 7) {
-                                0f
-                            } else {
-                                val targetGain = (0.24f / rms.coerceAtLeast(0.006f)).coerceIn(0.7f, 18f)
-                                vuAutoGain = vuAutoGain * 0.88f + targetGain * 0.12f
-                                (rms * vuAutoGain * 1.55f).coerceIn(0f, 1f)
-                            }
-                            setVuLevels(level, level)
-                        }
+                        // A hullámforma-mérést nem használjuk a VU-LED-ek vezérlésére.
+                        // A kijelzőt kizárólag az FFT-mérés frissíti.
                     }
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
                         if (fft == null || fft.size < 16) return
