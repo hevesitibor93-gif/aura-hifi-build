@@ -685,10 +685,7 @@ class MainActivity : Activity() {
                     true
                 }
                 setOnCompletionListener {
-                    // A dal végén azonnal állítsuk meg a kijelzést és a folyamatjelző frissítését.
-                    handler.removeCallbacks(progressTask)
                     setVuActive(false)
-                    setVuLevels(0f, 0f)
                     if (currentIndex + 1 < queue.size) {
                         currentIndex++
                         selectedUri = queue[currentIndex]
