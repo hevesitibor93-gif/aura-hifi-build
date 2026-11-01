@@ -762,7 +762,7 @@ class MainActivity : Activity() {
                         val treble = bandEnergy(41, 120)
                         val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
                         // Fix skálázás: ne húzza vissza automatikus erősítés egy alacsony állandó szintre.
-                        val targetLevel = ((combined - 0.010f).coerceAtLeast(0f) * 4.2f).coerceIn(0f, 1f)
+                        val targetLevel = ((combined - 0.010f).coerceAtLeast(0f) * 3.7f).coerceIn(0f, 1f)
                         // Gyors felfutás, finomabb lecsengés – a zene dinamikáját követi.
                         val smoothing = if (targetLevel > vuSmoothedLevel) 0.48f else 0.16f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
