@@ -136,13 +136,13 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(2), dp(4), 0)
         }
         body.addView(nextTrackLabel)
-        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(2)) }
-        playButton = button("▶ LEJÁTSZÁS", Color.rgb(35, 41, 53), Color.WHITE) { togglePlayback() }
-        val previous = button("⏮", Color.rgb(35, 41, 53), Color.WHITE) { playPrevious() }
-        val next = button("⏭", Color.rgb(35, 41, 53), Color.WHITE) { playNext() }
-        controls.addView(previous, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(5) })
-        controls.addView(playButton, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(5) })
-        controls.addView(next, LinearLayout.LayoutParams(dp(36), dp(36)))
+        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
+        playButton = neonRoundButton("Ⅱ", 58, true) { togglePlayback() }
+        val previous = neonRoundButton("◀", 48, false) { playPrevious() }
+        val next = neonRoundButton("▶", 48, false) { playNext() }
+        controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(22) })
+        controls.addView(playButton, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginEnd = dp(22) })
+        controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(controls)
         body.addView(sectionTitle("LEJÁTSZÁSI SOR  •  ${queue.size} ZENESZÁM"))
         queueContainer = LinearLayout(this).apply {
@@ -161,7 +161,17 @@ class MainActivity : Activity() {
         actions.addView(button("EQ ALAPHELYZET", Color.rgb(35, 41, 53), Color.WHITE) { resetEq() }, LinearLayout.LayoutParams(0, dp(44), 1f))
         body.addView(actions)
         body.addView(label("Az EQ és a basszuskiemelés az Android eszközén elérhető hanghatásoktól függ. Más alkalmazások (YouTube/Spotify) teljes rendszerhangját ez az app nem tudja garantáltan módosítani.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
-        val playerPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val playerPage = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(7, 10, 15), Color.rgb(31, 34, 42), Color.rgb(8, 11, 16))).apply {
+                cornerRadius = dp(24).toFloat()
+                setStroke(dp(2), Color.rgb(67, 73, 83))
+            }
+            elevation = dp(12).toFloat()
+        }
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -178,6 +188,12 @@ class MainActivity : Activity() {
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
+            playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(5, 8, 13), Color.rgb(27, 30, 37), Color.rgb(5, 8, 13))).apply {
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(2), Color.rgb(82, 88, 98))
+            }
+            playerPage.setPadding(dp(18), dp(12), dp(18), dp(12))
             val cockpitLeft = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(4), 0, dp(8), 0) }
             val cockpitRight = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), 0, dp(4), 0) }
             original.forEachIndexed { i, child ->
@@ -202,9 +218,10 @@ class MainActivity : Activity() {
             vu.layoutParams = LinearLayout.LayoutParams(-1, dp(42)).apply { setMargins(dp(4), 0, dp(4), 0) }
             seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(20))
             controls.setPadding(0, dp(2), 0, dp(3))
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(5) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply { marginEnd = dp(5) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
+            controls.setPadding(0, dp(4), 0, dp(4))
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(16) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginEnd = dp(16) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
         } else {
             original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
@@ -320,6 +337,26 @@ class MainActivity : Activity() {
             addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
             layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(7) }
         }
+    }
+
+    private fun neonRoundButton(symbol: String, size: Int, primary: Boolean, click: () -> Unit) = Button(this).apply {
+        text = symbol
+        textSize = if (primary) 23f else 19f
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        setTextColor(if (primary) Color.rgb(255, 220, 155) else Color.rgb(190, 222, 255))
+        includeFontPadding = false
+        isAllCaps = false
+        minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
+        setPadding(0, 0, 0, 0)
+        backgroundTintList = null
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.rgb(13, 18, 26))
+            setStroke(dp(if (primary) 2 else 1), if (primary) Color.rgb(255, 177, 64) else Color.rgb(67, 157, 224))
+        }
+        elevation = dp(7).toFloat()
+        stateListAnimator = null
+        setOnClickListener { click() }
     }
 
     private fun sectionTitle(s: String) = label(s, 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(20), 0, dp(9)) }
