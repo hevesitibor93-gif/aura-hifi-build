@@ -58,7 +58,7 @@ class MainActivity : Activity() {
     private var vuAutoGain = 1f
     private var vuSmoothedLevel = 0f
     private val queue = mutableListOf<Uri>()
-    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val dateAdded: Long)
+    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
     private var librarySortMode = "Név szerint"
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
@@ -357,9 +357,9 @@ class MainActivity : Activity() {
             }
         }
         categoryRow.addView(categoryCard("♫", "Összes dal", "Teljes lista") { librarySearch.setText("") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginEnd = dp(5) })
-        categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { toast("Az előadók nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
-        categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { toast("Az albumok nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
-        categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { toast("A mappanézet a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
+        categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { showLibraryGroups("Előadók") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+        categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { showLibraryGroups("Albumok") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+        categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { showLibraryGroups("Mappák") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
         songsPage.addView(categoryRow)
         val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
         sortRow.addView(label("Rendezés:", 12f, Color.WHITE), LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
@@ -558,7 +558,7 @@ class MainActivity : Activity() {
         librarySongs.clear()
         librarySongByUri.clear()
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DATE_ADDED)
+        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DATE_ADDED, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DATA)
         val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
         try {
             contentResolver.query(collection, projection, selection, null, MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
@@ -566,6 +566,8 @@ class MainActivity : Activity() {
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+                val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
                     val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
@@ -578,6 +580,43 @@ class MainActivity : Activity() {
         } catch (_: Exception) { toast("A zenetár beolvasása nem sikerült.") }
         renderLibrary()
     }
+
+    private fun showLibraryGroups(type: String) {
+        if (!::libraryContainer.isInitialized) return
+        libraryContainer.removeAllViews()
+        val key: (LibrarySong) -> String = when (type) {
+            "Előadók" -> { song -> song.artist.ifBlank { "Ismeretlen előadó" } }
+            "Albumok" -> { song -> song.album.ifBlank { "Ismeretlen album" } }
+            else -> { song -> song.folder.substringAfterLast("/").ifBlank { "Eszköz" } }
+        }
+        val groups = librarySongs.groupBy(key).toSortedMap(String.CASE_INSENSITIVE_ORDER)
+        libraryContainer.addView(label("‹  Vissza az összes dalhoz", 13f, Color.rgb(220, 195, 255)).apply {
+            setPadding(dp(8), dp(12), dp(8), dp(14))
+            setOnClickListener { renderLibrary() }
+        })
+        libraryContainer.addView(label(type.uppercase() + "  •  ${groups.size}", 11f, Color.WHITE).apply { setPadding(dp(8), dp(4), dp(8), dp(10)) })
+        groups.forEach { (name, songs) ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(13), dp(9), dp(13)); isClickable = true; background = rounded(Color.argb(35,255,255,255), 10) }
+            row.addView(label("♫", 19f, Color.rgb(194,151,255)), LinearLayout.LayoutParams(dp(34), -2))
+            row.addView(label(name, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(label("${songs.size} dal  ›", 10f, Color.rgb(190,195,220)))
+            row.setOnClickListener {
+                libraryContainer.removeAllViews()
+                songs.forEachIndexed { index, song ->
+                    libraryContainer.addView(label("♫  ${song.title}  —  ${song.artist}", 12f, Color.WHITE).apply {
+                        setPadding(dp(8), dp(12), dp(8), dp(12))
+                        setOnClickListener {
+                            queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index
+                            startTrack(song.uri); updateNextTrack()
+                        }
+                    })
+                }
+                libraryContainer.addView(label("‹  Vissza a $type listához", 12f, gold).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryGroups(type) } })
+            }
+            libraryContainer.addView(row)
+        }
+    }
+
     private fun renderLibrary(query: String = "") {
         if (!::libraryContainer.isInitialized) return
         libraryContainer.removeAllViews()
