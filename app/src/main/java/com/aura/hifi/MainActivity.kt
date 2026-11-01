@@ -38,7 +38,7 @@ class MainActivity : Activity() {
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private lateinit var artworkView: ImageView
-    private lateinit var vinylView: CassetteView
+    private lateinit var vinylView: VinylView
     private var showCover = true
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
@@ -99,7 +99,7 @@ class MainActivity : Activity() {
         body.addView(label("YOUR SOUND. YOUR SPACE.", 10f, Color.rgb(143, 148, 158)).apply { letterSpacing = 0.18f; setPadding(0, dp(2), 0, dp(4)) })
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
-        vinylView = CassetteView()
+        vinylView = VinylView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
@@ -667,124 +667,29 @@ class MainActivity : Activity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() { releaseAudio(); super.onDestroy() }
 
-    private inner class CassetteView : View(this@MainActivity) {
+    private inner class VinylView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var phase = 0f
-
+        private var angle = 0f
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
-            if (w <= 0f || h <= 0f) return
-
-            val duration = (player?.duration ?: 0).coerceAtLeast(0)
-            val position = (player?.currentPosition ?: 0).coerceIn(0, duration.coerceAtLeast(0))
-            val progress = if (duration > 0) position.toFloat() / duration else 0f
-            val playing = try { player?.isPlaying == true } catch (_: Exception) { false }
-            fun fill(color: Int) { paint.shader = null; paint.style = Paint.Style.FILL; paint.color = color }
-            fun stroke(color: Int, width: Float) { paint.shader = null; paint.style = Paint.Style.STROKE; paint.strokeWidth = width; paint.color = color }
-            fun rr(l: Float, t: Float, r: Float, b: Float, radius: Float, color: Int) {
-                fill(color); canvas.drawRoundRect(RectF(l,t,r,b), radius, radius, paint)
-            }
-
-            // Realistic transparent-shell Compact Cassette body
-            val outer = RectF(w*.025f,h*.035f,w*.975f,h*.965f)
-            rr(outer.left,outer.top,outer.right,outer.bottom,h*.055f,Color.rgb(18,21,24))
-            stroke(Color.rgb(190,157,99),h*.008f); canvas.drawRoundRect(outer,h*.055f,h*.055f,paint)
-            rr(w*.045f,h*.055f,w*.955f,h*.945f,h*.045f,Color.rgb(49,55,57))
-            rr(w*.065f,h*.075f,w*.935f,h*.925f,h*.035f,Color.rgb(25,29,31))
-
-            // Screw holes and molded guide ribs
-            for ((x,y) in listOf(w*.105f to h*.145f,w*.895f to h*.145f,w*.105f to h*.855f,w*.895f to h*.855f)) {
-                fill(Color.rgb(8,10,11)); canvas.drawCircle(x,y,h*.022f,paint)
-                stroke(Color.rgb(130,132,126),h*.004f); canvas.drawCircle(x,y,h*.022f,paint)
-                fill(Color.rgb(70,74,73)); canvas.drawCircle(x,y,h*.008f,paint)
-            }
-            stroke(Color.rgb(95,101,99),h*.004f)
-            for (i in 0..7) {
-                val x=w*(.17f+i*.094f)
-                canvas.drawLine(x,h*.12f,x,h*.285f,paint)
-                canvas.drawLine(x,h*.715f,x,h*.88f,paint)
-            }
-
-            // Paper label with a subtle ruled edge
-            rr(w*.205f,h*.095f,w*.795f,h*.285f,h*.012f,Color.rgb(8,10,11))
-            rr(w*.215f,h*.105f,w*.785f,h*.275f,h*.009f,Color.rgb(224,218,198))
-            fill(Color.rgb(48,54,52)); paint.textAlign=Paint.Align.CENTER
-            paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
-            paint.textSize=(h*.092f).coerceAtLeast(dp(10).toFloat())
-            canvas.drawText("AURIX",w*.5f,h*.19f,paint)
-            paint.textSize=(h*.034f).coerceAtLeast(dp(5).toFloat())
-            paint.typeface=Typeface.DEFAULT_BOLD
-            canvas.drawText("HIGH POSITION  •  TYPE II",w*.5f,h*.235f,paint)
-            stroke(Color.rgb(150,143,123),h*.003f)
-            canvas.drawLine(w*.25f,h*.25f,w*.75f,h*.25f,paint)
-
-            // Recessed tape window
-            rr(w*.105f,h*.305f,w*.895f,h*.715f,h*.035f,Color.rgb(5,7,8))
-            rr(w*.125f,h*.325f,w*.875f,h*.695f,h*.025f,Color.rgb(22,27,29))
-            stroke(Color.rgb(103,111,109),h*.006f)
-            canvas.drawRoundRect(RectF(w*.125f,h*.325f,w*.875f,h*.695f),h*.025f,h*.025f,paint)
-
-            val cy=h*.51f
-            val lx=w*.315f
-            val rx=w*.685f
-            val baseR=h*.145f
-            // Physical reel-pack radius changes as tape transfers from left to right.
-            val emptyR=.28f
-            val fullR=.88f
-            val leftFill=1f-progress
-            val rightFill=progress
-            val leftPack=baseR*kotlin.math.sqrt(emptyR*emptyR+leftFill*(fullR*fullR-emptyR*emptyR))
-            val rightPack=baseR*kotlin.math.sqrt(emptyR*emptyR+rightFill*(fullR*fullR-emptyR*emptyR))
-
-            fun reel(cx: Float, pack: Float, direction: Float) {
-                fill(Color.rgb(8,10,11)); canvas.drawCircle(cx,cy,baseR,paint)
-                stroke(Color.rgb(174,179,174),h*.007f); canvas.drawCircle(cx,cy,baseR*.96f,paint)
-                fill(Color.rgb(63,70,70)); canvas.drawCircle(cx,cy,baseR*.82f,paint)
-                stroke(Color.rgb(128,137,133),h*.004f); canvas.drawCircle(cx,cy,baseR*.78f,paint)
-                fill(Color.rgb(9,12,13)); canvas.drawCircle(cx,cy,pack,paint)
-                stroke(Color.rgb(187,190,177),h*.006f); canvas.drawCircle(cx,cy,pack,paint)
-                canvas.save()
-                canvas.rotate(if (playing) phase*direction else 0f,cx,cy)
-                for (i in 0 until 6) {
-                    canvas.save(); canvas.rotate(i*60f,cx,cy)
-                    fill(Color.rgb(190,194,184))
-                    canvas.drawRoundRect(RectF(cx-baseR*.055f,cy-baseR*.72f,cx+baseR*.055f,cy-baseR*.29f),baseR*.025f,baseR*.025f,paint)
-                    canvas.restore()
-                }
-                canvas.restore()
-                fill(Color.rgb(14,17,18)); canvas.drawCircle(cx,cy,baseR*.19f,paint)
-                stroke(Color.rgb(151,158,151),h*.005f); canvas.drawCircle(cx,cy,baseR*.19f,paint)
-            }
-            reel(lx,leftPack,1f)
-            reel(rx,rightPack,-1f)
-
-            // Tape path, pressure rollers and capstan details
-            stroke(Color.rgb(177,151,103),h*.012f)
-            canvas.drawLine(lx+leftPack*.7f,cy+leftPack*.55f,w*.43f,h*.665f,paint)
-            canvas.drawLine(w*.43f,h*.665f,w*.57f,h*.665f,paint)
-            canvas.drawLine(w*.57f,h*.665f,rx-rightPack*.7f,cy+rightPack*.55f,paint)
-            fill(Color.rgb(175,178,169))
-            canvas.drawCircle(w*.43f,h*.665f,h*.026f,paint)
-            canvas.drawCircle(w*.57f,h*.665f,h*.026f,paint)
-            fill(Color.rgb(30,34,35))
-            canvas.drawCircle(w*.43f,h*.665f,h*.012f,paint)
-            canvas.drawCircle(w*.57f,h*.665f,h*.012f,paint)
-
-            // Bottom counter window: remaining time counts down.
-            rr(w*.275f,h*.785f,w*.725f,h*.89f,h*.012f,Color.rgb(5,7,8))
-            rr(w*.29f,h*.80f,w*.71f,h*.875f,h*.008f,Color.rgb(183,143,77))
-            paint.shader=null; paint.color=Color.rgb(24,24,21)
-            paint.textAlign=Paint.Align.CENTER
-            paint.typeface=Typeface.create("monospace",Typeface.BOLD)
-            paint.textSize=(h*.052f).coerceAtLeast(dp(7).toFloat())
-            canvas.drawText(if(duration>0) "-${formatTime((duration-position).coerceAtLeast(0))}   •   ${(progress*100).toInt()}%" else "INSERT TAPE",w*.5f,h*.852f,paint)
-
-            if (playing && visibility==View.VISIBLE) {
-                phase=(phase+3.2f)%360f
-                postInvalidateDelayed(40)
-            }
+            val cx = width / 2f; val cy = height / 2f
+            val radius = min(width, height) * 0.47f
+            paint.shader = null; paint.color = Color.rgb(8, 9, 12)
+            canvas.drawCircle(cx, cy, radius, paint)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(65, 59, 46)
+            for (i in 1..13) canvas.drawCircle(cx, cy, radius * (0.42f + i * 0.041f), paint)
+            paint.style = Paint.Style.FILL
+            canvas.save(); canvas.rotate(angle, cx, cy)
+            paint.color = Color.rgb(183, 132, 42); canvas.drawCircle(cx, cy, radius * 0.34f, paint)
+            paint.color = Color.rgb(22, 22, 23); canvas.drawCircle(cx, cy, radius * 0.30f, paint)
+            paint.color = Color.rgb(235, 190, 105); paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create("sans-serif-black", Typeface.BOLD); paint.textSize = dp(19).toFloat()
+            canvas.drawText("AURIX", cx, cy + dp(3), paint)
+            paint.textSize = dp(7).toFloat(); paint.typeface = Typeface.DEFAULT_BOLD
+            canvas.drawText("V50  •  HI-FI", cx, cy + dp(17), paint)
+            paint.color = Color.rgb(235, 190, 105); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
+            canvas.restore()
+            if (player?.isPlaying == true && visibility == View.VISIBLE) { angle = (angle + 1.2f) % 360f; postInvalidateDelayed(30) }
         }
     }
 
