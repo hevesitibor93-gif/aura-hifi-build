@@ -691,11 +691,10 @@ class MainActivity : Activity() {
                 }
                 prepareAsync()
             }
-            trackLabel.text = "Betöltés…"
         } catch (e: Exception) {
             try { player?.release() } catch (_: Exception) {}
             player = null
-            playButton.text = "▶ LEJÁTSZÁS"
+            playButton.text = "▶"
             toast("Nem sikerült megnyitni: " + (e.message ?: "ismeretlen hiba"))
         }
     }
@@ -766,10 +765,14 @@ class MainActivity : Activity() {
         val r = MediaMetadataRetriever()
         try {
             r.setDataSource(this, uri)
-            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: (uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím")
+            val librarySong = librarySongByUri[uri.toString()]
+            trackLabel.text = librarySong?.title?.takeIf { it.isNotBlank() }
+                ?: r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() }
+                ?: uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".")?.takeIf { it.isNotBlank() && !it.all { ch -> ch.isDigit() } }
+                ?: "Ismeretlen cím"
             val cover = r.embeddedPicture
             if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
-            val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
+            val artist = librarySong?.artist?.takeIf { it.isNotBlank() } ?: r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
             metadataLabel.text = artist
             albumLabel.text = album
