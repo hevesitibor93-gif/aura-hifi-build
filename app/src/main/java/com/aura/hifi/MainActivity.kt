@@ -766,7 +766,7 @@ class MainActivity : Activity() {
         val r = MediaMetadataRetriever()
         try {
             r.setDataSource(this, uri)
-            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: (r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISPLAY_TITLE)?.takeIf { it.isNotBlank() } ?: (uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím"))
+            trackLabel.text = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: (uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím")
             val cover = r.embeddedPicture
             if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
             val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
