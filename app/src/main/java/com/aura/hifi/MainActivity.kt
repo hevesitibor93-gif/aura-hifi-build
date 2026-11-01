@@ -760,21 +760,12 @@ class MainActivity : Activity() {
                         val bass = bandEnergy(1, 8)
                         val mid = bandEnergy(9, 40)
                         val treble = bandEnergy(41, 120)
-                        // Három frekvenciasáv külön karakterisztikát kap. Nincs automatikus hangerő-kompenzáció.
-                        // A magas tartomány (cintányér/effektek) finom, a közép (ének/dallam) közepes,
-                        // a mély (dob/basszus) erőteljesebb kitérést ad.
-                        fun response(value: Float, floor: Float, gain: Float): Float {
-                            val x = ((value - floor).coerceAtLeast(0f) * gain).coerceIn(0f, 1f)
-                            return x * x
-                        }
-                        val trebleLevel = response(treble, 0.012f, 5.0f) * 0.48f
-                        val midLevel = response(mid, 0.010f, 5.2f) * 0.78f
-                        val bassLevel = response(bass, 0.008f, 6.0f)
-                        // A legdominánsabb sáv határozza meg a kitérést, a többi csak finoman hozzáad.
-                        val targetLevel = (maxOf(trebleLevel, midLevel, bassLevel) +
-                            minOf(trebleLevel, midLevel, bassLevel) * 0.12f).coerceIn(0f, 1f)
-                        // Gyors felfutás, lassabb lecsengés a zenei tranziensek követésére.
-                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.58f else 0.13f
+                        val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
+                        // Stabil, fix skála: nincs automatikus erősítés, amely a halk részeket felhúzná.
+                        val linearLevel = ((combined - 0.010f).coerceAtLeast(0f) * 3.7f).coerceIn(0f, 1f)
+                        // A köbös görbe megőrzi a különbséget a halk és hangos részek között.
+                        val targetLevel = linearLevel * linearLevel * linearLevel
+                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.48f else 0.16f
                         vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
                         setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
                     }
