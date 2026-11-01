@@ -359,7 +359,7 @@ class MainActivity : Activity() {
         }
         categoryRow.addView(categoryCard("♫", "Összes dal", "Teljes lista") { librarySearch.setText("") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginEnd = dp(5) })
         categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { toast("Az előadók nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
-        categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { toast("Az albumok nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginHorizontal = dp(3) })
+        categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { toast("Az albumok nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { toast("A mappanézet a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
         songsPage.addView(categoryRow)
         val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
