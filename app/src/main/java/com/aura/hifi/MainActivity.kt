@@ -61,6 +61,7 @@ class MainActivity : Activity() {
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
     private var librarySortMode = "Név szerint"
+    private var openLibraryPage: (() -> Unit)? = null
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
     private lateinit var libraryContainer: LinearLayout
     private var currentIndex = 0
@@ -139,7 +140,7 @@ class MainActivity : Activity() {
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
         applyArtworkMode()
         vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
-        trackLabel = label("", 18f, Color.rgb(255, 190, 75)).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1 }
+        trackLabel = label("", 18f, Color.rgb(255, 190, 75)).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
         body.addView(trackLabel)
         metadataLabel = label("", 12f, Color.rgb(80, 165, 255)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
         body.addView(metadataLabel)
@@ -466,6 +467,7 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int) { pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }; navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) } }
+        openLibraryPage = { showPage(1) }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
         root.addView(nav)
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
