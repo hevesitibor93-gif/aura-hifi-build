@@ -244,9 +244,9 @@ class MainActivity : Activity() {
             }
             original.forEachIndexed { i, child ->
                 when (i) {
-                    in 0..11 -> headUnit.addView(child)
-                    in 13..14 -> songsPage.addView(child)
-                    15, 16 -> eqPage.addView(child)
+                    in 0..10 -> headUnit.addView(child)
+                    11, 12 -> songsPage.addView(child)
+                    13, 14 -> eqPage.addView(child)
                     else -> settingsPage.addView(child)
                 }
             }
@@ -326,7 +326,7 @@ class MainActivity : Activity() {
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
-            original.forEachIndexed { i, child -> when (i) { in 0..12 -> playerPage.addView(child); 13, 14 -> songsPage.addView(child); 15, 16 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+            original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); 11, 12 -> songsPage.addView(child); 13, 14 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.addView(button("＋ FÁJLOK KÉZI HOZZÁADÁSA", gold, Color.BLACK) { openAudio() }, LinearLayout.LayoutParams(-1, dp(48)))
         songsPage.addView(sectionTitle("ESZKÖZÖN TALÁLHATÓ ZENÉK"))
