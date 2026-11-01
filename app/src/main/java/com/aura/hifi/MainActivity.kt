@@ -164,13 +164,13 @@ class MainActivity : Activity() {
         val playerPage = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(7, 10, 15), Color.rgb(31, 34, 42), Color.rgb(8, 11, 16))).apply {
-                cornerRadius = dp(24).toFloat()
-                setStroke(dp(2), Color.rgb(67, 73, 83))
+                intArrayOf(Color.rgb(4, 7, 12), Color.rgb(38, 42, 51), Color.rgb(9, 12, 18), Color.rgb(3, 5, 9))).apply {
+                cornerRadius = dp(30).toFloat()
+                setStroke(dp(2), Color.rgb(103, 111, 124))
             }
-            elevation = dp(12).toFloat()
+            elevation = dp(18).toFloat()
         }
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -189,13 +189,21 @@ class MainActivity : Activity() {
         if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(5, 8, 13), Color.rgb(27, 30, 37), Color.rgb(5, 8, 13))).apply {
-                cornerRadius = dp(28).toFloat()
-                setStroke(dp(2), Color.rgb(82, 88, 98))
+                intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
+                cornerRadius = dp(32).toFloat()
+                setStroke(dp(3), Color.rgb(117, 125, 137))
             }
-            playerPage.setPadding(dp(18), dp(12), dp(18), dp(12))
-            val cockpitLeft = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(4), 0, dp(8), 0) }
-            val cockpitRight = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), 0, dp(4), 0) }
+            playerPage.setPadding(dp(12), dp(10), dp(12), dp(10))
+            val cockpitLeft = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                setPadding(dp(5), dp(6), dp(10), dp(6))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(24,28,36), Color.rgb(5,8,13))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(71,80,94)) }
+            }
+            val cockpitRight = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                setPadding(dp(10), dp(6), dp(5), dp(6))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(5,8,13), Color.rgb(24,28,36))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(71,80,94)) }
+            }
             original.forEachIndexed { i, child ->
                 when (i) {
                     in 0..4 -> cockpitLeft.addView(child)
@@ -205,12 +213,25 @@ class MainActivity : Activity() {
                     else -> settingsPage.addView(child)
                 }
             }
-            playerPage.addView(cockpitLeft, LinearLayout.LayoutParams(0, -2, 1.05f))
-            playerPage.addView(cockpitRight, LinearLayout.LayoutParams(0, -2, 1f))
-            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(112)).apply { setMargins(dp(2), 0, dp(2), dp(2)) }
-            artFrame.setPadding(dp(6), dp(6), dp(6), dp(6))
-            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(96); height = dp(96) }
-            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(118); height = dp(118) }
+            // A középső 2 DIN kijelző nagy marad; a két oldalsó panel műszerfal-kezelőket kap.
+            val leftKnobs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
+            leftKnobs.addView(neonRoundButton("◀", 42, false) { playPrevious() })
+            leftKnobs.addView(neonRoundButton("−", 42, false) { player?.let { it.setVolume(0.65f,0.65f) } }, LinearLayout.LayoutParams(dp(42),dp(42)).apply { marginStart=dp(8) })
+            val rightKnobs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
+            rightKnobs.addView(neonRoundButton("＋", 42, false) { player?.let { it.setVolume(1f,1f) } })
+            rightKnobs.addView(neonRoundButton("EQ", 42, false) { toast("Az EQ a HANGSZÍNSZABÁLYZÓ lapon érhető el.") }, LinearLayout.LayoutParams(dp(42),dp(42)).apply { marginStart=dp(8) })
+            cockpitLeft.addView(leftKnobs)
+            cockpitRight.addView(rightKnobs)
+            playerPage.addView(cockpitLeft, LinearLayout.LayoutParams(0, -1, 0.72f))
+            playerPage.addView(cockpitRight, LinearLayout.LayoutParams(0, -1, 0.72f))
+            // A széles középső egység a teljes kijelzőmagasságot kihasználja.
+            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(224)).apply { setMargins(dp(5), dp(4), dp(5), dp(5)) }
+            artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply { cornerRadius=dp(15).toFloat(); setStroke(dp(2), Color.rgb(111,133,157)) }
+            artFrame.setPadding(dp(7), dp(7), dp(7), dp(7))
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(196); height = dp(196) }
+            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(196); height = dp(196) }
+            cockpitLeft.addView(label("◉", 24f, Color.rgb(70,190,255)).apply { gravity=Gravity.CENTER; setPadding(0,dp(8),0,dp(8)) })
+            cockpitRight.addView(label("✧", 24f, Color.rgb(255,174,70)).apply { gravity=Gravity.CENTER; setPadding(0,dp(8),0,dp(8)) })
             trackLabel.textSize = 12f
             trackLabel.setPadding(dp(4), dp(5), dp(4), dp(3))
             metadataLabel.textSize = 9f
