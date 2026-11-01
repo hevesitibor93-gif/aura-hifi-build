@@ -190,59 +190,79 @@ class MainActivity : Activity() {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
-                cornerRadius = dp(32).toFloat()
+                cornerRadius = dp(26).toFloat()
                 setStroke(dp(3), Color.rgb(117, 125, 137))
             }
-            playerPage.setPadding(dp(12), dp(10), dp(12), dp(10))
-            val cockpitLeft = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(5), dp(6), dp(10), dp(6))
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(24,28,36), Color.rgb(5,8,13))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(71,80,94)) }
+            playerPage.setPadding(dp(8), dp(7), dp(8), dp(7))
+            fun makeSidePanel(reverse: Boolean) = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(3), dp(5), dp(3), dp(5))
+                background = GradientDrawable(
+                    if (reverse) GradientDrawable.Orientation.RIGHT_LEFT else GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
+                ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
-            val cockpitRight = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(10), dp(6), dp(5), dp(6))
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(5,8,13), Color.rgb(24,28,36))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(71,80,94)) }
+            val leftPanel = makeSidePanel(false)
+            val rightPanel = makeSidePanel(true)
+            val headUnit = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(10), dp(3), dp(10), dp(3))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
+                    cornerRadius = dp(17).toFloat()
+                    setStroke(dp(2), Color.rgb(104, 126, 149))
+                }
+                elevation = dp(10).toFloat()
             }
             original.forEachIndexed { i, child ->
                 when (i) {
-                    in 0..4 -> cockpitLeft.addView(child)
-                    in 5..11 -> cockpitRight.addView(child)
+                    in 0..11 -> headUnit.addView(child)
                     12, 13 -> songsPage.addView(child)
                     14, 15 -> eqPage.addView(child)
                     else -> settingsPage.addView(child)
                 }
             }
-            // A középső 2 DIN kijelző nagy marad; a két oldalsó panel műszerfal-kezelőket kap.
-            val leftKnobs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
-            leftKnobs.addView(neonRoundButton("◀", 42, false) { playPrevious() })
-            leftKnobs.addView(neonRoundButton("−", 42, false) { player?.let { it.setVolume(0.65f,0.65f) } }, LinearLayout.LayoutParams(dp(42),dp(42)).apply { marginStart=dp(8) })
-            val rightKnobs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
-            rightKnobs.addView(neonRoundButton("＋", 42, false) { player?.let { it.setVolume(1f,1f) } })
-            rightKnobs.addView(neonRoundButton("EQ", 42, false) { toast("Az EQ a HANGSZÍNSZABÁLYZÓ lapon érhető el.") }, LinearLayout.LayoutParams(dp(42),dp(42)).apply { marginStart=dp(8) })
-            cockpitLeft.addView(leftKnobs)
-            cockpitRight.addView(rightKnobs)
-            playerPage.addView(cockpitLeft, LinearLayout.LayoutParams(0, -1, 0.72f))
-            playerPage.addView(cockpitRight, LinearLayout.LayoutParams(0, -1, 0.72f))
-            // A széles középső egység a teljes kijelzőmagasságot kihasználja.
-            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(224)).apply { setMargins(dp(5), dp(4), dp(5), dp(5)) }
-            artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply { cornerRadius=dp(15).toFloat(); setStroke(dp(2), Color.rgb(111,133,157)) }
-            artFrame.setPadding(dp(7), dp(7), dp(7), dp(7))
-            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(196); height = dp(196) }
-            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(196); height = dp(196) }
-            cockpitLeft.addView(label("◉", 24f, Color.rgb(70,190,255)).apply { gravity=Gravity.CENTER; setPadding(0,dp(8),0,dp(8)) })
-            cockpitRight.addView(label("✧", 24f, Color.rgb(255,174,70)).apply { gravity=Gravity.CENTER; setPadding(0,dp(8),0,dp(8)) })
+            leftPanel.addView(label("A", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
+            leftPanel.addView(neonRoundButton("−", 42, false) { player?.setVolume(0.65f, 0.65f) },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
+            leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
+            rightPanel.addView(label("X", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+            rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
+            rightPanel.addView(neonRoundButton("＋", 42, false) { player?.setVolume(1f, 1f) },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
+            rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
+            playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(54), -1))
+            playerPage.addView(headUnit, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(7), 0, dp(7), 0) })
+            playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(54), -1))
+            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(174)).apply { setMargins(dp(4), dp(2), dp(4), dp(3)) }
+            artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(2), Color.rgb(111,133,157))
+            }
+            artFrame.setPadding(dp(5), dp(5), dp(5), dp(5))
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(164); height = dp(164) }
+            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(164); height = dp(164) }
             trackLabel.textSize = 12f
-            trackLabel.setPadding(dp(4), dp(5), dp(4), dp(3))
+            trackLabel.setPadding(dp(3), dp(2), dp(3), 0)
             metadataLabel.textSize = 9f
-            metadataLabel.setPadding(0, 0, 0, dp(2))
-            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(42)).apply { setMargins(dp(4), 0, dp(4), 0) }
-            seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(20))
-            controls.setPadding(0, dp(2), 0, dp(3))
-            controls.setPadding(0, dp(4), 0, dp(4))
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(16) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginEnd = dp(16) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
+            metadataLabel.setPadding(0, 0, 0, 0)
+            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(34)).apply { setMargins(dp(3), 0, dp(3), 0) }
+            seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(18))
+            timeLabel.textSize = 9f
+            technicalLabel.visibility = View.GONE
+            nextTrackLabel.visibility = View.GONE
+            controls.setPadding(0, 0, 0, 0)
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(13) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)).apply { marginEnd = dp(13) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            (headUnit.getChildAt(0) as? View)?.layoutParams = LinearLayout.LayoutParams(-1, dp(27))
+            (headUnit.getChildAt(1) as? View)?.visibility = View.GONE
         } else {
             original.forEachIndexed { i, child -> when (i) { in 0..11 -> playerPage.addView(child); 12, 13 -> songsPage.addView(child); 14, 15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
@@ -580,7 +600,7 @@ class MainActivity : Activity() {
                 setOnPreparedListener { mp ->
                     try {
                         mp.start()
-                        playButton.text = "Ⅱ SZÜNET"
+                        playButton.text = "Ⅱ"
                         vinylView.invalidate()
                         setupEffects(mp.audioSessionId)
                         handler.removeCallbacks(progressTask)
@@ -590,7 +610,7 @@ class MainActivity : Activity() {
                     }
                 }
                 setOnErrorListener { _, what, extra ->
-                    playButton.text = "▶ LEJÁTSZÁS"
+                    playButton.text = "▶"
                     toast("Lejátszási hiba ($what/$extra).")
                     true
                 }
@@ -619,7 +639,7 @@ class MainActivity : Activity() {
     private fun togglePlayback() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
-        try { if (p.isPlaying) { p.pause(); playButton.text = "▶ FOLYTATÁS"; vinylView.invalidate() } else { p.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate() } } catch (_: Exception) {}
+        try { if (p.isPlaying) { p.pause(); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); playButton.text = "Ⅱ SZÜNET"; vinylView.invalidate() } } catch (_: Exception) {}
     }
     private fun setupEffects(session: Int) {
         try {
