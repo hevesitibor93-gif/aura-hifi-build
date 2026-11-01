@@ -58,9 +58,9 @@ class MainActivity : Activity() {
     private var vuAutoGain = 1f
     private var vuSmoothedLevel = 0f
     private val queue = mutableListOf<Uri>()
-    private data class LibrarySong(val uri: Uri, val title: String, val artist: String)
+    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
-    private var libraryDisplayLimit = 100
+    private var librarySortMode = "Név szerint"
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
     private lateinit var libraryContainer: LinearLayout
     private var currentIndex = 0
@@ -337,7 +337,6 @@ class MainActivity : Activity() {
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         songsPage.addView(label("AURIX  •  MUSIC LIBRARY", 11f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.12f; setPadding(dp(4), dp(5), 0, dp(3)) })
-        songsPage.addView(label("Zenei könyvtár", 25f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); setPadding(dp(4), dp(0), 0, dp(10)) })
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
@@ -362,6 +361,21 @@ class MainActivity : Activity() {
         categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { toast("Az albumok nézete a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { toast("A mappanézet a következő könyvtárfrissítés része lesz.") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
         songsPage.addView(categoryRow)
+        val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
+        sortRow.addView(label("Rendezés:", 12f, Color.WHITE), LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
+        val sortSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, listOf("Név szerint", "Előadó szerint", "Legújabb elöl", "Legrégebbi elöl"))
+            setSelection(listOf("Név szerint", "Előadó szerint", "Legújabb elöl", "Legrégebbi elöl").indexOf(librarySortMode).coerceAtLeast(0))
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    librarySortMode = listOf("Név szerint", "Előadó szerint", "Legújabb elöl", "Legrégebbi elöl")[position]
+                    renderLibrary(librarySearch.text.toString())
+                }
+            }
+        }
+        sortRow.addView(sortSpinner, LinearLayout.LayoutParams(0, dp(42), 1f))
+        songsPage.addView(sortRow)
         val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
         recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
         recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
@@ -543,20 +557,20 @@ class MainActivity : Activity() {
         }
         librarySongs.clear()
         librarySongByUri.clear()
-        libraryDisplayLimit = 100
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST)
+        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DATE_ADDED)
         val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
         try {
             contentResolver.query(collection, projection, selection, null, MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
                     val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
                     val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
-                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist)
+                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist, cursor.getLong(dateCol))
                     librarySongs.add(song)
                     librarySongByUri[song.uri.toString()] = song
                 }
@@ -567,13 +581,12 @@ class MainActivity : Activity() {
     private fun renderLibrary(query: String = "") {
         if (!::libraryContainer.isInitialized) return
         libraryContainer.removeAllViews()
-        val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }
-        libraryContainer.addView(label("${filtered.size} ZENESZÁM  •  KÖNYVTÁR", 10f, Color.rgb(194, 174, 255)).apply { setPadding(dp(7), dp(8), dp(7), dp(8)) })
+        val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }.let { songs -> when (librarySortMode) { "Előadó szerint" -> songs.sortedBy { it.artist.lowercase() }; "Legújabb elöl" -> songs.sortedByDescending { it.dateAdded }; "Legrégebbi elöl" -> songs.sortedBy { it.dateAdded }; else -> songs.sortedBy { it.title.lowercase() } } }
         if (filtered.isEmpty()) {
             libraryContainer.addView(label(if (librarySongs.isEmpty()) "Még nincs zene a könyvtárban. Adj hozzá fájlokat vagy frissítsd a listát." else "Nincs találat erre a keresésre.", 12f, Color.rgb(190, 194, 215)).apply { setPadding(dp(8), dp(14), dp(8), dp(14)) })
             return
         }
-        val end = minOf(libraryDisplayLimit, filtered.size)
+        val end = filtered.size
         for (index in 0 until end) {
             val song = filtered[index]
             val item = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(10), dp(8), dp(10)); isClickable = true; isFocusable = true; background = rounded(Color.argb(35, 255, 255, 255), 12) }
@@ -585,7 +598,7 @@ class MainActivity : Activity() {
             item.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
             item.setOnClickListener {
                 queue.clear()
-                queue.addAll(librarySongs.map { it.uri })
+                queue.addAll(filtered.map { it.uri })
                 currentIndex = index
                 startTrack(song.uri)
                 updateNextTrack()
@@ -593,12 +606,6 @@ class MainActivity : Activity() {
             }
             libraryContainer.addView(item)
             if (index < end - 1) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
-        }
-        if (end < librarySongs.size) {
-            libraryContainer.addView(button("TOVÁBBI 100 ZENE BETÖLTÉSE", gold, Color.BLACK) {
-                libraryDisplayLimit = minOf(libraryDisplayLimit + 100, librarySongs.size)
-                renderLibrary()
-            }, LinearLayout.LayoutParams(-1, dp(46)))
         }
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
