@@ -1006,6 +1006,14 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
         else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
+        else if (requestCode == visualizerPermissionRequestCode) {
+            visualizerPermissionRequested = false
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                attachOutputVisualizer(pendingAudioSessionId)
+            } else {
+                toast("A pontos VU-méréshez Android-hanghozzáférés szükséges.")
+            }
+        }
     }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
@@ -1279,18 +1287,6 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             try { outputVisualizer?.release() } catch (_: Exception) {}
             outputVisualizer = null
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == visualizerPermissionRequestCode) {
-            visualizerPermissionRequested = false
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                attachOutputVisualizer(pendingAudioSessionId)
-            } else {
-                toast("A pontos VU-méréshez engedélyezd a mikrofon-hozzáférést.")
-            }
         }
     }
 
