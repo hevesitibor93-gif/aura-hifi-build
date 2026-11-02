@@ -251,7 +251,8 @@ class MainActivity : Activity() {
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
             val leftPanel = makeSidePanel(false)
-            val rightPanel = makeSidePanel(true)            val headUnit = LinearLayout(this).apply {
+            val rightPanel = makeSidePanel(true)
+            val headUnit = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(3), dp(10), dp(3))
@@ -1078,7 +1079,8 @@ class MainActivity : Activity() {
     }
     private fun playPrevious() {
         if (queue.isEmpty()) return
-        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0        startTrack(queue[currentIndex])
+        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0
+        startTrack(queue[currentIndex])
     }
     private fun playNext() {
         if (queue.isEmpty()) return
@@ -1328,7 +1330,8 @@ class MainActivity : Activity() {
     }
 
     private inner class AurixVuView : View(this@MainActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)        private var left = 0f
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var left = 0f
         private var right = 0f
         private var active = false
         private var brightness = 80
