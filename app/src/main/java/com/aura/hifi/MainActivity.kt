@@ -352,7 +352,7 @@ class MainActivity : Activity() {
         fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(83, 48, 151), Color.rgb(24, 61, 133))).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.rgb(133, 116, 230)) }
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.argb(220, 235, 190, 105)) }
                 setPadding(dp(5), dp(12), dp(5), dp(12)); isClickable = true; isFocusable = true
                 addView(label(icon, 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
                 addView(label(title, 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
