@@ -1097,7 +1097,7 @@ class MainActivity : Activity() {
                 if (player?.isPlaying == true) {
                     setVuLevels((left * 2f).coerceIn(0f, 1f), (right * 2f).coerceIn(0f, 1f))
                 }
-            }, 100L)
+            }, 200L)
         }
         try {
             selectedUri = uri
