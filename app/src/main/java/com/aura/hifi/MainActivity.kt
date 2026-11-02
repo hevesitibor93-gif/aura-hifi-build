@@ -364,6 +364,13 @@ class MainActivity : Activity() {
         categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { showLibraryGroups("Előadók") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { showLibraryGroups("Albumok") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { showLibraryGroups("Mappák") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
+        val extraCategoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
+        extraCategoryRow.addView(categoryCard("▤", "Lejátszási listák", "Saját listák") { showPlaylists() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { marginEnd = dp(5) })
+        extraCategoryRow.addView(categoryCard("◷", "Legutóbb hozzáadott", "100 új dal") { showRecentAdded() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+        extraCategoryRow.addView(categoryCard("♫", "Nemrég játszott", "Előzmények") { showRecentlyPlayed() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { marginStart = dp(5) })
+        val categoryGroup = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        categoryGroup.addView(categoryRow)
+        categoryGroup.addView(extraCategoryRow)
         val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
         sortRow.addView(label("Rendezés:", 12f, Color.WHITE), LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
         val sortSpinner = Spinner(this).apply {
@@ -384,7 +391,7 @@ class MainActivity : Activity() {
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }; setPadding(dp(9), dp(6), dp(9), dp(6)) }
         libraryContainer.visibility = View.GONE
         songsPage.addView(libraryContainer)
-        songsPage.addView(categoryRow)
+        songsPage.addView(categoryGroup)
         librarySearch.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { if (libraryMode == "all") renderLibrary(s?.toString().orEmpty()) }
