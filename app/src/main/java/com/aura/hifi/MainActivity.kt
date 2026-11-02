@@ -187,14 +187,13 @@ class MainActivity : Activity() {
         controls.addView(playButton, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginEnd = dp(22) })
         controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(controls)
-        body.addView(sectionTitle("LEJÁTSZÁSI SOR  •  ${queue.size} ZENESZÁM"))
+        // A lejátszási sor listája nem jelenik meg külön a főképernyőn.
+        // A sor a háttérben megmarad a következő/előző szám funkcióhoz;
+        // a dalok listája kizárólag a Zenetár kategóriájában látható.
         queueContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(panel, 16)
-            setPadding(dp(10), dp(6), dp(10), dp(6))
+            visibility = View.GONE
         }
-        body.addView(queueContainer)
-        renderQueue()
         body.addView(sectionTitle("HANGSZÍNSZABÁLYZÓ"))
         eqContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
         body.addView(eqContainer)
