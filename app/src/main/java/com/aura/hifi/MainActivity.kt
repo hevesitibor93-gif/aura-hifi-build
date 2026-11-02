@@ -67,6 +67,7 @@ class MainActivity : Activity() {
     private var groupVisibleLimit = 80
     private var currentGroupType = ""
     private var libraryMode = "home"
+    private var activePageIndex = 0
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
@@ -401,8 +402,9 @@ class MainActivity : Activity() {
         recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }; setPadding(dp(9), dp(6), dp(9), dp(6)) }
         libraryContainer.visibility = View.GONE
-        songsPage.addView(libraryContainer)
+        // A kategóriakártyák mindig a lista előtt legyenek a nézetfa sorrendjében.
         songsPage.addView(categoryGroup)
+        songsPage.addView(libraryContainer)
         librarySearch.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { if (libraryMode == "all") renderLibrary(s?.toString().orEmpty()) }
@@ -486,11 +488,12 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int) {
+            activePageIndex = index
+            pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }
             if (index == 1) {
                 showLibraryHome()
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
-            pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }
             navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
         openLibraryPage = { showPage(1) }
@@ -636,7 +639,10 @@ class MainActivity : Activity() {
                 librarySongByUri.clear()
                 librarySongByUri.putAll(loadedSongByUri)
                 if (loadFailed) toast("A zenetár beolvasása nem sikerült.")
-                if (libraryMode == "all") renderLibrary() else showLibraryHome()
+                // Háttérben befejeződő betöltés ne írja felül a másik oldal állapotát.
+                if (activePageIndex == 1) {
+                    if (libraryMode == "all") renderLibrary() else showLibraryHome()
+                }
             }
         }
     }
