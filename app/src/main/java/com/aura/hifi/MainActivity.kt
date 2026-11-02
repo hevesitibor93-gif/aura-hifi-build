@@ -1268,11 +1268,11 @@ class MainActivity : Activity() {
                     if (waveform.isEmpty()) return
                     var squares = 0.0
                     for (sample in waveform) {
-                        val normalized = sample.toInt() / 128.0
+                        val normalized = ((sample.toInt() and 0xFF) - 128) / 128.0
                         squares += normalized * normalized
                     }
                     val rms = kotlin.math.sqrt(squares / waveform.size).toFloat()
-                    val level = (rms * 2.5f).coerceIn(0f, 1f)
+                    val level = (rms * 3.0f).coerceIn(0f, 1f)
                     handler.post {
                         if (outputVisualizer === visualizer && player?.isPlaying == true) {
                             // A kimeneti mérő a ténylegesen lejátszott hangot figyeli.
