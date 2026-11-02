@@ -1091,11 +1091,13 @@ class MainActivity : Activity() {
         renderQueue()
         releaseAudio()
         eqProcessor.onLevel = { left, right ->
-            handler.post {
+            // A PCM feldolgozó előre megkapja a hangmintákat az AudioTrack pufferéhez.
+            // A rövid késleltetés a VU-kijelzést a tényleges hallható hanghoz igazítja.
+            handler.postDelayed({
                 if (player?.isPlaying == true) {
                     setVuLevels((left * 2f).coerceIn(0f, 1f), (right * 2f).coerceIn(0f, 1f))
                 }
-            }
+            }, 100L)
         }
         try {
             selectedUri = uri
