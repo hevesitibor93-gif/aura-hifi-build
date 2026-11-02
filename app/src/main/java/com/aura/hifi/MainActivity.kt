@@ -261,8 +261,7 @@ class MainActivity : Activity() {
             original.forEachIndexed { i, child ->
                 when (i) {
                     in 0..10 -> headUnit.addView(child)
-                    11, 12 -> songsPage.addView(child)
-                    13, 14 -> eqPage.addView(child)
+                    in 11..15 -> eqPage.addView(child)
                     else -> settingsPage.addView(child)
                 }
             }
@@ -342,7 +341,7 @@ class MainActivity : Activity() {
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
-            original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); 11, 12 -> songsPage.addView(child); 13, 14 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+            original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         songsPage.addView(label("AURIX  •  MUSIC LIBRARY", 11f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.12f; setPadding(dp(4), dp(5), 0, dp(3)) })
@@ -447,8 +446,7 @@ class MainActivity : Activity() {
         }
         simpleModeButton.setOnClickListener {
             setVuStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
-            refreshVuStyleButtons("simple")
-        }
+            refreshVuStyleButtons("simple")        }
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         settingsPage.addView(vuStyleRow)
@@ -897,8 +895,7 @@ class MainActivity : Activity() {
     private fun renderQueue() {
         if (!::queueContainer.isInitialized) return
         queueContainer.removeAllViews()
-        queueContainer.addView(label("ÖSSZESEN: ${queue.size} ZENESZÁM  •  ${if (queue.isEmpty()) 0 else currentIndex + 1} / ${queue.size}", 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })
-        if (queue.isEmpty()) {
+        queueContainer.addView(label("ÖSSZESEN: ${queue.size} ZENESZÁM  •  ${if (queue.isEmpty()) 0 else currentIndex + 1} / ${queue.size}", 10f, gold).apply { setPadding(dp(6), dp(7), dp(6), dp(7)) })        if (queue.isEmpty()) {
             queueContainer.addView(label("Még nincs zeneszám a listában.", 11f, Color.GRAY).apply { setPadding(dp(6), dp(10), dp(6), dp(10)) })
             return
         }
