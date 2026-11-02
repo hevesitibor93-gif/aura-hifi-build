@@ -500,6 +500,7 @@ class MainActivity : Activity() {
         }
         openLibraryPage = {
             showPage(1, false)
+            currentTrackRow = null
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
