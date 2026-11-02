@@ -36,6 +36,7 @@ import android.graphics.drawable.GradientDrawable
 import kotlin.math.max
 import kotlin.math.min
 
+@androidx.media3.common.util.UnstableApi
 class MainActivity : Activity() {
     private var player: ExoPlayer? = null
     private val eqProcessor = AurixEqualizerAudioProcessor()
