@@ -65,6 +65,7 @@ class MainActivity : Activity() {
     private var openLibraryPage: (() -> Unit)? = null
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
     private lateinit var libraryContainer: LinearLayout
+    private lateinit var libraryCategoryRow: LinearLayout
     private var currentIndex = 0
     private lateinit var nextTrackLabel: TextView
     private lateinit var queueContainer: LinearLayout
@@ -347,6 +348,7 @@ class MainActivity : Activity() {
         }
         songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(14) })
         val categoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        libraryCategoryRow = categoryRow
         fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
@@ -362,7 +364,6 @@ class MainActivity : Activity() {
         categoryRow.addView(categoryCard("♫", "Előadók", "Zenék szerint") { showLibraryGroups("Előadók") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▣", "Albumok", "Borítók") { showLibraryGroups("Albumok") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         categoryRow.addView(categoryCard("▤", "Mappák", "Eszközön") { showLibraryGroups("Mappák") }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginStart = dp(5) })
-        songsPage.addView(categoryRow)
         val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
         sortRow.addView(label("Rendezés:", 12f, Color.WHITE), LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
         val sortSpinner = Spinner(this).apply {
@@ -381,7 +382,9 @@ class MainActivity : Activity() {
         recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
         recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }; setPadding(dp(9), dp(6), dp(9), dp(6)) }
+        libraryContainer.visibility = View.GONE
         songsPage.addView(libraryContainer)
+        songsPage.addView(categoryRow)
         librarySearch.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { if (libraryMode == "all") renderLibrary(s?.toString().orEmpty()) }
@@ -587,6 +590,8 @@ class MainActivity : Activity() {
     private fun showLibraryHome() {
         libraryMode = "home"
         if (!::libraryContainer.isInitialized) return
+        libraryCategoryRow.visibility = View.VISIBLE
+        libraryContainer.visibility = View.GONE
         libraryContainer.removeAllViews()
         libraryContainer.addView(label("Válassz egy kategóriát a fenti kártyák közül.", 12f, Color.rgb(190, 194, 215)).apply { setPadding(dp(8), dp(14), dp(8), dp(14)) })
     }
@@ -595,6 +600,8 @@ class MainActivity : Activity() {
         if (!::libraryContainer.isInitialized) return
         if (type == "Mappák") { showFolderRoot(); return }
         libraryMode = type
+        libraryCategoryRow.visibility = View.GONE
+        libraryContainer.visibility = View.VISIBLE
         libraryContainer.removeAllViews()
         val key: (LibrarySong) -> String = when (type) {
             "Előadók" -> { song -> song.artist.ifBlank { "Ismeretlen előadó" } }
@@ -631,6 +638,8 @@ class MainActivity : Activity() {
 
     private fun showFolderRoot() {
         libraryMode = "Mappák"
+        libraryCategoryRow.visibility = View.GONE
+        libraryContainer.visibility = View.VISIBLE
         libraryContainer.removeAllViews()
         libraryContainer.addView(label("‹  Vissza a könyvtárhoz", 13f, Color.rgb(220,195,255)).apply { setPadding(dp(8), dp(12), dp(8), dp(14)); setOnClickListener { showLibraryHome() } })
         val root = android.os.Environment.getExternalStorageDirectory().absolutePath
@@ -663,6 +672,8 @@ class MainActivity : Activity() {
     private fun renderLibrary(query: String = "") {
         if (!::libraryContainer.isInitialized) return
         libraryMode = "all"
+        libraryCategoryRow.visibility = View.GONE
+        libraryContainer.visibility = View.VISIBLE
         libraryContainer.removeAllViews()
         libraryContainer.addView(label("‹  Vissza a könyvtárhoz", 13f, Color.rgb(220,195,255)).apply { setPadding(dp(8), dp(12), dp(8), dp(10)); setOnClickListener { showLibraryHome() } })
         val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }.let { songs -> when (librarySortMode) { "Előadó szerint" -> songs.sortedBy { it.artist.lowercase() }; "Legújabb elöl" -> songs.sortedByDescending { it.dateAdded }; "Legrégebbi elöl" -> songs.sortedBy { it.dateAdded }; else -> songs.sortedBy { it.title.lowercase() } } }
