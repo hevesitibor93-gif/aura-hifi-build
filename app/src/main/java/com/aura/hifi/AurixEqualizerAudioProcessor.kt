@@ -19,6 +19,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var trebleDb = 0f
     @Volatile private var preampDb = 0f
     @Volatile private var coeffs = Array(12) { Coeff() }
+    @Volatile var onLevel: ((Float, Float) -> Unit)? = null
     private var channels = 2
     private var rate = 44100
     private var x1 = Array(12) { FloatArray(2) }; private var x2 = Array(12) { FloatArray(2) }
@@ -55,6 +56,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val n=inputBuffer.remaining(); if(n<=0)return
         val out=replaceOutputBuffer(n).order(ByteOrder.LITTLE_ENDIAN); val input=inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val cfs=coeffs; val pre=10.0.pow(preampDb/20.0).toFloat()
+        val peaks = FloatArray(2)
         while(input.remaining()>=2*channels) for(ch in 0 until channels) {
             var sample=input.short/32768f*pre
             for(b in 0 until 12) {
@@ -62,8 +64,12 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                 val y=c.b0*sample+c.b1*x1[b][ch]+c.b2*x2[b][ch]-c.a1*y1[b][ch]-c.a2*y2[b][ch]
                 x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
             }
-            out.putShort((sample.coerceIn(-1f,0.9999695f)*32768f).toInt().toShort())
+            val outputSample = sample.coerceIn(-1f,0.9999695f)
+            peaks[if (ch == 0) 0 else 1] = maxOf(peaks[if (ch == 0) 0 else 1], kotlin.math.abs(outputSample))
+            out.putShort((outputSample*32768f).toInt().toShort())
         }
         input.position(input.limit()); out.flip()
+        val rightPeak = if (channels > 1) peaks[1] else peaks[0]
+        onLevel?.invoke(peaks[0], rightPeak)
     }
 }
