@@ -354,7 +354,6 @@ class MainActivity : Activity() {
         }
         songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(14) })
         val categoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        libraryCategoryRow = categoryRow
         fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
@@ -375,6 +374,7 @@ class MainActivity : Activity() {
         extraCategoryRow.addView(categoryCard("◷", "Legutóbb hozzáadott", "100 új dal") { showRecentAdded() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         extraCategoryRow.addView(categoryCard("♫", "Nemrég játszott", "Előzmények") { showRecentlyPlayed() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { marginStart = dp(5) })
         val categoryGroup = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        libraryCategoryRow = categoryGroup
         categoryGroup.addView(categoryRow)
         categoryGroup.addView(extraCategoryRow)
         val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
@@ -480,7 +480,11 @@ class MainActivity : Activity() {
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
-        fun showPage(index: Int) { pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }; navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) } }
+        fun showPage(index: Int) {
+            if (index == 1) showLibraryHome()
+            pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }
+            navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
+        }
         openLibraryPage = { showPage(1) }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
         root.addView(nav)
