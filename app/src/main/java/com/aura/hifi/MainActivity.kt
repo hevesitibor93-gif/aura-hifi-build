@@ -1200,7 +1200,7 @@ class MainActivity : Activity() {
         addSlider(eqContainer,"Magas hangok kiemelése",0,120,treble){v->eqProcessor.setTrebleBoostDb(v/10f);prefs.edit().putInt("eq_treble",v).apply()}
         val preamp=prefs.getInt("eq_preamp",0).coerceIn(-6,6);eqProcessor.setPreampDb(preamp.toFloat())
         addSlider(eqContainer,"Előerősítés (−6…+6 dB)",0,12,preamp+6){v->val db=v-6;eqProcessor.setPreampDb(db.toFloat());prefs.edit().putInt("eq_preamp",db).apply()}
-        addSlider(eqContainer,"Lejátszó hangerő",50,150,100){v->player?.volume=(v/100f).coerceIn(0f,1f)}
+        addSlider(eqContainer,"Lejátszó hangerő",0,100,100){v->player?.volume=(v/100f).coerceIn(0f,1f)}
         eqContainer.addView(label("Csak az AURA zenéjét módosítja. Erős kiemelésnél a digitális csúcsok korlátozva vannak.",10f,Color.GRAY).apply{setPadding(0,dp(8),0,0)})
     }
     private fun addSlider(parent: LinearLayout, title: String, minV: Int, maxV: Int, initial: Int, onValue: (Int) -> Unit) {
