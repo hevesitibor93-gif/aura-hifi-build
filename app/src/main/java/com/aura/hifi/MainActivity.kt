@@ -594,6 +594,66 @@ class MainActivity : Activity() {
         if (libraryMode == "all") renderLibrary() else showLibraryHome()
     }
 
+    private val recentlyPlayed = mutableListOf<String>()
+
+    private fun addLibraryBackButton() {
+        libraryContainer.addView(label("‹  Vissza a zenetárhoz", 13f, Color.rgb(235, 205, 145)).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryHome() } })
+    }
+
+    private fun renderSongRows(songs: List<LibrarySong>) {
+        songs.forEachIndexed { index, song ->
+            libraryContainer.addView(label("♫  " + song.title + " — " + song.artist, 12f, Color.WHITE).apply {
+                setPadding(dp(9), dp(11), dp(8), dp(11))
+                setOnClickListener { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index; startTrack(song.uri); updateNextTrack() }
+            })
+        }
+        if (songs.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
+    }
+
+    private fun showRecentAdded() {
+        libraryMode = "recent_added"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
+        libraryContainer.addView(label("LEGUTÓBB HOZZÁADOTT • 100 DAL", 11f, Color.WHITE))
+        renderSongRows(librarySongs.sortedByDescending { it.dateAdded }.take(100))
+    }
+
+    private fun showRecentlyPlayed() {
+        libraryMode = "recent_played"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
+        libraryContainer.addView(label("NEMRÉG JÁTSZOTT", 11f, Color.WHITE))
+        renderSongRows(recentlyPlayed.mapNotNull { librarySongByUri[it] }.distinctBy { it.uri.toString() }.take(100))
+    }
+
+    private fun showPlaylists() {
+        libraryMode = "playlists"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
+        libraryContainer.addView(label("LEJÁTSZÁSI LISTÁK", 11f, Color.WHITE))
+        val prefs = getSharedPreferences("aurix_library", MODE_PRIVATE)
+        val names = prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()
+        names.sorted().forEach { name ->
+            libraryContainer.addView(label("♫  " + name + "  ›", 13f, Color.WHITE).apply { setPadding(dp(9), dp(13), dp(8), dp(13)); setOnClickListener {
+                val arr = org.json.JSONArray(prefs.getString("playlist_" + name, "[]") ?: "[]")
+                val songs = (0 until arr.length()).mapNotNull { librarySongByUri[arr.optString(it)] }
+                if (songs.isNotEmpty()) { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = 0; startTrack(queue[0]); updateNextTrack() }
+            } })
+        }
+        libraryContainer.addView(button("＋ Aktuális sor mentése listaként", Color.rgb(91, 67, 157), Color.WHITE) {
+            if (queue.isEmpty()) { toast("Előbb válassz zenéket."); return@button }
+            val edit = EditText(this).apply { hint = "Lejátszási lista neve" }
+            android.app.AlertDialog.Builder(this).setTitle("Új lejátszási lista").setView(edit).setNegativeButton("Mégse", null).setPositiveButton("Mentés") { _, _ ->
+                val name = edit.text.toString().trim()
+                if (name.isNotEmpty()) { val arr = org.json.JSONArray(); queue.forEach { arr.put(it.toString()) }; val set = (prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()).toMutableSet(); set.add(name); prefs.edit().putStringSet("playlist_names", set).putString("playlist_" + name, arr.toString()).apply(); showPlaylists() }
+            }.show()
+        })
+        if (names.isEmpty()) libraryContainer.addView(label("Még nincs mentett lejátszási listád.", 12f, Color.LTGRAY))
+    }
+
+    private fun showSearchResults(query: String) {
+        libraryMode = "search"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
+        val songs = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) || it.album.contains(query, true) || it.folder.contains(query, true) }
+        libraryContainer.addView(label("DALOK • " + songs.size, 11f, Color.rgb(235, 205, 145))); renderSongRows(songs)
+        val folders = librarySongs.map { it.folder }.distinct().filter { it.contains(query, true) }.take(30)
+        libraryContainer.addView(label("MAPPÁK • " + folders.size, 11f, Color.rgb(235, 205, 145)))
+        folders.forEach { path -> libraryContainer.addView(label("📁  " + java.io.File(path).name + "  ›", 12f, Color.WHITE).apply { setPadding(dp(9), dp(10), dp(8), dp(10)); setOnClickListener { showFolderBrowser(path) } }) }
+    }
+
     private fun showLibraryHome() {
         libraryMode = "home"
         if (!::libraryContainer.isInitialized) return
