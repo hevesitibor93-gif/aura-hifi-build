@@ -60,6 +60,10 @@ class MainActivity : Activity() {
     private val queue = mutableListOf<Uri>()
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
+    private val libraryExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var libraryLoadGeneration = 0
+    private var libraryVisibleLimit = 80
+    private var lastLibraryQuery = ""
     private var libraryMode = "home"
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
@@ -565,33 +569,62 @@ class MainActivity : Activity() {
             libraryContainer.addView(label("A zenetár megjelenítéséhez engedélyezd a zene- és hangfájlok hozzáférését.", 12f, Color.WHITE).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
             return
         }
-        librarySongs.clear()
-        librarySongByUri.clear()
-        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DATE_ADDED, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DATA)
-        val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
-        try {
-            contentResolver.query(collection, projection, selection, null, MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
-                val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
-                val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
-                while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
-                    val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
-                    val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Ismeretlen album" else "Ismeretlen album"
-                    val fullPath = if (pathCol >= 0) cursor.getString(pathCol) else null
-                    val folder = fullPath?.let { java.io.File(it).parentFile?.absolutePath }?.takeIf { it.isNotBlank() } ?: "Ismeretlen mappa"
-                    val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id), title, artist, album, folder, cursor.getLong(dateCol))
-                    librarySongs.add(song)
-                    librarySongByUri[song.uri.toString()] = song
+        // A MediaStore-lekérdezés háttérszálon fut, így nem fagyasztja meg a kezelőfelületet.
+        val generation = ++libraryLoadGeneration
+        libraryContainer.removeAllViews()
+        libraryContainer.addView(label("♫  Zenetár betöltése…", 12f, Color.WHITE).apply {
+            setPadding(dp(8), dp(14), dp(8), dp(14))
+        })
+        libraryExecutor.execute {
+            val loadedSongs = mutableListOf<LibrarySong>()
+            val loadedSongByUri = mutableMapOf<String, LibrarySong>()
+            var loadFailed = false
+            val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            val projection = arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.DATE_ADDED,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DATA
+            )
+            val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
+            try {
+                contentResolver.query(collection, projection, selection, null,
+                    MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                    val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                    val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                    val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+                    val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                    val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idCol)
+                        val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
+                        val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
+                        val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Ismeretlen album" else "Ismeretlen album"
+                        val fullPath = if (pathCol >= 0) cursor.getString(pathCol) else null
+                        val folder = fullPath?.let { java.io.File(it).parentFile?.absolutePath }
+                            ?.takeIf { it.isNotBlank() } ?: "Ismeretlen mappa"
+                        val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id),
+                            title, artist, album, folder, cursor.getLong(dateCol))
+                        loadedSongs.add(song)
+                        loadedSongByUri[song.uri.toString()] = song
+                    }
                 }
+            } catch (_: Exception) {
+                loadFailed = true
             }
-        } catch (_: Exception) { toast("A zenetár beolvasása nem sikerült.") }
-        if (libraryMode == "all") renderLibrary() else showLibraryHome()
+            runOnUiThread {
+                if (generation != libraryLoadGeneration || isFinishing || isDestroyed) return@runOnUiThread
+                librarySongs.clear()
+                librarySongs.addAll(loadedSongs)
+                librarySongByUri.clear()
+                librarySongByUri.putAll(loadedSongByUri)
+                if (loadFailed) toast("A zenetár beolvasása nem sikerült.")
+                if (libraryMode == "all") renderLibrary() else showLibraryHome()
+            }
+        }
     }
 
     private val recentlyPlayed = mutableListOf<String>()
@@ -743,12 +776,16 @@ class MainActivity : Activity() {
         libraryContainer.visibility = View.VISIBLE
         libraryContainer.removeAllViews()
         libraryContainer.addView(label("‹  Vissza a könyvtárhoz", 13f, Color.rgb(220,195,255)).apply { setPadding(dp(8), dp(12), dp(8), dp(10)); setOnClickListener { showLibraryHome() } })
+        if (query != lastLibraryQuery) {
+            lastLibraryQuery = query
+            libraryVisibleLimit = 80
+        }
         val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }.let { songs -> when (librarySortMode) { "Előadó szerint" -> songs.sortedBy { it.artist.lowercase() }; "Legújabb elöl" -> songs.sortedByDescending { it.dateAdded }; "Legrégebbi elöl" -> songs.sortedBy { it.dateAdded }; else -> songs.sortedBy { it.title.lowercase() } } }
         if (filtered.isEmpty()) {
             libraryContainer.addView(label(if (librarySongs.isEmpty()) "Még nincs zene a könyvtárban. Adj hozzá fájlokat vagy frissítsd a listát." else "Nincs találat erre a keresésre.", 12f, Color.rgb(190, 194, 215)).apply { setPadding(dp(8), dp(14), dp(8), dp(14)) })
             return
         }
-        val end = filtered.size
+        val end = minOf(filtered.size, libraryVisibleLimit)
         for (index in 0 until end) {
             val song = filtered[index]
             val item = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(10), dp(8), dp(10)); isClickable = true; isFocusable = true; background = rounded(Color.argb(35, 255, 255, 255), 12) }
@@ -768,6 +805,13 @@ class MainActivity : Activity() {
             }
             libraryContainer.addView(item)
             if (index < end - 1) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
+        }
+        if (filtered.size > end) {
+            val remaining = filtered.size - end
+            libraryContainer.addView(button("TOVÁBBI ${minOf(80, remaining)} DAL BETÖLTÉSE  •  MÉG $remaining", Color.rgb(73, 54, 135), Color.WHITE) {
+                libraryVisibleLimit += 80
+                renderLibrary(query)
+            }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         }
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -1064,7 +1108,7 @@ class MainActivity : Activity() {
         try { player?.release() } catch (_: Exception) {}; player = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-    override fun onDestroy() { releaseAudio(); super.onDestroy() }
+    override fun onDestroy() { releaseAudio(); libraryExecutor.shutdownNow(); super.onDestroy() }
 
     private inner class VinylView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
