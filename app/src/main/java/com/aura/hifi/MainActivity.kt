@@ -497,8 +497,7 @@ class MainActivity : Activity() {
         }
         openLibraryPage = { showPage(1) }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
-        root.addView(nav)
-        pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        root.addView(nav)        pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         showPage(0)
         setContentView(root)
     }
@@ -997,8 +996,7 @@ class MainActivity : Activity() {
     }
     private fun playPrevious() {
         if (queue.isEmpty()) return
-        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0
-        startTrack(queue[currentIndex])
+        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0        startTrack(queue[currentIndex])
     }
     private fun playNext() {
         if (queue.isEmpty()) return
@@ -1187,7 +1185,9 @@ class MainActivity : Activity() {
             val duration = p.duration; val position = p.currentPosition
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
             vinylView.invalidate()
-            timeLabel.text = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
+            val timeText = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
+            val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
+            timeLabel.text = "$timeText   •   $trackCount"
         } catch (_: Exception) {}
     }
 
