@@ -11,6 +11,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /** App-local 12-band PCM EQ. It does not create Android global audio effects. */
+@androidx.media3.common.util.UnstableApi
 class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     private val frequencies = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 12000f, 14000f, 16000f)
     @Volatile private var gains = FloatArray(12)
