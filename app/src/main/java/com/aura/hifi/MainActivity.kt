@@ -71,6 +71,7 @@ class MainActivity : Activity() {
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
+    private val selectedFolderPaths = linkedSetOf<String>()
     private lateinit var libraryContainer: LinearLayout
     private lateinit var libraryCategoryRow: LinearLayout
     private var currentIndex = 0
@@ -766,35 +767,103 @@ class MainActivity : Activity() {
     }
 
     private fun showFolderRoot() {
+        val root = android.os.Environment.getExternalStorageDirectory().absolutePath
+        renderFolderBrowser(root, true)
+    }
+
+    private fun showFolderBrowser(path: String) {
+        renderFolderBrowser(path, false)
+    }
+
+    private fun renderFolderBrowser(path: String, isRoot: Boolean) {
         libraryMode = "Mappák"
         libraryCategoryRow.visibility = View.GONE
         libraryContainer.visibility = View.VISIBLE
         libraryContainer.removeAllViews()
-        libraryContainer.addView(label("‹  Vissza a könyvtárhoz", 13f, Color.rgb(220,195,255)).apply { setPadding(dp(8), dp(12), dp(8), dp(14)); setOnClickListener { showLibraryHome() } })
         val root = android.os.Environment.getExternalStorageDirectory().absolutePath
-        val names = librarySongs.map { it.folder }.filter { it.startsWith(root + java.io.File.separator) }.map { it.removePrefix(root + java.io.File.separator).substringBefore(java.io.File.separator) }.filter { it.isNotBlank() }.distinct().sortedBy { it.lowercase() }
-        names.forEach { name ->
-            val path = java.io.File(root, name).absolutePath
-            val count = librarySongs.count { it.folder == path || it.folder.startsWith(path + java.io.File.separator) }
-            libraryContainer.addView(label("📁  " + name + "   •   " + count + " dal  ›", 13f, Color.WHITE).apply { setPadding(dp(10), dp(13), dp(8), dp(13)); setOnClickListener { showFolderBrowser(path) } })
-        }
-        if (names.isEmpty()) libraryContainer.addView(label("Nem található mappa.", 12f, Color.WHITE))
-    }
+        libraryContainer.addView(label("‹  Vissza", 13f, Color.rgb(220,195,255)).apply {
+            setPadding(dp(8), dp(12), dp(8), dp(10))
+            setOnClickListener {
+                if (isRoot) showLibraryHome()
+                else {
+                    val parent = java.io.File(path).parentFile?.absolutePath
+                    if (parent != null && parent.startsWith(root) && parent != root) showFolderBrowser(parent)
+                    else showFolderRoot()
+                }
+            }
+        })
+        libraryContainer.addView(label(if (isRoot) "MAPPÁK" else path, 10f, Color.rgb(190,195,220)).apply {
+            setPadding(dp(8), dp(3), dp(8), dp(10))
+        })
 
-    private fun showFolderBrowser(path: String) {
-        libraryMode = "Mappák"
-        libraryContainer.removeAllViews()
-        libraryContainer.addView(label("‹  Vissza", 13f, Color.rgb(220,195,255)).apply { setPadding(dp(8), dp(12), dp(8), dp(10)); setOnClickListener { val parent = java.io.File(path).parentFile?.absolutePath; val root = android.os.Environment.getExternalStorageDirectory().absolutePath; if (parent != null && parent.startsWith(root) && parent != root) showFolderBrowser(parent) else showFolderRoot() } })
-        libraryContainer.addView(label(path, 10f, Color.rgb(190,195,220)).apply { setPadding(dp(8), dp(3), dp(8), dp(10)) })
+        if (selectedFolderPaths.isNotEmpty()) {
+            libraryContainer.addView(button("▶  KIJELÖLT MAPPÁK LEJÁTSZÁSA  •  ${selectedFolderPaths.size}", Color.rgb(91,67,157), Color.WHITE) {
+                val chosen = librarySongs.filter { song ->
+                    selectedFolderPaths.any { folder ->
+                        song.folder == folder || song.folder.startsWith(folder.trimEnd(java.io.File.separatorChar) + java.io.File.separator)
+                    }
+                }.distinctBy { it.uri.toString() }.sortedWith(compareBy<LibrarySong> { it.folder.lowercase() }.thenBy { it.title.lowercase() })
+                if (chosen.isEmpty()) {
+                    toast("A kijelölt mappákban nincs lejátszható zene.")
+                } else {
+                    queue.clear()
+                    queue.addAll(chosen.map { it.uri })
+                    currentIndex = 0
+                    selectedFolderPaths.clear()
+                    startTrack(queue[0])
+                    updateNextTrack()
+                    toast("${queue.size} dal indul a kijelölt mappákból.")
+                    renderFolderBrowser(path, isRoot)
+                }
+            }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(8) })
+            libraryContainer.addView(label("Hosszan nyomd meg a további mappákat a kijelöléshez. Koppintással is hozzáadhatsz, ha már van kijelölés.", 10f, Color.rgb(190,195,220)).apply {
+                setPadding(dp(8), dp(4), dp(8), dp(8))
+            })
+            libraryContainer.addView(label("Kijelölés törlése", 11f, gold).apply {
+                setPadding(dp(8), dp(7), dp(8), dp(7))
+                setOnClickListener { selectedFolderPaths.clear(); renderFolderBrowser(path, isRoot) }
+            })
+        }
+
         val prefix = path.trimEnd(java.io.File.separatorChar) + java.io.File.separator
-        val children = librarySongs.map { it.folder }.filter { it.startsWith(prefix) }.map { it.removePrefix(prefix).substringBefore(java.io.File.separator) }.filter { it.isNotBlank() }.distinct().sortedBy { it.lowercase() }
+        val children = librarySongs.map { it.folder }
+            .filter { it.startsWith(prefix) }
+            .map { it.removePrefix(prefix).substringBefore(java.io.File.separator) }
+            .filter { it.isNotBlank() }.distinct().sortedBy { it.lowercase() }
+
         children.forEach { name ->
             val child = java.io.File(path, name).absolutePath
             val count = librarySongs.count { it.folder == child || it.folder.startsWith(child + java.io.File.separator) }
-            libraryContainer.addView(label("📁  " + name + "   •   " + count + " dal  ›", 13f, Color.WHITE).apply { setPadding(dp(10), dp(12), dp(8), dp(12)); setOnClickListener { showFolderBrowser(child) } })
+            val selected = selectedFolderPaths.contains(child)
+            libraryContainer.addView(label((if (selected) "☑  " else "📁  ") + name + "   •   " + count + " dal  ›", 13f, if (selected) gold else Color.WHITE).apply {
+                setPadding(dp(10), dp(13), dp(8), dp(13))
+                setOnClickListener {
+                    if (selectedFolderPaths.isNotEmpty()) {
+                        if (selected) selectedFolderPaths.remove(child) else selectedFolderPaths.add(child)
+                        renderFolderBrowser(path, isRoot)
+                    } else showFolderBrowser(child)
+                }
+                setOnLongClickListener {
+                    if (selected) selectedFolderPaths.remove(child) else selectedFolderPaths.add(child)
+                    renderFolderBrowser(path, isRoot)
+                    true
+                }
+            })
         }
+
         val songs = librarySongs.filter { it.folder == path }.sortedBy { it.title.lowercase() }
-        songs.forEachIndexed { index, song -> libraryContainer.addView(label("♫  " + song.title + "  —  " + song.artist, 12f, Color.WHITE).apply { setPadding(dp(9), dp(11), dp(8), dp(11)); setOnClickListener { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index; startTrack(song.uri); updateNextTrack() } }) }
+        songs.forEachIndexed { index, song ->
+            libraryContainer.addView(label("♫  " + song.title + "  —  " + song.artist, 12f, Color.WHITE).apply {
+                setPadding(dp(9), dp(11), dp(8), dp(11))
+                setOnClickListener {
+                    queue.clear()
+                    queue.addAll(songs.map { it.uri })
+                    currentIndex = index
+                    startTrack(song.uri)
+                    updateNextTrack()
+                }
+            })
+        }
         if (children.isEmpty() && songs.isEmpty()) libraryContainer.addView(label("Ebben a mappában nincs beolvasott zene.", 12f, Color.rgb(190,194,215)))
     }
 
