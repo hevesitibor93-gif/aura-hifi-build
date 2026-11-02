@@ -14,9 +14,7 @@ import android.graphics.RectF
 import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
-import android.media.audiofx.Visualizer
 import android.content.Context
-import androidx.media3.common.AudioListener
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -40,7 +38,6 @@ import kotlin.math.min
 class MainActivity : Activity() {
     private var player: ExoPlayer? = null
     private val eqProcessor = AurixEqualizerAudioProcessor()
-    private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
@@ -95,9 +92,6 @@ class MainActivity : Activity() {
         val allowRotation = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 77)
-        }
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -1096,6 +1090,13 @@ class MainActivity : Activity() {
     private fun startTrack(uri: Uri) {
         renderQueue()
         releaseAudio()
+        eqProcessor.onLevel = { left, right ->
+            handler.post {
+                if (player?.isPlaying == true) {
+                    setVuLevels((left * 4f).coerceIn(0f, 1f), (right * 4f).coerceIn(0f, 1f))
+                }
+            }
+        }
         try {
             selectedUri = uri
             readMetadata(uri)
@@ -1108,9 +1109,6 @@ class MainActivity : Activity() {
                 }
             }
             player = ExoPlayer.Builder(this, renderersFactory).build().also { exo ->
-                exo.addAudioListener(object : AudioListener {
-                    override fun onAudioSessionIdChanged(audioSessionId: Int) { setupVisualizer(audioSessionId) }
-                })
                 exo.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         when (playbackState) {
@@ -1149,37 +1147,6 @@ class MainActivity : Activity() {
             else { p.play(); setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() }
         } catch (_: Exception) {}
     }
-    private fun setupVisualizer(session: Int) {
-        try {
-            vuSmoothedLevel = 0f
-            visualizer?.let { old -> try { old.enabled = false } catch (_: Exception) {}; try { old.release() } catch (_: Exception) {} }
-            visualizer = Visualizer(session).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
-                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
-                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                        if (v == null || v !== visualizer || player?.isPlaying != true) return
-                        val activePlayer = player ?: return
-                        try { if (activePlayer.duration - activePlayer.currentPosition <= 1000) { vuSmoothedLevel=0f;setVuLevels(0f,0f);return } } catch (_:Exception){return}
-                        if (fft == null || fft.size < 16) return
-                        fun energy(first:Int,last:Int):Float {
-                            var sum=0.0;var count=0
-                            for(bin in first..minOf(last,fft.size/2-1)){val i=bin*2;val re=fft[i].toInt();val im=fft[i+1].toInt();sum+=(re*re+im*im).toDouble();count++}
-                            return if(count==0)0f else (kotlin.math.sqrt(sum/count)/128.0).toFloat().coerceIn(0f,1f)
-                        }
-                        val combined=energy(1,8)*0.48f+energy(9,40)*0.34f+energy(41,120)*0.18f
-                        val linear=((combined-0.012f).coerceAtLeast(0f)*3.2f).coerceIn(0f,1f)
-                        val target=linear*linear*linear
-                        val smooth=if(target>vuSmoothedLevel)0.38f else 0.22f
-                        vuSmoothedLevel+=(target-vuSmoothedLevel)*smooth
-                        setVuLevels(vuSmoothedLevel,vuSmoothedLevel)
-                    }
-                },Visualizer.getMaxCaptureRate(),false,true)
-                enabled=true
-            }
-        } catch (_:Exception) { }
-    }
-
     private fun renderEqualizer() {
         if (!::eqContainer.isInitialized) return
         eqContainer.removeAllViews()
@@ -1267,7 +1234,6 @@ class MainActivity : Activity() {
             setVuActive(false)
             setVuLevels(0f, 0f)
         }
-        try { visualizer?.release() } catch (_: Exception) {}; visualizer = null
         try { player?.release() } catch (_: Exception) {}; player = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
