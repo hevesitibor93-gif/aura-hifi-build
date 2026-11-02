@@ -64,6 +64,8 @@ class MainActivity : Activity() {
     private var libraryLoadGeneration = 0
     private var libraryVisibleLimit = 80
     private var lastLibraryQuery = ""
+    private var groupVisibleLimit = 80
+    private var currentGroupType = ""
     private var libraryMode = "home"
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
@@ -699,6 +701,10 @@ class MainActivity : Activity() {
     private fun showLibraryGroups(type: String) {
         if (!::libraryContainer.isInitialized) return
         if (type == "Mappák") { showFolderRoot(); return }
+        if (currentGroupType != type) {
+            currentGroupType = type
+            groupVisibleLimit = 80
+        }
         libraryMode = type
         libraryCategoryRow.visibility = View.GONE
         libraryContainer.visibility = View.VISIBLE
@@ -714,7 +720,9 @@ class MainActivity : Activity() {
             setOnClickListener { showLibraryHome() }
         })
         libraryContainer.addView(label(type.uppercase() + "  •  ${groups.size}", 11f, Color.WHITE).apply { setPadding(dp(8), dp(4), dp(8), dp(10)) })
-        groups.forEach { (name, songs) ->
+        groups.entries.take(groupVisibleLimit).forEach { entry ->
+            val name = entry.key
+            val songs = entry.value
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(13), dp(9), dp(13)); isClickable = true; background = rounded(Color.argb(35,255,255,255), 10) }
             row.addView(label("♫", 19f, Color.rgb(194,151,255)), LinearLayout.LayoutParams(dp(34), -2))
             row.addView(label(name, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -733,6 +741,13 @@ class MainActivity : Activity() {
                 libraryContainer.addView(label("‹  Vissza a $type listához", 12f, gold).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryGroups(type) } })
             }
             libraryContainer.addView(row)
+        }
+        if (groups.size > groupVisibleLimit) {
+            val remaining = groups.size - groupVisibleLimit
+            libraryContainer.addView(button("TOVÁBBI ${minOf(80, remaining)} ${type.lowercase()}  •  MÉG $remaining", Color.rgb(73, 54, 135), Color.WHITE) {
+                groupVisibleLimit += 80
+                showLibraryGroups(type)
+            }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         }
     }
 
