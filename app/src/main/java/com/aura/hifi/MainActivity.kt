@@ -70,6 +70,9 @@ class MainActivity : Activity() {
     private var activePageIndex = 0
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
+    private var activeLibraryRenderer: (() -> Unit)? = null
+    private var libraryScrollView: ScrollView? = null
+    private var currentTrackRow: View? = null
     private val librarySongByUri = mutableMapOf<String, LibrarySong>()
     private val selectedFolderPaths = linkedSetOf<String>()
     private lateinit var libraryContainer: LinearLayout
@@ -220,6 +223,7 @@ class MainActivity : Activity() {
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val pages = listOf(playerPage, songsPage, eqPage, settingsPage)
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
+        libraryScrollView = pageScrolls[1]
         // A lejátszó cockpit fekvő módban egyetlen, nem görgethető képernyő. A többi lap marad görgethető.
         pageScrolls[0].isVerticalScrollBarEnabled = false
         pageScrolls[0].overScrollMode = View.OVER_SCROLL_NEVER
@@ -247,8 +251,7 @@ class MainActivity : Activity() {
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
             val leftPanel = makeSidePanel(false)
-            val rightPanel = makeSidePanel(true)
-            val headUnit = LinearLayout(this).apply {
+            val rightPanel = makeSidePanel(true)            val headUnit = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(3), dp(10), dp(3))
@@ -486,19 +489,22 @@ class MainActivity : Activity() {
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val navButtons = mutableListOf<Button>()
-        fun showPage(index: Int) {
+        fun showPage(index: Int, resetLibrary: Boolean = true) {
             activePageIndex = index
             pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }
-            if (index == 1) {
+            if (index == 1 && resetLibrary) {
                 showLibraryHome()
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
             navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
-        openLibraryPage = { showPage(1) }
+        openLibraryPage = {
+            showPage(1, false)
+            if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
+            scrollToCurrentLibraryRow()
+        }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
-        root.addView(nav)
-        pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        root.addView(nav)        pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         showPage(0)
         setContentView(root)
     }
@@ -648,33 +654,75 @@ class MainActivity : Activity() {
 
     private val recentlyPlayed = mutableListOf<String>()
 
+    private fun libraryRowBackground(selected: Boolean): GradientDrawable = GradientDrawable(
+        GradientDrawable.Orientation.LEFT_RIGHT,
+        if (selected) intArrayOf(Color.rgb(91, 67, 27), Color.rgb(48, 39, 24))
+        else intArrayOf(Color.argb(35, 255, 255, 255), Color.argb(22, 255, 255, 255))
+    ).apply {
+        cornerRadius = dp(12).toFloat()
+        setStroke(dp(if (selected) 2 else 1), if (selected) gold else Color.argb(35, 180, 190, 210))
+    }
+
+    private fun markLibrarySongRow(row: View, uri: Uri) {
+        val selected = selectedUri == uri
+        row.background = libraryRowBackground(selected)
+        if (selected) currentTrackRow = row
+    }
+
+    private fun scrollToCurrentLibraryRow() {
+        val scroll = libraryScrollView ?: return
+        val row = currentTrackRow ?: return
+        scroll.post {
+            if (row.parent == null) return@post
+            val rowLocation = IntArray(2)
+            val scrollLocation = IntArray(2)
+            row.getLocationOnScreen(rowLocation)
+            scroll.getLocationOnScreen(scrollLocation)
+            val target = scroll.scrollY + rowLocation[1] - scrollLocation[1] - dp(110)
+            scroll.smoothScrollTo(0, target.coerceAtLeast(0))
+        }
+    }
+
+    private fun refreshLibrarySelection() {
+        if (activePageIndex == 1 && activeLibraryRenderer != null && libraryMode != "home") {
+            currentTrackRow = null
+            activeLibraryRenderer?.invoke()
+            scrollToCurrentLibraryRow()
+        }
+    }
+
     private fun addLibraryBackButton() {
         libraryContainer.addView(label("‹  Vissza a zenetárhoz", 13f, Color.rgb(235, 205, 145)).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryHome() } })
     }
 
     private fun renderSongRows(songs: List<LibrarySong>) {
         songs.forEachIndexed { index, song ->
-            libraryContainer.addView(label("♫  " + song.title + " — " + song.artist, 12f, Color.WHITE).apply {
+            val row = label("♫  " + song.title + " — " + song.artist, 12f, Color.WHITE).apply {
                 setPadding(dp(9), dp(11), dp(8), dp(11))
                 setOnClickListener { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index; startTrack(song.uri); updateNextTrack() }
-            })
+            }
+            markLibrarySongRow(row, song.uri)
+            libraryContainer.addView(row)
         }
         if (songs.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
     }
 
     private fun showRecentAdded() {
+        activeLibraryRenderer = { showRecentAdded() }
         libraryMode = "recent_added"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
         libraryContainer.addView(label("LEGUTÓBB HOZZÁADOTT • 100 DAL", 11f, Color.WHITE))
         renderSongRows(librarySongs.sortedByDescending { it.dateAdded }.take(100))
     }
 
     private fun showRecentlyPlayed() {
+        activeLibraryRenderer = { showRecentlyPlayed() }
         libraryMode = "recent_played"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
         libraryContainer.addView(label("NEMRÉG JÁTSZOTT", 11f, Color.WHITE))
         renderSongRows(recentlyPlayed.mapNotNull { librarySongByUri[it] }.distinctBy { it.uri.toString() }.take(100))
     }
 
     private fun showPlaylists() {
+        activeLibraryRenderer = { showPlaylists() }
         libraryMode = "playlists"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
         libraryContainer.addView(label("LEJÁTSZÁSI LISTÁK", 11f, Color.WHITE))
         val prefs = getSharedPreferences("aurix_library", MODE_PRIVATE)
@@ -698,6 +746,7 @@ class MainActivity : Activity() {
     }
 
     private fun showSearchResults(query: String) {
+        activeLibraryRenderer = { showSearchResults(query) }
         libraryMode = "search"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
         val songs = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) || it.album.contains(query, true) || it.folder.contains(query, true) }
         libraryContainer.addView(label("DALOK • " + songs.size, 11f, Color.rgb(235, 205, 145))); renderSongRows(songs)
@@ -707,6 +756,8 @@ class MainActivity : Activity() {
     }
 
     private fun showLibraryHome() {
+        activeLibraryRenderer = null
+        currentTrackRow = null
         libraryMode = "home"
         if (!::libraryContainer.isInitialized) return
         libraryCategoryRow.visibility = View.VISIBLE
@@ -717,6 +768,7 @@ class MainActivity : Activity() {
 
     private fun showLibraryGroups(type: String) {
         if (!::libraryContainer.isInitialized) return
+        activeLibraryRenderer = { showLibraryGroups(type) }
         if (type == "Mappák") { showFolderRoot(); return }
         if (currentGroupType != type) {
             currentGroupType = type
@@ -745,17 +797,8 @@ class MainActivity : Activity() {
             row.addView(label(name, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(label("${songs.size} dal  ›", 10f, Color.rgb(190,195,220)))
             row.setOnClickListener {
-                libraryContainer.removeAllViews()
-                songs.forEachIndexed { index, song ->
-                    libraryContainer.addView(label("♫  ${song.title}  —  ${song.artist}", 12f, Color.WHITE).apply {
-                        setPadding(dp(8), dp(12), dp(8), dp(12))
-                        setOnClickListener {
-                            queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index
-                            startTrack(song.uri); updateNextTrack()
-                        }
-                    })
-                }
-                libraryContainer.addView(label("‹  Vissza a $type listához", 12f, gold).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryGroups(type) } })
+                activeLibraryRenderer = { showLibraryGroupSongs(type, name) }
+                showLibraryGroupSongs(type, name)
             }
             libraryContainer.addView(row)
         }
@@ -765,6 +808,37 @@ class MainActivity : Activity() {
                 groupVisibleLimit += 80
                 showLibraryGroups(type)
             }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showLibraryGroupSongs(type: String, name: String) {
+        val key: (LibrarySong) -> String = when (type) {
+            "Előadók" -> { song -> song.artist.ifBlank { "Ismeretlen előadó" } }
+            "Albumok" -> { song -> song.album.ifBlank { "Ismeretlen album" } }
+            else -> { song -> song.folder.ifBlank { "Ismeretlen mappa" } }
+        }
+        val songs = librarySongs.filter { key(it) == name }
+        libraryMode = type + "_songs"
+        libraryCategoryRow.visibility = View.GONE
+        libraryContainer.visibility = View.VISIBLE
+        libraryContainer.removeAllViews()
+        libraryContainer.addView(label("‹  Vissza a $type listához", 12f, gold).apply {
+            setPadding(dp(8), dp(12), dp(8), dp(12))
+            setOnClickListener { showLibraryGroups(type) }
+        })
+        songs.forEachIndexed { index, song ->
+            val row = label("♫  ${song.title}  —  ${song.artist}", 12f, Color.WHITE).apply {
+                setPadding(dp(8), dp(12), dp(8), dp(12))
+                setOnClickListener {
+                    queue.clear()
+                    queue.addAll(songs.map { it.uri })
+                    currentIndex = index
+                    startTrack(song.uri)
+                    updateNextTrack()
+                }
+            }
+            markLibrarySongRow(row, song.uri)
+            libraryContainer.addView(row)
         }
     }
 
@@ -778,6 +852,7 @@ class MainActivity : Activity() {
     }
 
     private fun renderFolderBrowser(path: String, isRoot: Boolean) {
+        activeLibraryRenderer = { renderFolderBrowser(path, isRoot) }
         libraryMode = "Mappák"
         libraryCategoryRow.visibility = View.GONE
         libraryContainer.visibility = View.VISIBLE
@@ -855,7 +930,7 @@ class MainActivity : Activity() {
 
         val songs = librarySongs.filter { it.folder == path }.sortedBy { it.title.lowercase() }
         songs.forEachIndexed { index, song ->
-            libraryContainer.addView(label("♫  " + song.title + "  —  " + song.artist, 12f, Color.WHITE).apply {
+            val row = label("♫  " + song.title + "  —  " + song.artist, 12f, Color.WHITE).apply {
                 setPadding(dp(9), dp(11), dp(8), dp(11))
                 setOnClickListener {
                     queue.clear()
@@ -864,13 +939,16 @@ class MainActivity : Activity() {
                     startTrack(song.uri)
                     updateNextTrack()
                 }
-            })
+            }
+            markLibrarySongRow(row, song.uri)
+            libraryContainer.addView(row)
         }
         if (children.isEmpty() && songs.isEmpty()) libraryContainer.addView(label("Ebben a mappában nincs beolvasott zene.", 12f, Color.rgb(190,194,215)))
     }
 
     private fun renderLibrary(query: String = "") {
         if (!::libraryContainer.isInitialized) return
+        activeLibraryRenderer = { renderLibrary(query) }
         libraryMode = "all"
         libraryCategoryRow.visibility = View.GONE
         libraryContainer.visibility = View.VISIBLE
@@ -895,6 +973,7 @@ class MainActivity : Activity() {
             names.addView(label(song.title, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
             names.addView(label(song.artist, 11f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
             item.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
+            markLibrarySongRow(item, song.uri)
             item.setOnClickListener {
                 queue.clear()
                 queue.addAll(filtered.map { it.uri })
@@ -997,8 +1076,7 @@ class MainActivity : Activity() {
     }
     private fun playPrevious() {
         if (queue.isEmpty()) return
-        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0
-        startTrack(queue[currentIndex])
+        currentIndex = if (currentIndex > 0) currentIndex - 1 else 0        startTrack(queue[currentIndex])
     }
     private fun playNext() {
         if (queue.isEmpty()) return
@@ -1012,6 +1090,7 @@ class MainActivity : Activity() {
             selectedUri = uri
             readMetadata(uri)
             updateNextTrack()
+            refreshLibrarySelection()
             val descriptor = contentResolver.openFileDescriptor(uri, "r")
                 ?: throw IllegalStateException("A fájl nem nyitható meg.")
             player = MediaPlayer().apply {
@@ -1247,8 +1326,7 @@ class MainActivity : Activity() {
     }
 
     private inner class AurixVuView : View(this@MainActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var left = 0f
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)        private var left = 0f
         private var right = 0f
         private var active = false
         private var brightness = 80
