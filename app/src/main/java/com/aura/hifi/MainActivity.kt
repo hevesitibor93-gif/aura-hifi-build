@@ -11,13 +11,18 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.media.MediaPlayer
 import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
-import android.media.audiofx.BassBoost
-import android.media.audiofx.Equalizer
 import android.media.audiofx.Visualizer
+import android.content.Context
+import androidx.media3.common.AudioListener
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
@@ -32,9 +37,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 class MainActivity : Activity() {
-    private var player: MediaPlayer? = null
-    private var equalizer: Equalizer? = null
-    private var bassBoost: BassBoost? = null
+    private var player: ExoPlayer? = null
+    private val eqProcessor = AurixEqualizerAudioProcessor()
     private var visualizer: Visualizer? = null
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
@@ -164,7 +168,7 @@ class MainActivity : Activity() {
             progressTintList = android.content.res.ColorStateList.valueOf(gold)
             thumbTintList = android.content.res.ColorStateList.valueOf(gold)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) try { player?.let { if (it.duration > 0) it.seekTo((it.duration * value / 1000f).toInt()) } } catch (_: Exception) {} }
+                override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) try { player?.let { if (it.duration > 0) it.seekTo(it.duration * value / 1000L) } } catch (_: Exception) {} }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
                 override fun onStopTrackingTouch(sb: SeekBar?) {}
             })
@@ -201,12 +205,13 @@ class MainActivity : Activity() {
         body.addView(sectionTitle("HANGSZÍNSZABÁLYZÓ"))
         eqContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
         body.addView(eqContainer)
+        renderEqualizer()
         body.addView(sectionTitle("HANGFORMÁLÁS"))
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         actions.addView(button("HÁTTÉR KÉP", Color.rgb(35, 41, 53), Color.WHITE) { openImage() }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(8) })
         actions.addView(button("EQ ALAPHELYZET", Color.rgb(35, 41, 53), Color.WHITE) { resetEq() }, LinearLayout.LayoutParams(0, dp(44), 1f))
         body.addView(actions)
-        body.addView(label("Az EQ és a basszuskiemelés az Android eszközén elérhető hanghatásoktól függ. Más alkalmazások (YouTube/Spotify) teljes rendszerhangját ez az app nem tudja garantáltan módosítani.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
+        body.addView(label("Saját AURA Hi-Fi hangfeldolgozás • csak az alkalmazás lejátszására hat, a telefon rendszerhangját nem módosítja.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
         val playerPage = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -275,7 +280,7 @@ class MainActivity : Activity() {
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
-            leftPanel.addView(neonRoundButton("−", 42, false) { player?.setVolume(0.65f, 0.65f) },
+            leftPanel.addView(neonRoundButton("−", 42, false) { player?.volume = 0.65f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
@@ -283,7 +288,7 @@ class MainActivity : Activity() {
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
-            rightPanel.addView(neonRoundButton("＋", 42, false) { player?.setVolume(1f, 1f) },
+            rightPanel.addView(neonRoundButton("＋", 42, false) { player?.volume = 1f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(54), -1))
@@ -1095,135 +1100,107 @@ class MainActivity : Activity() {
             readMetadata(uri)
             updateNextTrack()
             refreshLibrarySelection()
-            val descriptor = contentResolver.openFileDescriptor(uri, "r")
-                ?: throw IllegalStateException("A fájl nem nyitható meg.")
-            player = MediaPlayer().apply {
-                setDataSource(descriptor.fileDescriptor)
-                descriptor.close()
-                setOnPreparedListener { mp ->
-                    try {
-                        mp.start()
-                        setVuActive(true)
-                        playButton.text = "Ⅱ"
-                        vinylView.invalidate()
-                        setupEffects(mp.audioSessionId)
-                        handler.removeCallbacks(progressTask)
-                        handler.post(progressTask)
-                    } catch (_: Exception) {
-                        toast("A lejátszás indítása nem sikerült.")
+            val renderersFactory = object : DefaultRenderersFactory(this) {
+                override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink {
+                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
+                        .setAudioProcessors(arrayOf(eqProcessor)).build()
+                }
+            }
+            player = ExoPlayer.Builder(this, renderersFactory).build().also { exo ->
+                exo.addAudioListener(object : AudioListener {
+                    override fun onAudioSessionIdChanged(audioSessionId: Int) { setupVisualizer(audioSessionId) }
+                })
+                exo.addListener(object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        when (playbackState) {
+                            Player.STATE_READY -> if (exo.playWhenReady) {
+                                setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate()
+                                handler.removeCallbacks(progressTask); handler.post(progressTask)
+                            }
+                            Player.STATE_ENDED -> {
+                                setVuActive(false)
+                                if (currentIndex + 1 < queue.size) {
+                                    currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex])
+                                } else { playButton.text = "▶"; updateNextTrack() }
+                            }
+                        }
                     }
-                }
-                setOnErrorListener { _, what, extra ->
-                    playButton.text = "▶"
-                    toast("Lejátszási hiba ($what/$extra).")
-                    true
-                }
-                setOnCompletionListener {
-                    setVuActive(false)
-                    if (currentIndex + 1 < queue.size) {
-                        currentIndex++
-                        selectedUri = queue[currentIndex]
-                        updateNextTrack()
-                        startTrack(queue[currentIndex])
-                    } else {
-                        playButton.text = "▶"
-                        updateNextTrack()
+                    override fun onPlayerError(error: PlaybackException) {
+                        playButton.text = "▶"; toast("Lejátszási hiba: " + (error.message ?: "ismeretlen hiba"))
                     }
-                }
-                prepareAsync()
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        setVuActive(isPlaying); playButton.text = if (isPlaying) "Ⅱ" else "▶"; vinylView.invalidate()
+                    }
+                })
+                exo.setMediaItem(MediaItem.fromUri(uri)); exo.prepare(); exo.playWhenReady = true
             }
         } catch (e: Exception) {
             try { player?.release() } catch (_: Exception) {}
-            player = null
-            playButton.text = "▶"
+            player = null; playButton.text = "▶"
             toast("Nem sikerült megnyitni: " + (e.message ?: "ismeretlen hiba"))
         }
     }
     private fun togglePlayback() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
-        try { if (p.isPlaying) { p.pause(); setVuActive(false); playButton.text = "▶"; vinylView.invalidate() } else { p.start(); setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() } } catch (_: Exception) {}
-    }
-    private fun setupEffects(session: Int) {
         try {
-            equalizer?.release(); equalizer = Equalizer(0, session).apply { enabled = true }
-            bassBoost?.release(); bassBoost = BassBoost(0, session).apply { enabled = true }
-            // Új dalnál nullázzuk az előző dalból megmaradt mérési simítást.
+            if (p.isPlaying) { p.pause(); setVuActive(false); playButton.text = "▶"; vinylView.invalidate() }
+            else { p.play(); setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() }
+        } catch (_: Exception) {}
+    }
+    private fun setupVisualizer(session: Int) {
+        try {
             vuSmoothedLevel = 0f
-            visualizer?.let { old ->
-                try { old.enabled = false } catch (_: Exception) {}
-                try { old.release() } catch (_: Exception) {}
-            }
+            visualizer?.let { old -> try { old.enabled = false } catch (_: Exception) {}; try { old.release() } catch (_: Exception) {} }
             visualizer = Visualizer(session).apply {
-                // A VU-mérő ritkább mintavételezése csökkenti a főszál terhelését.
                 captureSize = Visualizer.getCaptureSizeRange()[1]
                 setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-                        // A VU-kijelzőt ismét kizárólag az FFT-mérés vezérli.
-                    }
+                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
                     override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                        // Csak az aktuális dal aktív Visualizerétől és tényleges lejátszásakor fogadunk adatot.
                         if (v == null || v !== visualizer || player?.isPlaying != true) return
                         val activePlayer = player ?: return
-                        // A dal utolsó 1 másodpercében nem fogadunk új FFT-adatot.
-                        try {
-                            val remainingMs = activePlayer.duration - activePlayer.currentPosition
-                            if (remainingMs <= 1000) {
-                                vuSmoothedLevel = 0f
-                                setVuLevels(0f, 0f)
-                                return
-                            }
-                        } catch (_: Exception) { return }
+                        try { if (activePlayer.duration - activePlayer.currentPosition <= 1000) { vuSmoothedLevel=0f;setVuLevels(0f,0f);return } } catch (_:Exception){return}
                         if (fft == null || fft.size < 16) return
-                        fun bandEnergy(firstBin: Int, lastBin: Int): Float {
-                            var energy = 0.0
-                            var count = 0
-                            val end = minOf(lastBin, fft.size / 2 - 1)
-                            for (bin in firstBin..end) {
-                                val index = bin * 2
-                                val real = fft[index].toInt()
-                                val imaginary = fft[index + 1].toInt()
-                                energy += (real * real + imaginary * imaginary).toDouble()
-                                count++
-                            }
-                            return if (count == 0) 0f else
-                                (kotlin.math.sqrt(energy / count) / 128.0).toFloat().coerceIn(0f, 1f)
+                        fun energy(first:Int,last:Int):Float {
+                            var sum=0.0;var count=0
+                            for(bin in first..minOf(last,fft.size/2-1)){val i=bin*2;val re=fft[i].toInt();val im=fft[i+1].toInt();sum+=(re*re+im*im).toDouble();count++}
+                            return if(count==0)0f else (kotlin.math.sqrt(sum/count)/128.0).toFloat().coerceIn(0f,1f)
                         }
-                        val bass = bandEnergy(1, 8)
-                        val mid = bandEnergy(9, 40)
-                        val treble = bandEnergy(41, 120)
-                        val combined = bass * 0.48f + mid * 0.34f + treble * 0.18f
-                        val linearLevel = ((combined - 0.012f).coerceAtLeast(0f) * 3.2f).coerceIn(0f, 1f)
-                        val targetLevel = linearLevel * linearLevel * linearLevel
-                        val smoothing = if (targetLevel > vuSmoothedLevel) 0.38f else 0.22f
-                        vuSmoothedLevel += (targetLevel - vuSmoothedLevel) * smoothing
-                        setVuLevels(vuSmoothedLevel, vuSmoothedLevel)
+                        val combined=energy(1,8)*0.48f+energy(9,40)*0.34f+energy(41,120)*0.18f
+                        val linear=((combined-0.012f).coerceAtLeast(0f)*3.2f).coerceIn(0f,1f)
+                        val target=linear*linear*linear
+                        val smooth=if(target>vuSmoothedLevel)0.38f else 0.22f
+                        vuSmoothedLevel+=(target-vuSmoothedLevel)*smooth
+                        setVuLevels(vuSmoothedLevel,vuSmoothedLevel)
                     }
-                }, Visualizer.getMaxCaptureRate(), false, true)
-                enabled = true
+                },Visualizer.getMaxCaptureRate(),false,true)
+                enabled=true
             }
-            renderEqualizer()
-        } catch (_: Exception) { toast("Az eszköz hanghatásai korlátozottak lehetnek.") }
+        } catch (_:Exception) { }
     }
+
     private fun renderEqualizer() {
+        if (!::eqContainer.isInitialized) return
         eqContainer.removeAllViews()
-        val eq = equalizer ?: return
-        val count = eq.numberOfBands.toInt()
-        val range = eq.bandLevelRange
-        for (i in 0 until count) {
-            val freq = try { eq.getCenterFreq(i.toShort()) / 1000 } catch (_: Exception) { 0 }
-            val rowTitle = when {
-                freq < 100 -> "${freq} Hz"
-                freq >= 1000 -> "${freq / 1000f} kHz"
-                else -> "$freq Hz"
+        val prefs=getSharedPreferences("aurix_settings",MODE_PRIVATE)
+        val names=listOf("31 Hz","62 Hz","125 Hz","250 Hz","500 Hz","1 kHz","2 kHz","4 kHz","8 kHz","12 kHz","14 kHz","16 kHz")
+        eqContainer.addView(label("12 SÁVOS SAJÁT DIGITÁLIS EQ  •  ±12 dB",11f,gold))
+        names.forEachIndexed { index,name ->
+            val saved=prefs.getInt("eq_band_$index",0).coerceIn(-12,12)
+            eqProcessor.setBandGainDb(index,saved.toFloat())
+            addSlider(eqContainer,name+"  "+saved+" dB",0,240,saved+120){value->
+                val db=value-120;eqProcessor.setBandGainDb(index,db.toFloat());prefs.edit().putInt("eq_band_$index",db).apply()
             }
-            addSlider(eqContainer, rowTitle, range[0].toInt(), range[1].toInt(), 0) { v -> try { eq.setBandLevel(i.toShort(), v.toShort()) } catch (_: Exception) {} }
         }
-        if (count == 0) eqContainer.addView(label("Az eszköz nem kínál EQ-sávokat.", 12f, Color.WHITE))
-        eqContainer.addView(label("MÉLYHANG KIEMELÉS", 11f, gold).apply { setPadding(0, dp(12), 0, 0) })
-        addSlider(eqContainer, "Bass Boost", 0, 1000, 0) { v -> try { bassBoost?.setStrength(v.toShort()) } catch (_: Exception) {} }
-        addSlider(eqContainer, "Lejátszó hangerő", 50, 150, 100) { v -> player?.setVolume(v / 100f, v / 100f) }
-        eqContainer.addView(label("Az EQ-sávok száma a telefon Android-audio rendszerétől függ.", 10f, Color.GRAY).apply { setPadding(0, dp(8), 0, 0) })
+        val bass=prefs.getInt("eq_bass",0).coerceIn(0,120);eqProcessor.setBassBoostDb(bass/10f)
+        eqContainer.addView(label("MÉLYHANG KIEMELÉS",11f,gold).apply{setPadding(0,dp(12),0,0)})
+        addSlider(eqContainer,"Basszus kiemelés",0,120,bass){v->eqProcessor.setBassBoostDb(v/10f);prefs.edit().putInt("eq_bass",v).apply()}
+        val treble=prefs.getInt("eq_treble",0).coerceIn(0,120);eqProcessor.setTrebleBoostDb(treble/10f)
+        addSlider(eqContainer,"Magas hangok kiemelése",0,120,treble){v->eqProcessor.setTrebleBoostDb(v/10f);prefs.edit().putInt("eq_treble",v).apply()}
+        val preamp=prefs.getInt("eq_preamp",0).coerceIn(-6,6);eqProcessor.setPreampDb(preamp.toFloat())
+        addSlider(eqContainer,"Előerősítés (−6…+6 dB)",0,12,preamp+6){v->val db=v-6;eqProcessor.setPreampDb(db.toFloat());prefs.edit().putInt("eq_preamp",db).apply()}
+        addSlider(eqContainer,"Lejátszó hangerő",50,150,100){v->player?.volume=(v/100f).coerceIn(0f,1f)}
+        eqContainer.addView(label("Csak az AURA zenéjét módosítja. Erős kiemelésnél a digitális csúcsok korlátozva vannak.",10f,Color.GRAY).apply{setPadding(0,dp(8),0,0)})
     }
     private fun addSlider(parent: LinearLayout, title: String, minV: Int, maxV: Int, initial: Int, onValue: (Int) -> Unit) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(5), 0, dp(4)) }
@@ -1260,8 +1237,8 @@ class MainActivity : Activity() {
             technicalLabel.text = "AUDIO INFO  •  nem érhető el"
         } finally { try { r.release() } catch (_: Exception) {} }
     }
-    private fun formatTime(ms: Int): String {
-        val total = ms.coerceAtLeast(0) / 1000
+    private fun formatTime(ms: Long): String {
+        val total = (ms.coerceAtLeast(0L) / 1000L).toInt()
         return "%02d:%02d".format(total / 60, total % 60)
     }
     private fun updateProgress() {
@@ -1277,8 +1254,11 @@ class MainActivity : Activity() {
     }
 
     private fun resetEq() {
-        try { equalizer?.let { e -> for (i in 0 until e.numberOfBands.toInt()) e.setBandLevel(i.toShort(), 0) }; bassBoost?.setStrength(0) } catch (_: Exception) {}
-        toast("EQ visszaállítva, ahol a készülék ezt engedi.")
+        val prefs=getSharedPreferences("aurix_settings",MODE_PRIVATE);val edit=prefs.edit()
+        for(i in 0 until 12){eqProcessor.setBandGainDb(i,0f);edit.putInt("eq_band_$i",0)}
+        eqProcessor.setBassBoostDb(0f);eqProcessor.setTrebleBoostDb(0f);eqProcessor.setPreampDb(0f)
+        edit.putInt("eq_bass",0).putInt("eq_treble",0).putInt("eq_preamp",0).apply()
+        renderEqualizer();toast("AURA EQ visszaállítva.")
     }
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
@@ -1287,8 +1267,6 @@ class MainActivity : Activity() {
             setVuLevels(0f, 0f)
         }
         try { visualizer?.release() } catch (_: Exception) {}; visualizer = null
-        try { equalizer?.release() } catch (_: Exception) {}; equalizer = null
-        try { bassBoost?.release() } catch (_: Exception) {}; bassBoost = null
         try { player?.release() } catch (_: Exception) {}; player = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
