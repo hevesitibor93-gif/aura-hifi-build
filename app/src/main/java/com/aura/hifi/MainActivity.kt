@@ -1263,7 +1263,7 @@ class MainActivity : Activity() {
                 progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(65, 62, 57))
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                        if (fromUser) { onChange(p + min); value.text = if (title == "Előerősítés") "%+d dB".format(p + min - 6) else "%.1f dB".format((p + min) / 10f) }
+                        if (fromUser) { onChange(p + min); value.text = if (title == "Előerősítés") "%+d dB".format(p + min) else "%.1f dB".format((p + min) / 10f) }
                     }
                     override fun onStartTrackingTouch(sb: SeekBar?) {}
                     override fun onStopTrackingTouch(sb: SeekBar?) {}
@@ -1285,8 +1285,8 @@ class MainActivity : Activity() {
         }
         val preamp = prefs.getInt("eq_preamp", 0).coerceIn(-6, 6)
         eqProcessor.setPreampDb(preamp.toFloat())
-        premiumControl("Előerősítés", "%+d dB".format(preamp), -6, 6, preamp + 6) { v ->
-            val db = v - 6
+        premiumControl("Előerősítés", "%+d dB".format(preamp), -6, 6, preamp) { v ->
+            val db = v
             prefs.edit().putInt("eq_preamp", db).apply(); eqProcessor.setPreampDb(db.toFloat())
         }
         premiumControl("Lejátszó hangerő", "AURA", 0, 100, 100) { v -> player?.volume = (v / 100f).coerceIn(0f, 1f) }
