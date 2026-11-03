@@ -12,8 +12,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.media.MediaMetadataRetriever
-import android.media.audiofx.Visualizer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
 import android.os.Handler
 import android.os.Looper
 import android.content.Context
@@ -57,10 +55,6 @@ class MainActivity : Activity() {
     private lateinit var technicalLabel: TextView
     private var showRemaining = false
     private val handler = Handler(Looper.getMainLooper())
-    private var outputVisualizer: Visualizer? = null
-    private var pendingAudioSessionId = 0
-    private var visualizerPermissionRequested = false
-    private val visualizerPermissionRequestCode = 7041
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
@@ -1006,14 +1000,6 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
         else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
-        else if (requestCode == visualizerPermissionRequestCode) {
-            visualizerPermissionRequested = false
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                attachOutputVisualizer(pendingAudioSessionId)
-            } else {
-                toast("A pontos VU-méréshez Android-hanghozzáférés szükséges.")
-            }
-        }
     }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
@@ -1105,12 +1091,11 @@ class MainActivity : Activity() {
         renderQueue()
         releaseAudio()
         eqProcessor.onLevel = { left, right ->
-            // Tartalék mérés arra az esetre, ha az Android kimeneti mérője nem érhető el.
-            handler.postDelayed({
-                if (outputVisualizer == null && player?.isPlaying == true) {
-                    setVuLevels((left * 2f).coerceIn(0f, 1f), (right * 2f).coerceIn(0f, 1f))
+            handler.post {
+                if (player?.isPlaying == true) {
+                    setVuLevels((left * 4f).coerceIn(0f, 1f), (right * 4f).coerceIn(0f, 1f))
                 }
-            }, 150L)
+            }
         }
         try {
             selectedUri = uri
@@ -1124,11 +1109,6 @@ class MainActivity : Activity() {
                 }
             }
             player = ExoPlayer.Builder(this, renderersFactory).build().also { exo ->
-                exo.addAnalyticsListener(object : AnalyticsListener {
-                    override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
-                        handler.post { attachOutputVisualizer(audioSessionId) }
-                    }
-                })
                 exo.addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         when (playbackState) {
@@ -1248,57 +1228,8 @@ class MainActivity : Activity() {
         edit.putInt("eq_bass",0).putInt("eq_treble",0).putInt("eq_preamp",0).apply()
         renderEqualizer();toast("AURA EQ visszaállítva.")
     }
-    private fun attachOutputVisualizer(audioSessionId: Int) {
-        if (audioSessionId <= 0 || isFinishing) return
-        pendingAudioSessionId = audioSessionId
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            if (!visualizerPermissionRequested) {
-                visualizerPermissionRequested = true
-                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), visualizerPermissionRequestCode)
-            }
-            return
-        }
-        try {
-            outputVisualizer?.release()
-            outputVisualizer = null
-            val meter = Visualizer(audioSessionId)
-            meter.captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)
-            meter.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                override fun onWaveFormDataCapture(visualizer: Visualizer, waveform: ByteArray, samplingRate: Int) {
-                    if (waveform.isEmpty()) return
-                    var squares = 0.0
-                    for (sample in waveform) {
-                        val normalized = ((sample.toInt() and 0xFF) - 128) / 128.0
-                        squares += normalized * normalized
-                    }
-                    val rms = kotlin.math.sqrt(squares / waveform.size).toFloat()
-                    // A régi, pontos FFT-mérés halkjel-küszöbét és nemlineáris skálázását
-                    // visszahozzuk, de a mintát továbbra is a tényleges kimeneti Visualizer adja.
-                    val rawLevel = (rms * 1.50f).coerceIn(0f, 1f)
-                    val linearLevel = ((rawLevel - 0.012f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f)
-                    val level = linearLevel * linearLevel * linearLevel
-                    handler.post {
-                        if (outputVisualizer === visualizer && player?.isPlaying == true) {
-                            // A kimeneti mérő a ténylegesen lejátszott hangot figyeli.
-                            setVuLevels(level, level)
-                        }
-                    }
-                }
-                override fun onFftDataCapture(visualizer: Visualizer, fft: ByteArray, samplingRate: Int) {}
-            }, Visualizer.getMaxCaptureRate(), true, false)
-            meter.enabled = true
-            outputVisualizer = meter
-        } catch (_: Exception) {
-            try { outputVisualizer?.release() } catch (_: Exception) {}
-            outputVisualizer = null
-        }
-    }
-
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
-        try { outputVisualizer?.enabled = false; outputVisualizer?.release() } catch (_: Exception) {}
-        outputVisualizer = null
-        pendingAudioSessionId = 0
         if (::vu.isInitialized) {
             setVuActive(false)
             setVuLevels(0f, 0f)
