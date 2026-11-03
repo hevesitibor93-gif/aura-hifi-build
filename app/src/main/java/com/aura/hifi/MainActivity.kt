@@ -1093,7 +1093,7 @@ class MainActivity : Activity() {
         eqProcessor.onLevel = { left, right ->
             handler.postDelayed({
                 if (player?.isPlaying == true) {
-                    setVuLevels(((left - 0.035f).coerceAtLeast(0f) * 1.40f).coerceIn(0f, 1f), ((right - 0.035f).coerceAtLeast(0f) * 1.40f).coerceIn(0f, 1f))
+                    setVuLevels(((left - 0.035f).coerceAtLeast(0f) * 1.20f).coerceIn(0f, 1f), ((right - 0.035f).coerceAtLeast(0f) * 1.20f).coerceIn(0f, 1f))
                 }
             }, 145L)
         }
