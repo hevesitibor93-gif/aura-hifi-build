@@ -23,8 +23,11 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile var onSpectrum: ((Float, Float, Float) -> Unit)? = null
     private var channels = 2
     private var rate = 44100
-    private var low250Filters = Array(2) { Biquad() }
-    private var low4kFilters = Array(2) { Biquad() }
+    private var bassHighPassFilters = Array(2) { Biquad() }
+    private var bassLowPassFilters = Array(2) { Biquad() }
+    private var midHighPassFilters = Array(2) { Biquad() }
+    private var midLowPassFilters = Array(2) { Biquad() }
+    private var highHighPassFilters = Array(2) { Biquad() }
 
     private class Biquad {
         private var b0 = 1f; private var b1 = 0f; private var b2 = 0f
@@ -36,6 +39,17 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             val a0 = 1.0 + alpha
             b0 = ((1.0 - c) / 2.0 / a0).toFloat()
             b1 = ((1.0 - c) / a0).toFloat()
+            b2 = b0
+            a1 = (-2.0 * c / a0).toFloat()
+            a2 = ((1.0 - alpha) / a0).toFloat()
+            reset()
+        }
+        fun configureHighPass(sampleRate: Int, frequency: Float) {
+            val w = 2.0 * PI * frequency.coerceAtMost(sampleRate * 0.40f) / sampleRate
+            val c = cos(w); val alpha = sin(w) / (2.0 * kotlin.math.sqrt(0.5))
+            val a0 = 1.0 + alpha
+            b0 = ((1.0 + c) / 2.0 / a0).toFloat()
+            b1 = (-(1.0 + c) / a0).toFloat()
             b2 = b0
             a1 = (-2.0 * c / a0).toFloat()
             a2 = ((1.0 - alpha) / a0).toFloat()
@@ -64,13 +78,19 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     private fun resetState() {
         x1=Array(12){FloatArray(channels)}; x2=Array(12){FloatArray(channels)}
         y1=Array(12){FloatArray(channels)}; y2=Array(12){FloatArray(channels)}
-        low250Filters = Array(channels) { Biquad() }
-        low4kFilters = Array(channels) { Biquad() }
+        bassHighPassFilters = Array(channels) { Biquad() }
+        bassLowPassFilters = Array(channels) { Biquad() }
+        midHighPassFilters = Array(channels) { Biquad() }
+        midLowPassFilters = Array(channels) { Biquad() }
+        highHighPassFilters = Array(channels) { Biquad() }
         configureSpectrumFilters()
     }
     private fun configureSpectrumFilters() {
-        low250Filters.forEach { it.configureLowPass(rate, 250f) }
-        low4kFilters.forEach { it.configureLowPass(rate, 4000f) }
+        bassHighPassFilters.forEach { it.configureHighPass(rate, 40f) }
+        bassLowPassFilters.forEach { it.configureLowPass(rate, 250f) }
+        midHighPassFilters.forEach { it.configureHighPass(rate, 250f) }
+        midLowPassFilters.forEach { it.configureLowPass(rate, 4000f) }
+        highHighPassFilters.forEach { it.configureHighPass(rate, 4000f) }
     }
     private fun rebuild() {
         val g=gains
@@ -100,12 +120,12 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             }
             val outputSample = sample.coerceIn(-1f,0.9999695f)
             peaks[if (ch == 0) 0 else 1] = maxOf(peaks[if (ch == 0) 0 else 1], kotlin.math.abs(outputSample))
-            val low = low250Filters[ch].process(outputSample)
-            val lowAndMid = low4kFilters[ch].process(outputSample)
-            val bandIndex = if (ch == 0) 0 else 1
-            bandPeaks[0] = maxOf(bandPeaks[0], kotlin.math.abs(low))
-            bandPeaks[1] = maxOf(bandPeaks[1], kotlin.math.abs(lowAndMid - low))
-            bandPeaks[2] = maxOf(bandPeaks[2], kotlin.math.abs(outputSample - lowAndMid))
+            val bass = bassLowPassFilters[ch].process(bassHighPassFilters[ch].process(outputSample))
+            val mid = midLowPassFilters[ch].process(midHighPassFilters[ch].process(outputSample))
+            val high = highHighPassFilters[ch].process(outputSample)
+            bandPeaks[0] = maxOf(bandPeaks[0], kotlin.math.abs(bass))
+            bandPeaks[1] = maxOf(bandPeaks[1], kotlin.math.abs(mid))
+            bandPeaks[2] = maxOf(bandPeaks[2], kotlin.math.abs(high))
             out.putShort((outputSample*32768f).toInt().toShort())
         }
         input.position(input.limit()); out.flip()
