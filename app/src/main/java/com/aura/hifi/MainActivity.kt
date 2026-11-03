@@ -1091,11 +1091,11 @@ class MainActivity : Activity() {
         renderQueue()
         releaseAudio()
         eqProcessor.onLevel = { left, right ->
-            handler.post {
+            handler.postDelayed({
                 if (player?.isPlaying == true) {
                     setVuLevels(((left - 0.035f).coerceAtLeast(0f) * 1.45f).coerceIn(0f, 1f), ((right - 0.035f).coerceAtLeast(0f) * 1.45f).coerceIn(0f, 1f))
                 }
-            }
+            }, 60L)
         }
         try {
             selectedUri = uri
