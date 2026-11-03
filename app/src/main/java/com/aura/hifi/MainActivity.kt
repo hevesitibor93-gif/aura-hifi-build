@@ -1150,25 +1150,238 @@ class MainActivity : Activity() {
     private fun renderEqualizer() {
         if (!::eqContainer.isInitialized) return
         eqContainer.removeAllViews()
-        val prefs=getSharedPreferences("aurix_settings",MODE_PRIVATE)
-        val names=listOf("31 Hz","62 Hz","125 Hz","250 Hz","500 Hz","1 kHz","2 kHz","4 kHz","8 kHz","12 kHz","14 kHz","16 kHz")
-        eqContainer.addView(label("12 SÁVOS SAJÁT DIGITÁLIS EQ  •  ±12 dB",11f,gold))
-        names.forEachIndexed { index,name ->
-            val saved=prefs.getInt("eq_band_$index",0).coerceIn(-12,12)
-            eqProcessor.setBandGainDb(index,saved.toFloat())
-            addSlider(eqContainer,name+"  "+saved+" dB",0,240,saved+120){value->
-                val db=value-120;eqProcessor.setBandGainDb(index,db.toFloat());prefs.edit().putInt("eq_band_$index",db).apply()
-            }
+        eqContainer.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(5, 7, 11), Color.rgb(19, 20, 25), Color.rgb(7, 9, 13))).apply {
+            cornerRadius = dp(20).toFloat()
+            setStroke(dp(1), Color.rgb(83, 67, 39))
         }
-        val bass=prefs.getInt("eq_bass",0).coerceIn(0,120);eqProcessor.setBassBoostDb(bass/10f)
-        eqContainer.addView(label("MÉLYHANG KIEMELÉS",11f,gold).apply{setPadding(0,dp(12),0,0)})
-        addSlider(eqContainer,"Basszus kiemelés",0,120,bass){v->eqProcessor.setBassBoostDb(v/10f);prefs.edit().putInt("eq_bass",v).apply()}
-        val treble=prefs.getInt("eq_treble",0).coerceIn(0,120);eqProcessor.setTrebleBoostDb(treble/10f)
-        addSlider(eqContainer,"Magas hangok kiemelése",0,120,treble){v->eqProcessor.setTrebleBoostDb(v/10f);prefs.edit().putInt("eq_treble",v).apply()}
-        val preamp=prefs.getInt("eq_preamp",0).coerceIn(-6,6);eqProcessor.setPreampDb(preamp.toFloat())
-        addSlider(eqContainer,"Előerősítés (−6…+6 dB)",0,12,preamp+6){v->val db=v-6;eqProcessor.setPreampDb(db.toFloat());prefs.edit().putInt("eq_preamp",db).apply()}
-        addSlider(eqContainer,"Lejátszó hangerő",0,100,100){v->player?.volume=(v/100f).coerceIn(0f,1f)}
-        eqContainer.addView(label("Csak az AURA zenéjét módosítja. Erős kiemelésnél a digitális csúcsok korlátozva vannak.",10f,Color.GRAY).apply{setPadding(0,dp(8),0,0)})
+        eqContainer.setPadding(dp(12), dp(14), dp(12), dp(14))
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val names = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "12k", "14k", "16k")
+        val values = IntArray(12) { i -> prefs.getInt("eq_band_$i", 0).coerceIn(-12, 12) }
+        values.forEachIndexed { i, value -> eqProcessor.setBandGainDb(i, value.toFloat()) }
+
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val heading = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        heading.addView(label("EQUALIZER", 19f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .06f })
+        heading.addView(label("Prémium hangzás, egyszerűen", 10f, Color.rgb(157, 160, 168)))
+        top.addView(heading, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(label("12 BAND  •  ±12 dB", 9f, gold).apply { typeface = Typeface.DEFAULT_BOLD })
+        eqContainer.addView(top)
+
+        val presetScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val presetRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val presets = listOf(
+            "Flat" to intArrayOf(0,0,0,0,0,0,0,0,0,0,0,0),
+            "Rock" to intArrayOf(5,4,3,1,-1,-1,0,2,4,5,5,4),
+            "Pop" to intArrayOf(-1,1,3,4,2,0,-1,-1,1,2,2,2),
+            "Jazz" to intArrayOf(3,2,1,0,-1,-1,0,2,3,3,2,1),
+            "Classical" to intArrayOf(4,3,2,1,-1,-2,-1,1,2,3,3,3),
+            "Dance" to intArrayOf(5,4,2,0,0,2,3,4,4,3,2,1)
+        )
+        presets.forEach { preset ->
+            val chip = TextView(this).apply {
+                text = preset.first
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setTextColor(if (preset.first == "Flat") gold else Color.rgb(222, 224, 230))
+                setPadding(dp(17), dp(10), dp(17), dp(10))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(33, 31, 27), Color.rgb(15, 17, 21))).apply {
+                    cornerRadius = dp(13).toFloat()
+                    setStroke(dp(1), if (preset.first == "Flat") Color.rgb(194, 139, 40) else Color.rgb(65, 68, 75))
+                }
+                isClickable = true
+                setOnClickListener {
+                    preset.second.forEachIndexed { i, v ->
+                        prefs.edit().putInt("eq_band_$i", v).apply()
+                        eqProcessor.setBandGainDb(i, v.toFloat())
+                    }
+                    renderEqualizer()
+                }
+            }
+            presetRow.addView(chip, LinearLayout.LayoutParams(-2, dp(39)).apply { marginEnd = dp(7) })
+        }
+        presetScroll.addView(presetRow)
+        eqContainer.addView(presetScroll, LinearLayout.LayoutParams(-1, dp(47)).apply { topMargin = dp(13) })
+
+        eqContainer.addView(label("FREKVENCIA SÁVOK  •  HÚZD FEL / LE A CSÚSZKÁKAT", 9f, Color.rgb(174, 160, 133)).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(2), dp(10), 0, dp(5))
+        })
+        val bandScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setPadding(0, dp(3), 0, dp(5))
+        }
+        val bandRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        names.forEachIndexed { index, name ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(25, 26, 29), Color.rgb(10, 12, 16))).apply {
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), Color.rgb(59, 54, 44))
+                }
+                setPadding(dp(3), dp(7), dp(3), dp(6))
+            }
+            val bandView = EqBandControl(name, values[index]) { db ->
+                values[index] = db
+                prefs.edit().putInt("eq_band_$index", db).apply()
+                eqProcessor.setBandGainDb(index, db.toFloat())
+            }
+            card.addView(bandView, LinearLayout.LayoutParams(dp(62), dp(194)))
+            bandRow.addView(card, LinearLayout.LayoutParams(dp(68), dp(205)).apply { marginEnd = dp(7) })
+        }
+        bandScroll.addView(bandRow)
+        eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(218)))
+
+        fun premiumControl(title: String, valueText: String, min: Int, max: Int, initial: Int, onChange: (Int) -> Unit) {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(29, 29, 31), Color.rgb(12, 14, 18))).apply {
+                    cornerRadius = dp(14).toFloat()
+                    setStroke(dp(1), Color.rgb(76, 65, 47))
+                }
+                setPadding(dp(12), dp(8), dp(12), dp(7))
+            }
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            line.addView(label(title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
+            val value = label(valueText, 12f, gold).apply { typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.RIGHT }
+            line.addView(value)
+            card.addView(line)
+            val seek = SeekBar(this).apply {
+                this.max = max - min
+                progress = (initial - min).coerceIn(0, max - min)
+                progressTintList = android.content.res.ColorStateList.valueOf(gold)
+                thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 207, 91))
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(65, 62, 57))
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                        if (fromUser) { onChange(p + min); value.text = if (title == "Előerősítés") "%+d dB".format(p + min - 6) else "%.1f dB".format((p + min) / 10f) }
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) {}
+                    override fun onStopTrackingTouch(sb: SeekBar?) {}
+                })
+            }
+            card.addView(seek)
+            eqContainer.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        }
+
+        val bass = prefs.getInt("eq_bass", 0).coerceIn(0, 120)
+        eqProcessor.setBassBoostDb(bass / 10f)
+        premiumControl("Bass Boost", "%.1f dB".format(bass / 10f), 0, 120, bass) { v ->
+            prefs.edit().putInt("eq_bass", v).apply(); eqProcessor.setBassBoostDb(v / 10f)
+        }
+        val treble = prefs.getInt("eq_treble", 0).coerceIn(0, 120)
+        eqProcessor.setTrebleBoostDb(treble / 10f)
+        premiumControl("Treble Boost", "%.1f dB".format(treble / 10f), 0, 120, treble) { v ->
+            prefs.edit().putInt("eq_treble", v).apply(); eqProcessor.setTrebleBoostDb(v / 10f)
+        }
+        val preamp = prefs.getInt("eq_preamp", 0).coerceIn(-6, 6)
+        eqProcessor.setPreampDb(preamp.toFloat())
+        premiumControl("Előerősítés", "%+d dB".format(preamp), -6, 6, preamp + 6) { v ->
+            val db = v - 6
+            prefs.edit().putInt("eq_preamp", db).apply(); eqProcessor.setPreampDb(db.toFloat())
+        }
+        premiumControl("Lejátszó hangerő", "AURA", 0, 100, 100) { v -> player?.volume = (v / 100f).coerceIn(0f, 1f) }
+
+        val reset = TextView(this).apply {
+            text = "↺    EQ ALAPHELYZET"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(255, 214, 126))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(48, 37, 20), Color.rgb(20, 18, 16))).apply {
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(150, 105, 36))
+            }
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            isClickable = true
+            setOnClickListener { resetEq() }
+        }
+        eqContainer.addView(reset, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
+        eqContainer.addView(label("A beállítások azonnal érvényesülnek a lejátszásban.", 10f, Color.rgb(135, 139, 148)).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(9), 0, dp(2))
+        })
+    }
+
+    private inner class EqBandControl(
+        private val frequency: String,
+        initialDb: Int,
+        private val onGainChanged: (Int) -> Unit
+    ) : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var gain = initialDb.coerceIn(-12, 12)
+        private var dragging = false
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0f || h <= 0f) return
+            paint.shader = null
+            paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            paint.textSize = dp(10).toFloat()
+            paint.color = Color.rgb(224, 218, 205)
+            canvas.drawText(frequency, w / 2f, dp(15).toFloat(), paint)
+            paint.textSize = dp(8).toFloat()
+            paint.color = Color.rgb(132, 133, 137)
+            canvas.drawText("Hz", w / 2f, dp(27).toFloat(), paint)
+
+            val x = w / 2f
+            val top = dp(39).toFloat()
+            val bottom = h - dp(35).toFloat()
+            val center = (top + bottom) / 2f
+            val knobY = center - (gain / 12f) * ((bottom - top) / 2f)
+            paint.strokeWidth = dp(4).toFloat()
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = Color.rgb(58, 59, 62)
+            canvas.drawLine(x, top, x, bottom, paint)
+            paint.strokeWidth = dp(3).toFloat()
+            paint.color = Color.rgb(255, 190, 50)
+            canvas.drawLine(x, center, x, knobY, paint)
+            paint.strokeWidth = dp(1).toFloat()
+            paint.color = Color.rgb(92, 83, 65)
+            canvas.drawLine(x - dp(12), center, x + dp(12), center, paint)
+            paint.style = Paint.Style.FILL
+            paint.color = Color.rgb(255, 191, 55)
+            canvas.drawCircle(x, knobY, dp(9).toFloat(), paint)
+            paint.color = Color.rgb(27, 27, 29)
+            canvas.drawCircle(x, knobY, dp(5).toFloat(), paint)
+            paint.textSize = dp(10).toFloat()
+            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.color = Color.rgb(255, 205, 105)
+            canvas.drawText("%+d".format(gain), x, h - dp(7).toFloat(), paint)
+        }
+
+        private fun updateFromY(y: Float) {
+            val top = dp(39).toFloat()
+            val bottom = height - dp(35).toFloat()
+            if (bottom <= top) return
+            val fraction = ((bottom - y) / (bottom - top)).coerceIn(0f, 1f)
+            val next = (fraction * 24f - 12f).toInt().coerceIn(-12, 12)
+            if (next != gain) { gain = next; onGainChanged(next); invalidate() }
+        }
+
+        override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> { dragging = true; parent?.requestDisallowInterceptTouchEvent(true); updateFromY(event.y); return true }
+                android.view.MotionEvent.ACTION_MOVE -> { if (dragging) updateFromY(event.y); return true }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> { dragging = false; parent?.requestDisallowInterceptTouchEvent(false); performClick(); return true }
+            }
+            return true
+        }
+
+        override fun performClick(): Boolean { super.performClick(); return true }
     }
     private fun addSlider(parent: LinearLayout, title: String, minV: Int, maxV: Int, initial: Int, onValue: (Int) -> Unit) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(5), 0, dp(4)) }
