@@ -56,11 +56,8 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val n=inputBuffer.remaining(); if(n<=0)return
         val out=replaceOutputBuffer(n).order(ByteOrder.LITTLE_ENDIAN); val input=inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val cfs=coeffs; val pre=10.0.pow(preampDb/20.0).toFloat()
-        val peakSquares = DoubleArray(2)
-        var sampleCount = 0
-        while(input.remaining()>=2*channels) {
-            sampleCount++
-            for(ch in 0 until channels) {
+        val peaks = FloatArray(2)
+        while(input.remaining()>=2*channels) for(ch in 0 until channels) {
             var sample=input.short/32768f*pre
             for(b in 0 until 12) {
                 val c=cfs[b]
@@ -68,14 +65,11 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                 x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
             }
             val outputSample = sample.coerceIn(-1f,0.9999695f)
-            val meterChannel = if (ch == 0) 0 else 1
-            peakSquares[meterChannel] += outputSample.toDouble() * outputSample.toDouble()
+            peaks[if (ch == 0) 0 else 1] = maxOf(peaks[if (ch == 0) 0 else 1], kotlin.math.abs(outputSample))
             out.putShort((outputSample*32768f).toInt().toShort())
-            }
         }
         input.position(input.limit()); out.flip()
-        val leftRms = if (sampleCount > 0) kotlin.math.sqrt(peakSquares[0] / sampleCount).toFloat() else 0f
-        val rightRms = if (channels > 1 && sampleCount > 0) kotlin.math.sqrt(peakSquares[1] / sampleCount).toFloat() else leftRms
-        onLevel?.invoke(leftRms, rightRms)
+        val rightPeak = if (channels > 1) peaks[1] else peaks[0]
+        onLevel?.invoke(peaks[0], rightPeak)
     }
 }
