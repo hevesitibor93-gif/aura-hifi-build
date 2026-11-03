@@ -1272,7 +1272,7 @@ class MainActivity : Activity() {
                         squares += normalized * normalized
                     }
                     val rms = kotlin.math.sqrt(squares / waveform.size).toFloat()
-                    val level = (rms * 1.15f).coerceIn(0f, 1f)
+                    val level = (rms * 1.50f).coerceIn(0f, 1f)
                     handler.post {
                         if (outputVisualizer === visualizer && player?.isPlaying == true) {
                             // A kimeneti mérő a ténylegesen lejátszott hangot figyeli.
