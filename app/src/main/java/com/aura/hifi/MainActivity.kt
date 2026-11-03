@@ -111,7 +111,7 @@ class MainActivity : Activity() {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
-        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right)
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value)
@@ -1093,18 +1093,7 @@ class MainActivity : Activity() {
         eqProcessor.onLevel = { left, right ->
             handler.post {
                 if (player?.isPlaying == true) {
-                    setVuLevels(((left - 0.032f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f), ((right - 0.032f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f))
-                }
-            }
-        }
-        eqProcessor.onSpectrum = { bass, mid, high ->
-            handler.post {
-                if (player?.isPlaying == true) {
-                    centerAurixVu?.setBands(
-                        ((bass - 0.050f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f),
-                        ((mid - 0.032f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f),
-                        ((high - 0.025f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f)
-                    )
+                    setVuLevels(((left - 0.035f).coerceAtLeast(0f) * 1.45f).coerceIn(0f, 1f), ((right - 0.035f).coerceAtLeast(0f) * 1.45f).coerceIn(0f, 1f))
                 }
             }
         }
@@ -1287,17 +1276,12 @@ class MainActivity : Activity() {
 
     private inner class AurixVuView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val bands = FloatArray(3)
+        private var left = 0f
+        private var right = 0f
         private var active = false
         private var brightness = 80
-        fun setActive(v: Boolean) { active = v; if (!v) bands.fill(0f); invalidate() }
-        fun setBands(bass: Float, mid: Float, high: Float) {
-            if (!active) return
-            bands[0] = bass.coerceIn(0f, 1f)
-            bands[1] = mid.coerceIn(0f, 1f)
-            bands[2] = high.coerceIn(0f, 1f)
-            invalidate()
-        }
+        fun setActive(v: Boolean) { active = v; if (!v) { left = 0f; right = 0f }; invalidate() }
+        fun setLevels(l: Float, r: Float) { if (!active) return; left=l.coerceIn(0f,1f); right=r.coerceIn(0f,1f); invalidate() }
         fun setBrightness(v: Int) { brightness=v.coerceIn(20,100); invalidate() }
         override fun onDraw(c: Canvas) {
             super.onDraw(c)
@@ -1309,23 +1293,19 @@ class MainActivity : Activity() {
             c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint); paint.shader=null
             paint.style=Paint.Style.STROKE; paint.strokeWidth=dp(3).toFloat()
             paint.color=Color.rgb(255,190,75); c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint)
-            paint.style=Paint.Style.FILL
+            val pad=dp(8).toFloat()
+            val centerW=w*0.22f
+            val sideW=(w-centerW-pad*4)/2f
+            val barH=max(dp(5).toFloat(),h*0.17f)
+            drawGoldBar(c,pad,h*0.25f,sideW,barH,left)
+            drawGoldBar(c,w-pad-sideW,h*0.25f,sideW,barH,right)
+            paint.style=Paint.Style.FILL; paint.textAlign=Paint.Align.CENTER
             paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
+            paint.color=Color.rgb(255,222,157); paint.textSize=h*0.31f
+            c.drawText("VU",w/2f,h*0.49f,paint)
+            paint.textSize=h*0.13f; paint.color=Color.rgb(238,190,112)
+            c.drawText("AURIX",w/2f,h*0.70f,paint)
             paint.textAlign=Paint.Align.LEFT
-            paint.textSize=max(dp(8).toFloat(),h*0.105f)
-            val labelW=dp(39).toFloat()
-            val pad=dp(9).toFloat()
-            val barX=pad+labelW
-            val barW=w-barX-pad
-            val barH=max(dp(5).toFloat(),h*0.12f)
-            val ys=floatArrayOf(h*0.22f,h*0.48f,h*0.74f)
-            val names=arrayOf("BASS","MID","HIGH")
-            val colors=intArrayOf(Color.rgb(255,194,75),Color.rgb(190,225,135),Color.rgb(135,205,235))
-            for(i in 0..2) {
-                paint.color=colors[i]
-                c.drawText(names[i],pad,ys[i]+barH*0.88f,paint)
-                drawGoldBar(c,barX,ys[i],barW,barH,bands[i])
-            }
         }
         private fun drawGoldBar(c: Canvas,x:Float,y:Float,width:Float,height:Float,level:Float) {
             val n=32; val gap=dp(1).toFloat(); val sw=(width-gap*(n-1))/n
