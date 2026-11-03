@@ -20,48 +20,8 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var preampDb = 0f
     @Volatile private var coeffs = Array(12) { Coeff() }
     @Volatile var onLevel: ((Float, Float) -> Unit)? = null
-    @Volatile var onSpectrum: ((Float, Float, Float) -> Unit)? = null
     private var channels = 2
     private var rate = 44100
-    private var bassHighPassFilters = Array(2) { Biquad() }
-    private var bassLowPassFilters = Array(2) { Biquad() }
-    private var midHighPassFilters = Array(2) { Biquad() }
-    private var midLowPassFilters = Array(2) { Biquad() }
-    private var highHighPassFilters = Array(2) { Biquad() }
-
-    private class Biquad {
-        private var b0 = 1f; private var b1 = 0f; private var b2 = 0f
-        private var a1 = 0f; private var a2 = 0f
-        private var x1 = 0f; private var x2 = 0f; private var y1 = 0f; private var y2 = 0f
-        fun configureLowPass(sampleRate: Int, frequency: Float) {
-            val w = 2.0 * PI * frequency.coerceAtMost(sampleRate * 0.40f) / sampleRate
-            val c = cos(w); val alpha = sin(w) / (2.0 * kotlin.math.sqrt(0.5))
-            val a0 = 1.0 + alpha
-            b0 = ((1.0 - c) / 2.0 / a0).toFloat()
-            b1 = ((1.0 - c) / a0).toFloat()
-            b2 = b0
-            a1 = (-2.0 * c / a0).toFloat()
-            a2 = ((1.0 - alpha) / a0).toFloat()
-            reset()
-        }
-        fun configureHighPass(sampleRate: Int, frequency: Float) {
-            val w = 2.0 * PI * frequency.coerceAtMost(sampleRate * 0.40f) / sampleRate
-            val c = cos(w); val alpha = sin(w) / (2.0 * kotlin.math.sqrt(0.5))
-            val a0 = 1.0 + alpha
-            b0 = ((1.0 + c) / 2.0 / a0).toFloat()
-            b1 = (-(1.0 + c) / a0).toFloat()
-            b2 = b0
-            a1 = (-2.0 * c / a0).toFloat()
-            a2 = ((1.0 - alpha) / a0).toFloat()
-            reset()
-        }
-        fun process(input: Float): Float {
-            val output = b0 * input + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
-            x2 = x1; x1 = input; y2 = y1; y1 = output
-            return output
-        }
-        fun reset() { x1 = 0f; x2 = 0f; y1 = 0f; y2 = 0f }
-    }
     private var x1 = Array(12) { FloatArray(2) }; private var x2 = Array(12) { FloatArray(2) }
     private var y1 = Array(12) { FloatArray(2) }; private var y2 = Array(12) { FloatArray(2) }
     data class Coeff(val b0:Float=1f,val b1:Float=0f,val b2:Float=0f,val a1:Float=0f,val a2:Float=0f)
@@ -72,25 +32,12 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     fun setPreampDb(v:Float) { preampDb=v.coerceIn(-6f,6f) }
     override fun onConfigure(f:AudioProcessor.AudioFormat):AudioProcessor.AudioFormat {
         if(f.encoding!=C.ENCODING_PCM_16BIT) throw AudioProcessor.UnhandledAudioFormatException(f)
-        rate=f.sampleRate.coerceAtLeast(8000); channels=f.channelCount.coerceIn(1,8); resetState(); configureSpectrumFilters(); rebuild(); return f
+        rate=f.sampleRate.coerceAtLeast(8000); channels=f.channelCount.coerceIn(1,8); resetState(); rebuild(); return f
     }
     override fun onFlush() { resetState(); rebuild() }
     private fun resetState() {
         x1=Array(12){FloatArray(channels)}; x2=Array(12){FloatArray(channels)}
         y1=Array(12){FloatArray(channels)}; y2=Array(12){FloatArray(channels)}
-        bassHighPassFilters = Array(channels) { Biquad() }
-        bassLowPassFilters = Array(channels) { Biquad() }
-        midHighPassFilters = Array(channels) { Biquad() }
-        midLowPassFilters = Array(channels) { Biquad() }
-        highHighPassFilters = Array(channels) { Biquad() }
-        configureSpectrumFilters()
-    }
-    private fun configureSpectrumFilters() {
-        bassHighPassFilters.forEach { it.configureHighPass(rate, 40f) }
-        bassLowPassFilters.forEach { it.configureLowPass(rate, 250f) }
-        midHighPassFilters.forEach { it.configureHighPass(rate, 250f) }
-        midLowPassFilters.forEach { it.configureLowPass(rate, 4000f) }
-        highHighPassFilters.forEach { it.configureHighPass(rate, 4000f) }
     }
     private fun rebuild() {
         val g=gains
@@ -110,7 +57,6 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val out=replaceOutputBuffer(n).order(ByteOrder.LITTLE_ENDIAN); val input=inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val cfs=coeffs; val pre=10.0.pow(preampDb/20.0).toFloat()
         val peaks = FloatArray(2)
-        val bandPeaks = FloatArray(3)
         while(input.remaining()>=2*channels) for(ch in 0 until channels) {
             var sample=input.short/32768f*pre
             for(b in 0 until 12) {
@@ -120,17 +66,10 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             }
             val outputSample = sample.coerceIn(-1f,0.9999695f)
             peaks[if (ch == 0) 0 else 1] = maxOf(peaks[if (ch == 0) 0 else 1], kotlin.math.abs(outputSample))
-            val bass = bassLowPassFilters[ch].process(bassHighPassFilters[ch].process(outputSample))
-            val mid = midLowPassFilters[ch].process(midHighPassFilters[ch].process(outputSample))
-            val high = highHighPassFilters[ch].process(outputSample)
-            bandPeaks[0] = maxOf(bandPeaks[0], kotlin.math.abs(bass))
-            bandPeaks[1] = maxOf(bandPeaks[1], kotlin.math.abs(mid))
-            bandPeaks[2] = maxOf(bandPeaks[2], kotlin.math.abs(high))
             out.putShort((outputSample*32768f).toInt().toShort())
         }
         input.position(input.limit()); out.flip()
         val rightPeak = if (channels > 1) peaks[1] else peaks[0]
         onLevel?.invoke(peaks[0], rightPeak)
-        onSpectrum?.invoke(bandPeaks[0], bandPeaks[1], bandPeaks[2])
     }
 }
