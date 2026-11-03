@@ -1272,7 +1272,11 @@ class MainActivity : Activity() {
                         squares += normalized * normalized
                     }
                     val rms = kotlin.math.sqrt(squares / waveform.size).toFloat()
-                    val level = (rms * 1.50f).coerceIn(0f, 1f)
+                    // A régi, pontos FFT-mérés halkjel-küszöbét és nemlineáris skálázását
+                    // visszahozzuk, de a mintát továbbra is a tényleges kimeneti Visualizer adja.
+                    val rawLevel = (rms * 1.50f).coerceIn(0f, 1f)
+                    val linearLevel = ((rawLevel - 0.012f).coerceAtLeast(0f) * 1.50f).coerceIn(0f, 1f)
+                    val level = linearLevel * linearLevel * linearLevel
                     handler.post {
                         if (outputVisualizer === visualizer && player?.isPlaying == true) {
                             // A kimeneti mérő a ténylegesen lejátszott hangot figyeli.
