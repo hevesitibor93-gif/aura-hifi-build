@@ -1272,7 +1272,7 @@ class MainActivity : Activity() {
                         squares += normalized * normalized
                     }
                     val rms = kotlin.math.sqrt(squares / waveform.size).toFloat()
-                    val level = (rms * 3.0f).coerceIn(0f, 1f)
+                    val level = (rms * 1.15f).coerceIn(0f, 1f)
                     handler.post {
                         if (outputVisualizer === visualizer && player?.isPlaying == true) {
                             // A kimeneti mérő a ténylegesen lejátszott hangot figyeli.
@@ -1507,14 +1507,13 @@ class MainActivity : Activity() {
             val segments = 32
             val gap = dp(1).toFloat()
             val segmentW = (width - gap * (segments - 1)) / segments
-            // A 32 LED-es skála első 20 szegmense a jelszint 0–75%-át,
-            // a piros 12 szegmens pedig a felső 25%-át fedi le.
-            // A LED-ek száma, sorrendje és színei változatlanok.
+            // A piros tartomány csak a legerősebb, 90% feletti csúcsoknál indul.
+            // A skála 90%-áig a sárga/zöld szegmensek mozognak.
             val safeLevel = level.coerceIn(0f, 1f)
-            val lit = if (safeLevel <= 0.75f) {
-                (safeLevel / 0.75f * 20f).toInt()
+            val lit = if (safeLevel <= 0.90f) {
+                (safeLevel / 0.90f * 20f).toInt()
             } else {
-                (20f + (safeLevel - 0.75f) / 0.25f * 12f).toInt()
+                (20f + (safeLevel - 0.90f) / 0.10f * 12f).toInt()
             }.coerceIn(0, segments)
             for (i in 0 until segments) {
                 val sx = x + i * (segmentW + gap)
