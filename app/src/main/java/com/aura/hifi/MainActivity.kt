@@ -59,6 +59,10 @@ class MainActivity : Activity() {
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
     private var vuSmoothedLevel = 0f
+    @Volatile private var vuThreshold = 0.035f
+    @Volatile private var vuGain = 1.20f
+    @Volatile private var vuDelayMs = 145L
+    @Volatile private var vuMono = false
     private val queue = mutableListOf<Uri>()
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
@@ -89,7 +93,12 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg; window.navigationBarColor = bg
-        val allowRotation = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("screen_rotation", true)
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        vuThreshold = prefs.getInt("vu_threshold_milli", 35).coerceIn(10, 100).toFloat() / 1000f
+        vuGain = prefs.getInt("vu_gain_percent", 120).coerceIn(50, 200).toFloat() / 100f
+        vuDelayMs = prefs.getInt("vu_delay_ms", 145).coerceIn(0, 500).toLong()
+        vuMono = prefs.getBoolean("vu_mono", false)
+        val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
     }
@@ -483,6 +492,117 @@ class MainActivity : Activity() {
         }
         animationRow.addView(vuAnimation)
         settingsPage.addView(animationRow)
+
+        settingsPage.addView(sectionTitle("VU / HANGREAKCIÓ FINOMHANGOLÁSA"))
+        settingsPage.addView(label(
+            "Ezek a beállítások lejátszás közben is azonnal változnak. Bluetooth-fülhallgatónál a késleltetéssel a kijelzés a hallható zenéhez igazítható.",
+            10f, Color.rgb(155, 163, 177)
+        ).apply { setPadding(dp(4), 0, dp(4), dp(8)) })
+
+        fun vuSlider(
+            title: String,
+            subtitle: String,
+            maxValue: Int,
+            initial: Int,
+            format: (Int) -> String,
+            changed: (Int) -> Unit
+        ): SeekBar {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(29, 30, 34), Color.rgb(14, 17, 23))).apply {
+                    cornerRadius = dp(13).toFloat()
+                    setStroke(dp(1), Color.rgb(91, 69, 39))
+                }
+                setPadding(dp(12), dp(8), dp(12), dp(5))
+            }
+            val headerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            headerRow.addView(label(title, 11f, Color.rgb(238, 202, 137)).apply { typeface = Typeface.DEFAULT_BOLD },
+                LinearLayout.LayoutParams(0, -2, 1f))
+            val valueLabel = label(format(initial), 12f, gold).apply { typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.END }
+            headerRow.addView(valueLabel)
+            card.addView(headerRow)
+            card.addView(label(subtitle, 9f, Color.rgb(145, 153, 166)))
+            val seek = SeekBar(this).apply {
+                max = maxValue
+                progress = initial.coerceIn(0, maxValue)
+                progressTintList = android.content.res.ColorStateList.valueOf(gold)
+                thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
+                        valueLabel.text = format(value)
+                        if (fromUser) changed(value)
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) {}
+                    override fun onStopTrackingTouch(sb: SeekBar?) {}
+                })
+            }
+            card.addView(seek)
+            settingsPage.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            return seek
+        }
+
+        val thresholdSeek = vuSlider(
+            "ÉRZÉKENYSÉG  •  THRESHOLD",
+            "Alacsonyabb érték = a halkabb hangokra is reagál.",
+            90, (vuPrefs.getInt("vu_threshold_milli", 35) - 10).coerceIn(0, 90),
+            { "%.3f".format(java.util.Locale.US, (it + 10) / 1000f) }
+        ) { value ->
+            vuThreshold = (value + 10) / 1000f
+            vuPrefs.edit().putInt("vu_threshold_milli", value + 10).apply()
+        }
+        val gainSeek = vuSlider(
+            "VU ERŐSÍTÉS  •  GAIN",
+            "A kijelző kitérésének mértéke. Nem változtatja a hangerőt.",
+            150, (vuPrefs.getInt("vu_gain_percent", 120) - 50).coerceIn(0, 150),
+            { "%.2fx".format(java.util.Locale.US, 0.50f + it / 100f) }
+        ) { value ->
+            vuGain = 0.50f + value / 100f
+            vuPrefs.edit().putInt("vu_gain_percent", value + 50).apply()
+        }
+        val delaySeek = vuSlider(
+            "KÉSLELTETÉS  •  DELAY",
+            "Bluetooth esetén növeld, ha a VU a hallható zenéhez képest siet.",
+            500, vuPrefs.getInt("vu_delay_ms", 145).coerceIn(0, 500),
+            { "$it ms" }
+        ) { value ->
+            vuDelayMs = value.toLong()
+            vuPrefs.edit().putInt("vu_delay_ms", value).apply()
+        }
+
+        val monoRow = settingRow("MONO KIJELZÉS", "A két csatorna átlaga mindkét oldalon")
+        val monoSwitch = Switch(this).apply {
+            text = ""
+            isChecked = vuMono
+            setOnCheckedChangeListener { _, checked ->
+                vuMono = checked
+                vuPrefs.edit().putBoolean("vu_mono", checked).apply()
+            }
+        }
+        monoRow.addView(monoSwitch)
+        settingsPage.addView(monoRow)
+        settingsPage.addView(label(
+            "Jelforrás: az EQ és a hangkiemelések utáni digitális hangjel. A Bluetooth-kimenet saját késését a Delay beállítás kompenzálja.",
+            9f, Color.rgb(145, 153, 166)
+        ).apply { setPadding(dp(4), dp(5), dp(4), dp(8)) })
+        settingsPage.addView(button("↺  VU ALAPÉRTÉKEK VISSZAÁLLÍTÁSA", Color.rgb(35, 41, 53), Color.WHITE) {
+            vuThreshold = 0.035f
+            vuGain = 1.20f
+            vuDelayMs = 145L
+            vuMono = false
+            vuPrefs.edit()
+                .putInt("vu_threshold_milli", 35)
+                .putInt("vu_gain_percent", 120)
+                .putInt("vu_delay_ms", 145)
+                .putBoolean("vu_mono", false)
+                .apply()
+            thresholdSeek.progress = 25
+            gainSeek.progress = 70
+            delaySeek.progress = 145
+            monoSwitch.isChecked = false
+            toast("VU-beállítások visszaállítva.")
+        }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
         setVuStyle(savedVuStyle)
         refreshVuStyleButtons(savedVuStyle)
@@ -1091,11 +1211,17 @@ class MainActivity : Activity() {
         renderQueue()
         releaseAudio()
         eqProcessor.onLevel = { left, right ->
+            val threshold = vuThreshold
+            val gain = vuGain
+            val delay = vuDelayMs
+            val leftLevel = ((left - threshold).coerceAtLeast(0f) * gain).coerceIn(0f, 1f)
+            val rightLevel = ((right - threshold).coerceAtLeast(0f) * gain).coerceIn(0f, 1f)
+            val mono = vuMono
+            val displayLeft = if (mono) (leftLevel + rightLevel) * 0.5f else leftLevel
+            val displayRight = if (mono) displayLeft else rightLevel
             handler.postDelayed({
-                if (player?.isPlaying == true) {
-                    setVuLevels(((left - 0.035f).coerceAtLeast(0f) * 1.20f).coerceIn(0f, 1f), ((right - 0.035f).coerceAtLeast(0f) * 1.20f).coerceIn(0f, 1f))
-                }
-            }, 145L)
+                if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
+            }, delay)
         }
         try {
             selectedUri = uri
