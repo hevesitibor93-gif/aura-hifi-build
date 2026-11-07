@@ -289,11 +289,6 @@ class MainActivity : Activity() {
         eqContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = rounded(panel, 18); setPadding(dp(14), dp(12), dp(14), dp(12)) }
         body.addView(eqContainer)
         renderEqualizer()
-        body.addView(sectionTitle("HANGFORMÁLÁS"))
-        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        actions.addView(button("HÁTTÉR KÉP", Color.rgb(35, 41, 53), Color.WHITE) { openImage() }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(8) })
-        actions.addView(button("EQ ALAPHELYZET", Color.rgb(35, 41, 53), Color.WHITE) { resetEq() }, LinearLayout.LayoutParams(0, dp(44), 1f))
-        body.addView(actions)
         body.addView(label("Saját AURA Hi-Fi hangfeldolgozás • csak az alkalmazás lejátszására hat, a telefon rendszerhangját nem módosítja.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(14), dp(3), dp(18)) })
         val playerPage = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1594,63 +1589,98 @@ class MainActivity : Activity() {
                 prefs.edit().putInt("eq_band_$index", db).apply()
                 eqProcessor.setBandGainDb(index, db.toFloat())
             }
-            card.addView(bandView, LinearLayout.LayoutParams(dp(62), dp(194)))
-            bandRow.addView(card, LinearLayout.LayoutParams(dp(68), dp(205)).apply { marginEnd = dp(7) })
+            card.addView(bandView, LinearLayout.LayoutParams(dp(62), dp(214)))
+            bandRow.addView(card, LinearLayout.LayoutParams(dp(68), dp(225)).apply { marginEnd = dp(7) })
         }
         bandScroll.addView(bandRow)
-        eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(218)))
+        eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(238)))
 
-        fun premiumControl(title: String, valueText: String, min: Int, max: Int, initial: Int, onChange: (Int) -> Unit) {
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+        val dialRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(13), 0, dp(5))
+        }
+        fun addDial(title: String, shortTitle: String, initial: Int, minValue: Int, maxValue: Int, format: (Int) -> String, onChange: (Int) -> Unit) {
+            val dial = TextView(this).apply {
+                text = "${shortTitle}\\n${format(initial)}"
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setTextColor(Color.rgb(255, 214, 145))
+                typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(29, 29, 31), Color.rgb(12, 14, 18))).apply {
-                    cornerRadius = dp(14).toFloat()
-                    setStroke(dp(1), Color.rgb(76, 65, 47))
+                    intArrayOf(Color.rgb(57, 43, 23), Color.rgb(15, 17, 21))).apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(dp(2), Color.rgb(176, 126, 48))
                 }
-                setPadding(dp(12), dp(8), dp(12), dp(7))
+                isClickable = true
+                isFocusable = true
             }
-            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            line.addView(label(title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
-            val value = label(valueText, 12f, gold).apply { typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.RIGHT }
-            line.addView(value)
-            card.addView(line)
-            val seek = SeekBar(this).apply {
-                this.max = max - min
-                progress = (initial - min).coerceIn(0, max - min)
-                progressTintList = android.content.res.ColorStateList.valueOf(gold)
-                thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 207, 91))
-                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(65, 62, 57))
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                        if (fromUser) { onChange(p + min); value.text = if (title == "Előerősítés") "%+d dB".format(p + min) else "%.1f dB".format((p + min) / 10f) }
+            dialRow.addView(dial, LinearLayout.LayoutParams(dp(82), dp(82)).apply {
+                weight = 1f
+                width = 0
+                marginStart = dp(5)
+                marginEnd = dp(5)
+            })
+            dial.setOnClickListener {
+                val dialogContent = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(22), dp(8), dp(22), dp(4))
+                }
+                val currentValue = TextView(this).apply {
+                    text = format(initial)
+                    textSize = 18f
+                    gravity = Gravity.CENTER
+                    setTextColor(gold)
+                    typeface = Typeface.DEFAULT_BOLD
+                }
+                val seek = SeekBar(this).apply {
+                    max = maxValue - minValue
+                    progress = (initial - minValue).coerceIn(0, max)
+                    progressTintList = android.content.res.ColorStateList.valueOf(gold)
+                    thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 207, 91))
+                }
+                seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                        if (fromUser) {
+                            val value = progress + minValue
+                            currentValue.text = format(value)
+                            dial.text = "${shortTitle}\\n${format(value)}"
+                            onChange(value)
+                        }
                     }
                     override fun onStartTrackingTouch(sb: SeekBar?) {}
                     override fun onStopTrackingTouch(sb: SeekBar?) {}
                 })
+                dialogContent.addView(currentValue)
+                dialogContent.addView(seek)
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setView(dialogContent)
+                    .setPositiveButton("KÉSZ", null)
+                    .show()
             }
-            card.addView(seek)
-            eqContainer.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         }
 
         val bass = prefs.getInt("eq_bass", 0).coerceIn(0, 120)
         eqProcessor.setBassBoostDb(bass / 10f)
-        premiumControl("Bass Boost", "%.1f dB".format(bass / 10f), 0, 120, bass) { v ->
-            prefs.edit().putInt("eq_bass", v).apply(); eqProcessor.setBassBoostDb(v / 10f)
+        addDial("Bass Boost", "BASS", bass, 0, 120, { "%.1f dB".format(it / 10f) }) { v ->
+            prefs.edit().putInt("eq_bass", v).apply()
+            eqProcessor.setBassBoostDb(v / 10f)
         }
         val treble = prefs.getInt("eq_treble", 0).coerceIn(0, 120)
         eqProcessor.setTrebleBoostDb(treble / 10f)
-        premiumControl("Treble Boost", "%.1f dB".format(treble / 10f), 0, 120, treble) { v ->
-            prefs.edit().putInt("eq_treble", v).apply(); eqProcessor.setTrebleBoostDb(v / 10f)
+        addDial("Treble Boost", "TREBLE", treble, 0, 120, { "%.1f dB".format(it / 10f) }) { v ->
+            prefs.edit().putInt("eq_treble", v).apply()
+            eqProcessor.setTrebleBoostDb(v / 10f)
         }
         val preamp = prefs.getInt("eq_preamp", 0).coerceIn(-6, 6)
         eqProcessor.setPreampDb(preamp.toFloat())
-        premiumControl("Előerősítés", "%+d dB".format(preamp), -6, 6, preamp) { v ->
-            val db = v
-            prefs.edit().putInt("eq_preamp", db).apply(); eqProcessor.setPreampDb(db.toFloat())
+        addDial("Előerősítés", "PREAMP", preamp, -6, 6, { "%+d dB".format(it) }) { v ->
+            prefs.edit().putInt("eq_preamp", v).apply()
+            eqProcessor.setPreampDb(v.toFloat())
         }
-        premiumControl("Lejátszó hangerő", "AURA", 0, 100, 100) { v -> player?.volume = (v / 100f).coerceIn(0f, 1f) }
-
+        eqContainer.addView(dialRow, LinearLayout.LayoutParams(-1, dp(94)))
+        
         val reset = TextView(this).apply {
             text = "↺    EQ ALAPHELYZET"
             textSize = 11f
