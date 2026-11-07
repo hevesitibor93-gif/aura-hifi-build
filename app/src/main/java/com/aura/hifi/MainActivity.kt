@@ -105,6 +105,11 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg; window.navigationBarColor = bg
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        if (!prefs.getBoolean("eq_safe_neutral_reset_v1", false)) {
+            val safeEq = prefs.edit().putInt("eq_bass", 0).putInt("eq_treble", 0)
+            for (i in 0 until 12) safeEq.putInt("eq_band_${i}", 0)
+            safeEq.putBoolean("eq_safe_neutral_reset_v1", true).apply()
+        }
         vuProfile = detectVuOutputProfile()
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
