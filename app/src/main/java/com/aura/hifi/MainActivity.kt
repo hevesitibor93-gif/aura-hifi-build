@@ -1589,8 +1589,9 @@ class MainActivity : Activity() {
                 prefs.edit().putInt("eq_band_$index", db).apply()
                 eqProcessor.setBandGainDb(index, db.toFloat())
             }
-            card.addView(bandView, LinearLayout.LayoutParams(dp(62), dp(214)))
-            bandRow.addView(card, LinearLayout.LayoutParams(dp(68), dp(225)).apply { marginEnd = dp(7) })
+            // Szélesebb, teljes magasságú érintési felület a keskeny EQ csúszka körül.
+            card.addView(bandView, LinearLayout.LayoutParams(dp(70), dp(214)))
+            bandRow.addView(card, LinearLayout.LayoutParams(dp(76), dp(225)).apply { marginEnd = dp(7) })
         }
         bandScroll.addView(bandRow)
         eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(238)))
