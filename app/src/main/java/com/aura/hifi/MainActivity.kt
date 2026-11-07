@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         val gainDefault = if (vuProfile == "speaker") prefs.getInt("vu_gain_percent", 120) else 120
         val delayDefault = if (vuProfile == "speaker") prefs.getInt("vu_delay_ms", 400) else 400
         val monoDefault = if (vuProfile == "speaker") prefs.getBoolean("vu_mono", false) else false
-        vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 160) / 1000f
+        vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 250) / 1000f
         vuGain = prefs.getInt(prefix + "gain_percent", gainDefault).coerceIn(50, 200) / 100f
         vuDelayMs = prefs.getInt(prefix + "delay_ms", delayDefault).coerceIn(400, 1400).toLong()
         vuMono = prefs.getBoolean(prefix + "mono", monoDefault)
@@ -611,7 +611,7 @@ class MainActivity : Activity() {
             val delayValue = if (isActive) vuDelayMs.toInt() else vuPrefs.getInt(prefix + "delay_ms", 400)
             val monoValue = if (isActive) vuMono else vuPrefs.getBoolean(prefix + "mono", false)
             val saved = vuPrefs.edit()
-                .putInt(prefix + "threshold_milli", thresholdValue.coerceIn(10, 160))
+                .putInt(prefix + "threshold_milli", thresholdValue.coerceIn(10, 250))
                 .putInt(prefix + "gain_percent", gainValue.coerceIn(50, 200))
                 .putInt(prefix + "delay_ms", delayValue.coerceIn(400, 1400))
                 .putBoolean(prefix + "mono", monoValue)
@@ -673,7 +673,7 @@ class MainActivity : Activity() {
         val thresholdSeek = vuSlider(
             "ÉRZÉKENYSÉG  •  THRESHOLD",
             "Alacsonyabb érték = a halkabb hangokra is reagál.",
-            150, (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 150),
+            240, (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 240),
             { "%.3f".format(java.util.Locale.US, (it + 10) / 1000f) }
         ) { value ->
             vuThreshold = (value + 10) / 1000f
@@ -721,7 +721,7 @@ class MainActivity : Activity() {
             bluetoothProfileButton.background = rounded(if (isBluetooth) Color.rgb(31, 69, 76) else Color.TRANSPARENT, 10)
             speakerProfileButton.setTextColor(if (!isBluetooth) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
             bluetoothProfileButton.setTextColor(if (isBluetooth) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
-            thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 150)
+            thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 240)
             gainSeek.progress = ((vuGain * 100).toInt() - 50).coerceIn(0, 150)
             delaySeek.progress = (vuDelayMs.toInt() - 400).coerceIn(0, 1000)
             monoSwitch.isChecked = vuMono
