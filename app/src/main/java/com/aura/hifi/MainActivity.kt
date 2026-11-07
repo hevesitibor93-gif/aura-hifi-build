@@ -1752,7 +1752,7 @@ class MainActivity : Activity() {
                         if (dx > dy * 1.15f) {
                             dragging = false
                             parent?.requestDisallowInterceptTouchEvent(false)
-                            return false
+                            return true
                         } else parent?.requestDisallowInterceptTouchEvent(true)
                     }
                     if (dragging) updateFromY(event.y)
