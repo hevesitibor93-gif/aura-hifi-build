@@ -1590,8 +1590,8 @@ class MainActivity : Activity() {
                 eqProcessor.setBandGainDb(index, db.toFloat())
             }
             // Szélesebb, teljes magasságú érintési felület a keskeny EQ csúszka körül.
-            card.addView(bandView, LinearLayout.LayoutParams(dp(70), dp(214)))
-            bandRow.addView(card, LinearLayout.LayoutParams(dp(76), dp(225)).apply { marginEnd = dp(7) })
+            card.addView(bandView, LinearLayout.LayoutParams(dp(62), dp(214)))
+            bandRow.addView(card, LinearLayout.LayoutParams(dp(68), dp(225)).apply { marginEnd = dp(7) })
         }
         bandScroll.addView(bandRow)
         eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(238)))
@@ -1768,35 +1768,57 @@ class MainActivity : Activity() {
         private var downX = 0f
         private var downY = 0f
         private var touchDirectionChosen = false
+        private var horizontalGesture = false
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
             val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
-                    dragging = true; touchDirectionChosen = false; downX = event.x; downY = event.y
+                    dragging = true
+                    touchDirectionChosen = false
+                    horizontalGesture = false
+                    downX = event.x
+                    downY = event.y
                     parent?.requestDisallowInterceptTouchEvent(false)
                     return true
                 }
                 android.view.MotionEvent.ACTION_MOVE -> {
+                    if (horizontalGesture) return false
                     if (!dragging) return false
                     val dx = kotlin.math.abs(event.x - downX)
                     val dy = kotlin.math.abs(event.y - downY)
                     if (!touchDirectionChosen && (dx > slop || dy > slop)) {
                         touchDirectionChosen = true
                         if (dx > dy * 1.15f) {
+                            // A vízszintes mozdulatot átengedjük a HorizontalScrollView-nak.
+                            horizontalGesture = true
                             dragging = false
                             parent?.requestDisallowInterceptTouchEvent(false)
-                            return true
-                        } else parent?.requestDisallowInterceptTouchEvent(true)
+                            return false
+                        } else {
+                            // A függőleges húzás maradjon az EQ sáv vezérlésénél.
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                        }
                     }
                     if (dragging) updateFromY(event.y)
                     return true
                 }
                 android.view.MotionEvent.ACTION_UP -> {
+                    if (horizontalGesture) {
+                        dragging = false
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        return false
+                    }
                     if (dragging) updateFromY(event.y)
-                    dragging = false; parent?.requestDisallowInterceptTouchEvent(false); performClick(); return true
+                    dragging = false
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    performClick()
+                    return true
                 }
                 android.view.MotionEvent.ACTION_CANCEL -> {
-                    dragging = false; parent?.requestDisallowInterceptTouchEvent(false); return true
+                    dragging = false
+                    horizontalGesture = false
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    return true
                 }
             }
             return true
