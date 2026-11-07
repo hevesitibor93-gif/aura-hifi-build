@@ -1513,8 +1513,7 @@ class MainActivity : Activity() {
         eqContainer.setPadding(dp(12), dp(14), dp(12), dp(14))
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val names = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "12k", "14k", "16k")
-        val defaultCurve = intArrayOf(0, 0, 0, -2, -1, 0, 0, 0, 1, 0, 0, 0)
-        val values = IntArray(12) { i -> prefs.getInt("eq_band_$i", defaultCurve[i]).coerceIn(-12, 12) }
+        val values = IntArray(12) { i -> prefs.getInt("eq_band_$i", 0).coerceIn(-12, 12) }
         values.forEachIndexed { i, value -> eqProcessor.setBandGainDb(i, value.toFloat()) }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -1665,13 +1664,13 @@ class MainActivity : Activity() {
             }
         }
 
-        val bass = prefs.getInt("eq_bass", 35).coerceIn(0, 120)
+        val bass = prefs.getInt("eq_bass", 0).coerceIn(0, 120)
         eqProcessor.setBassBoostDb(bass / 10f)
         addDial("Bass Boost", "BASS", bass, 0, 120, { "%.1f dB".format(it / 10f) }) { v ->
             prefs.edit().putInt("eq_bass", v).apply()
             eqProcessor.setBassBoostDb(v / 10f)
         }
-        val treble = prefs.getInt("eq_treble", 20).coerceIn(0, 120)
+        val treble = prefs.getInt("eq_treble", 0).coerceIn(0, 120)
         eqProcessor.setTrebleBoostDb(treble / 10f)
         addDial("Treble Boost", "TREBLE", treble, 0, 120, { "%.1f dB".format(it / 10f) }) { v ->
             prefs.edit().putInt("eq_treble", v).apply()
