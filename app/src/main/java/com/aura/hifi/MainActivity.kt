@@ -63,6 +63,9 @@ class MainActivity : Activity() {
     @Volatile private var vuGain = 1.20f
     @Volatile private var vuDelayMs = 145L
     @Volatile private var vuMono = false
+    @Volatile private var vuProfile = "speaker"
+    private var vuProfileControls: (() -> Unit)? = null
+    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private val queue = mutableListOf<Uri>()
     private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
@@ -94,13 +97,17 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg; window.navigationBarColor = bg
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        vuThreshold = prefs.getInt("vu_threshold_milli", 35).coerceIn(10, 100).toFloat() / 1000f
-        vuGain = prefs.getInt("vu_gain_percent", 120).coerceIn(50, 200).toFloat() / 100f
-        vuDelayMs = prefs.getInt("vu_delay_ms", 145).coerceIn(0, 500).toLong()
-        vuMono = prefs.getBoolean("vu_mono", false)
+        vuProfile = detectVuOutputProfile()
+        loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
+            override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
+        }
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -115,6 +122,57 @@ class MainActivity : Activity() {
         albumLabel.text = savedAlbum
     }
 
+
+    private fun detectVuOutputProfile(): String {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        val bluetoothConnected = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).any { device ->
+            device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                (Build.VERSION.SDK_INT >= 31 && (device.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                    device.type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
+        }
+        return if (bluetoothConnected) "bluetooth" else "speaker"
+    }
+
+    private fun loadVuProfile(profile: String) {
+        vuProfile = if (profile == "bluetooth") "bluetooth" else "speaker"
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val prefix = if (vuProfile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
+        val legacyPrefix = "vu_"
+        val thresholdDefault = if (vuProfile == "speaker") prefs.getInt("vu_threshold_milli", 35) else 35
+        val gainDefault = if (vuProfile == "speaker") prefs.getInt("vu_gain_percent", 120) else 120
+        val delayDefault = if (vuProfile == "speaker") prefs.getInt("vu_delay_ms", 145) else 145
+        val monoDefault = if (vuProfile == "speaker") prefs.getBoolean("vu_mono", false) else false
+        vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 100) / 1000f
+        vuGain = prefs.getInt(prefix + "gain_percent", gainDefault).coerceIn(50, 200) / 100f
+        vuDelayMs = prefs.getInt(prefix + "delay_ms", delayDefault).coerceIn(0, 500).toLong()
+        vuMono = prefs.getBoolean(prefix + "mono", monoDefault)
+        prefs.edit()
+            .putInt(prefix + "threshold_milli", (vuThreshold * 1000).toInt())
+            .putInt(prefix + "gain_percent", (vuGain * 100).toInt())
+            .putInt(prefix + "delay_ms", vuDelayMs.toInt())
+            .putBoolean(prefix + "mono", vuMono)
+            .apply()
+        vuProfileControls?.invoke()
+    }
+
+    private fun refreshVuOutputProfile() {
+        val detected = detectVuOutputProfile()
+        if (detected != vuProfile) {
+            loadVuProfile(detected)
+            runOnUiThread { vuProfileControls?.invoke() }
+        }
+    }
+
+    private fun saveVuProfileInt(name: String, value: Int) {
+        val prefix = if (vuProfile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
+        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt(prefix + name, value).apply()
+    }
+
+    private fun saveVuProfileBoolean(name: String, value: Boolean) {
+        val prefix = if (vuProfile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
+        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean(prefix + name, value).apply()
+    }
 
     private fun setVuActive(value: Boolean) {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value)
@@ -495,9 +553,26 @@ class MainActivity : Activity() {
 
         settingsPage.addView(sectionTitle("VU / HANGREAKCIÓ FINOMHANGOLÁSA"))
         settingsPage.addView(label(
-            "Ezek a beállítások lejátszás közben is azonnal változnak. Bluetooth-fülhallgatónál a késleltetéssel a kijelzés a hallható zenéhez igazítható.",
+            "Külön profil a telefonhangszóróhoz és a Bluetooth-kimenethez. A csatlakoztatott hangkimenetet az alkalmazás automatikusan felismeri.",
             10f, Color.rgb(155, 163, 177)
         ).apply { setPadding(dp(4), 0, dp(4), dp(8)) })
+
+        val profileStatus = label("", 10f, Color.rgb(155, 163, 177)).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(3), 0, dp(7))
+        }
+        settingsPage.addView(profileStatus)
+        val profileRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(13, 16, 22), 14)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val speakerProfileButton = button("▣  HANGSZÓRÓ", Color.TRANSPARENT, Color.WHITE) {}
+        val bluetoothProfileButton = button("♫  BLUETOOTH", Color.TRANSPARENT, Color.WHITE) {}
+        profileRow.addView(speakerProfileButton, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(3) })
+        profileRow.addView(bluetoothProfileButton, LinearLayout.LayoutParams(0, dp(40), 1f))
+        settingsPage.addView(profileRow)
 
         fun vuSlider(
             title: String,
@@ -545,29 +620,29 @@ class MainActivity : Activity() {
         val thresholdSeek = vuSlider(
             "ÉRZÉKENYSÉG  •  THRESHOLD",
             "Alacsonyabb érték = a halkabb hangokra is reagál.",
-            90, (vuPrefs.getInt("vu_threshold_milli", 35) - 10).coerceIn(0, 90),
+            90, (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90),
             { "%.3f".format(java.util.Locale.US, (it + 10) / 1000f) }
         ) { value ->
             vuThreshold = (value + 10) / 1000f
-            vuPrefs.edit().putInt("vu_threshold_milli", value + 10).apply()
+            saveVuProfileInt("threshold_milli", value + 10)
         }
         val gainSeek = vuSlider(
             "VU ERŐSÍTÉS  •  GAIN",
             "A kijelző kitérésének mértéke. Nem változtatja a hangerőt.",
-            150, (vuPrefs.getInt("vu_gain_percent", 120) - 50).coerceIn(0, 150),
+            150, ((vuGain * 100).toInt() - 50).coerceIn(0, 150),
             { "%.2fx".format(java.util.Locale.US, 0.50f + it / 100f) }
         ) { value ->
             vuGain = 0.50f + value / 100f
-            vuPrefs.edit().putInt("vu_gain_percent", value + 50).apply()
+            saveVuProfileInt("gain_percent", value + 50)
         }
         val delaySeek = vuSlider(
             "KÉSLELTETÉS  •  DELAY",
-            "Bluetooth esetén növeld, ha a VU a hallható zenéhez képest siet.",
-            500, vuPrefs.getInt("vu_delay_ms", 145).coerceIn(0, 500),
+            "Állítsd a kijelzést a hallható zenéhez. Bluetoothnál gyakran nagyobb érték kell.",
+            500, vuDelayMs.toInt().coerceIn(0, 500),
             { "$it ms" }
         ) { value ->
             vuDelayMs = value.toLong()
-            vuPrefs.edit().putInt("vu_delay_ms", value).apply()
+            saveVuProfileInt("delay_ms", value)
         }
 
         val monoRow = settingRow("MONO KIJELZÉS", "A két csatorna átlaga mindkét oldalon")
@@ -576,31 +651,52 @@ class MainActivity : Activity() {
             isChecked = vuMono
             setOnCheckedChangeListener { _, checked ->
                 vuMono = checked
-                vuPrefs.edit().putBoolean("vu_mono", checked).apply()
+                saveVuProfileBoolean("mono", checked)
             }
         }
         monoRow.addView(monoSwitch)
         settingsPage.addView(monoRow)
         settingsPage.addView(label(
-            "Jelforrás: az EQ és a hangkiemelések utáni digitális hangjel. A Bluetooth-kimenet saját késését a Delay beállítás kompenzálja.",
+            "Jelforrás: az EQ és a hangkiemelések utáni digitális hangjel. A két profil külön mentődik.",
             9f, Color.rgb(145, 153, 166)
         ).apply { setPadding(dp(4), dp(5), dp(4), dp(8)) })
-        settingsPage.addView(button("↺  VU ALAPÉRTÉKEK VISSZAÁLLÍTÁSA", Color.rgb(35, 41, 53), Color.WHITE) {
+
+        fun refreshVuProfileControls() {
+            val isBluetooth = vuProfile == "bluetooth"
+            profileStatus.text = if (isBluetooth) "AKTÍV PROFIL: BLUETOOTH" else "AKTÍV PROFIL: TELEFONHANGSZÓRÓ"
+            speakerProfileButton.background = rounded(if (!isBluetooth) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
+            bluetoothProfileButton.background = rounded(if (isBluetooth) Color.rgb(31, 69, 76) else Color.TRANSPARENT, 10)
+            speakerProfileButton.setTextColor(if (!isBluetooth) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
+            bluetoothProfileButton.setTextColor(if (isBluetooth) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
+            thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90)
+            gainSeek.progress = ((vuGain * 100).toInt() - 50).coerceIn(0, 150)
+            delaySeek.progress = vuDelayMs.toInt().coerceIn(0, 500)
+            monoSwitch.isChecked = vuMono
+        }
+        vuProfileControls = { refreshVuProfileControls() }
+        speakerProfileButton.setOnClickListener {
+            loadVuProfile("speaker")
+            refreshVuProfileControls()
+        }
+        bluetoothProfileButton.setOnClickListener {
+            loadVuProfile("bluetooth")
+            refreshVuProfileControls()
+        }
+        settingsPage.addView(button("↺  AKTÍV PROFIL ALAPÉRTÉKEI", Color.rgb(35, 41, 53), Color.WHITE) {
+            val profile = vuProfile
+            val prefix = if (profile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
             vuThreshold = 0.035f
             vuGain = 1.20f
             vuDelayMs = 145L
             vuMono = false
             vuPrefs.edit()
-                .putInt("vu_threshold_milli", 35)
-                .putInt("vu_gain_percent", 120)
-                .putInt("vu_delay_ms", 145)
-                .putBoolean("vu_mono", false)
+                .putInt(prefix + "threshold_milli", 35)
+                .putInt(prefix + "gain_percent", 120)
+                .putInt(prefix + "delay_ms", 145)
+                .putBoolean(prefix + "mono", false)
                 .apply()
-            thresholdSeek.progress = 25
-            gainSeek.progress = 70
-            delaySeek.progress = 145
-            monoSwitch.isChecked = false
-            toast("VU-beállítások visszaállítva.")
+            refreshVuProfileControls()
+            toast("Az aktív VU-profil visszaállítva.")
         }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
 
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
@@ -1576,7 +1672,11 @@ class MainActivity : Activity() {
         try { player?.release() } catch (_: Exception) {}; player = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-    override fun onDestroy() { releaseAudio(); libraryExecutor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() {
+        audioDeviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).unregisterAudioDeviceCallback(it) }
+        audioDeviceCallback = null
+        releaseAudio(); libraryExecutor.shutdownNow(); super.onDestroy()
+    }
 
     private inner class VinylView : View(this@MainActivity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
