@@ -1461,7 +1461,7 @@ class MainActivity : Activity() {
             refreshLibrarySelection()
             val renderersFactory = object : DefaultRenderersFactory(this) {
                 override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink {
-                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(true)
+                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
                         .setAudioProcessors(arrayOf(eqProcessor)).build()
                 }
             }
@@ -1689,37 +1689,6 @@ class MainActivity : Activity() {
         }
         eqContainer.addView(dialRow, LinearLayout.LayoutParams(-1, dp(94)))
 
-        val limiterPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        var limiterOn = limiterPrefs.getBoolean("output_limiter_enabled", false)
-        eqProcessor.setLimiterEnabled(limiterOn)
-        val limiterButton = TextView(this).apply {
-            textSize = 11f
-            gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            isClickable = true
-            isFocusable = true
-        }
-        fun styleLimiterButton() {
-            limiterButton.text = if (limiterOn) "OUTPUT LIMITER  •  BEKAPCSOLVA" else "OUTPUT LIMITER  •  KIKAPCSOLVA"
-            limiterButton.setTextColor(if (limiterOn) Color.rgb(255, 220, 155) else Color.rgb(190, 194, 202))
-            limiterButton.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                if (limiterOn) intArrayOf(Color.rgb(65, 45, 20), Color.rgb(25, 20, 15))
-                else intArrayOf(Color.rgb(31, 33, 38), Color.rgb(15, 17, 21))).apply {
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), if (limiterOn) Color.rgb(190, 137, 52) else Color.rgb(75, 78, 85))
-            }
-        }
-        styleLimiterButton()
-        limiterButton.setOnClickListener {
-            limiterOn = !limiterOn
-            limiterPrefs.edit().putBoolean("output_limiter_enabled", limiterOn).apply()
-            eqProcessor.setLimiterEnabled(limiterOn)
-            styleLimiterButton()
-            toast(if (limiterOn) "Kimeneti csúcsvédelem bekapcsolva." else "Kimeneti csúcsvédelem kikapcsolva.")
-        }
-        eqContainer.addView(limiterButton, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
-        
         val reset = TextView(this).apply {
             text = "↺    EQ ALAPHELYZET"
             textSize = 11f
