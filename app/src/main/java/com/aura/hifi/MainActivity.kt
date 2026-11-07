@@ -1456,7 +1456,7 @@ class MainActivity : Activity() {
             refreshLibrarySelection()
             val renderersFactory = object : DefaultRenderersFactory(this) {
                 override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink {
-                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
+                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(true)
                         .setAudioProcessors(arrayOf(eqProcessor)).build()
                 }
             }
