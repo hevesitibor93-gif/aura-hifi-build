@@ -36,8 +36,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var bassCoeff = Coeff()
     @Volatile private var limiterEnabled = false
     @Volatile private var limiterCeiling = 0.8912509f
-    // Finom, fix kimeneti tartalék: -0,2 dB az összes EQ-feldolgozás után.
-    private val outputTrim = 10.0.pow(-0.2 / 20.0).toFloat()
+    @Volatile private var headroomGain = 1f
 
     private var limiterGain = 1f
     private var limiterReleaseCoefficient = 0.999f
@@ -85,6 +84,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
 
     fun setPreampDb(v: Float) {
         preampDb = v.coerceIn(-6f, 6f)
+        rebuild()
     }
 
     /** Optional peak protection. It remains OFF unless the user turns it on. */
@@ -129,14 +129,62 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
 
     private fun rebuild() {
         val currentGains = gains
-        coeffs = Array(12) { index ->
+        val newCoeffs = Array(12) { index ->
             val extraTreble = if (index in 9..11) trebleDb else 0f
             peaking(
                 frequencies[index],
                 (currentGains[index] + extraTreble).coerceIn(-18f, 18f)
             )
         }
-        bassCoeff = lowShelf(90f, bassDb)
+        val newBassCoeff = lowShelf(90f, bassDb)
+        coeffs = newCoeffs
+        bassCoeff = newBassCoeff
+        headroomGain = calculateHeadroomGain(newCoeffs, newBassCoeff, preampDb)
+    }
+
+    /**
+     * Measures the complete cascaded EQ response on a logarithmic frequency grid.
+     * Only compensates positive peak gain; a flat EQ keeps its original output level.
+     * The extra 0.75 dB is fixed safety margin, not compression or limiting.
+     */
+    private fun calculateHeadroomGain(filters: Array<Coeff>, shelf: Coeff, preamp: Float): Float {
+        val maxFrequency = minOf(20000.0, rate * 0.45)
+        val minFrequency = 20.0
+        var peakDb = preamp.toDouble()
+
+        for (i in 0..1024) {
+            val fraction = i / 1024.0
+            val frequency = minFrequency * (maxFrequency / minFrequency).pow(fraction)
+            val omega = 2.0 * PI * frequency / rate
+            val shelfDb = responseDb(shelf, omega)
+            var totalDb = shelfDb
+            for (filter in filters) totalDb += responseDb(filter, omega)
+            totalDb += preamp
+            if (totalDb > peakDb) peakDb = totalDb
+        }
+
+        return if (peakDb > 0.0) {
+            10.0.pow(-(peakDb + 0.75) / 20.0).toFloat()
+        } else {
+            1f
+        }
+    }
+
+    private fun responseDb(c: Coeff, omega: Double): Double {
+        val cos1 = cos(omega)
+        val sin1 = sin(omega)
+        val cos2 = cos(2.0 * omega)
+        val sin2 = sin(2.0 * omega)
+
+        val numeratorReal = c.b0 + c.b1 * cos1 + c.b2 * cos2
+        val numeratorImag = -c.b1 * sin1 - c.b2 * sin2
+        val denominatorReal = 1.0 + c.a1 * cos1 + c.a2 * cos2
+        val denominatorImag = -c.a1 * sin1 - c.a2 * sin2
+
+        val numeratorMagnitude = sqrt(numeratorReal * numeratorReal + numeratorImag * numeratorImag)
+        val denominatorMagnitude = sqrt(denominatorReal * denominatorReal + denominatorImag * denominatorImag)
+        val ratio = numeratorMagnitude / denominatorMagnitude.coerceAtLeast(1.0e-12)
+        return 20.0 * kotlin.math.log10(ratio.coerceAtLeast(1.0e-12))
     }
 
     private fun peaking(frequency: Float, gainDb: Float): Coeff {
@@ -236,7 +284,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                 } else {
                     input.short / 32768f
                 }
-                val processed = processSample(source * preamp, channel, currentFilters, currentShelf)
+                val processed = processSample(source * preamp, channel, currentFilters, currentShelf) * headroomGain
                 frameSamples[channel] = processed
                 framePeak = max(framePeak, abs(processed))
             }
@@ -256,7 +304,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             }
 
             for (channel in 0 until channels) {
-                val sample = frameSamples[channel] * outputGain * outputTrim
+                val sample = frameSamples[channel] * outputGain
                 if (channel == 0) peakLeft = max(peakLeft, abs(sample))
                 else if (channel == 1) peakRight = max(peakRight, abs(sample))
 
