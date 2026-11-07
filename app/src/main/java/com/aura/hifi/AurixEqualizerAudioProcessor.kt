@@ -13,7 +13,7 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 
-/** App-local EQ plus the first AURA Sound Engine Premium Power dynamics stage. */
+/** App-local 12-band PCM EQ. No system-wide effects or automatic compression. */
 @androidx.media3.common.util.UnstableApi
 class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     private val frequencies = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 12000f, 14000f, 16000f)
@@ -23,18 +23,10 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var preampDb = 0f
     @Volatile private var coeffs = Array(12) { Coeff() }
 
-    // Premium Power foundation. Conservative defaults preserve punch while controlling peaks.
-    @Volatile private var soundEngineEnabled = true
-    @Volatile private var compressorThresholdDb = -12f
-    @Volatile private var compressorRatio = 2.2f
-    @Volatile private var makeupGainDb = 1.5f
-    @Volatile private var limiterCeiling = 0.8912509f // -1 dBFS sample-peak ceiling
-    @Volatile private var harmonicBassAmount = 0.42f
-    private var bassLowPassCoefficient = 0.98f
-    private var bassLowState = FloatArray(2)
-    private var compressorEnvelope = 0f
+    // The limiter is an optional safety switch. It is OFF by default.
+    @Volatile private var limiterEnabled = false
+    @Volatile private var limiterCeiling = 0.8912509f // -1 dBFS when enabled
     private var limiterGain = 1f
-    private var compressorReleaseCoefficient = 0.999f
     private var limiterReleaseCoefficient = 0.999f
     private var frameSamples = FloatArray(2)
 
@@ -59,20 +51,18 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     fun setTrebleBoostDb(v:Float) { trebleDb=v.coerceIn(0f,12f); rebuild() }
     fun setPreampDb(v:Float) { preampDb=v.coerceIn(-6f,6f) }
 
-    /** Enables/disables AURA dynamics without changing the user's EQ settings. */
-    fun setSoundEngineEnabled(enabled:Boolean) { soundEngineEnabled=enabled }
-
-    /** Controls the generated low-bass harmonics; 0 disables the effect. */
-    fun setHarmonicBassAmount(amount:Float) { harmonicBassAmount=amount.coerceIn(0f,0.8f) }
+    /** Enables only the optional output peak protection. No compressor is used. */
+    fun setLimiterEnabled(enabled:Boolean) {
+        limiterEnabled=enabled
+        if(!enabled) limiterGain=1f
+    }
 
     override fun onConfigure(f:AudioProcessor.AudioFormat):AudioProcessor.AudioFormat {
         if(f.encoding!=C.ENCODING_PCM_16BIT) throw AudioProcessor.UnhandledAudioFormatException(f)
         rate=f.sampleRate.coerceAtLeast(8000)
         channels=f.channelCount.coerceIn(1,8)
         frameSamples=FloatArray(channels)
-        compressorReleaseCoefficient=exp(-1.0/(rate*0.090)).toFloat()
-        limiterReleaseCoefficient=exp(-1.0/(rate*0.075)).toFloat()
-        bassLowPassCoefficient=exp(-2.0*PI*145.0/rate).toFloat()
+        limiterReleaseCoefficient=exp(-1.0/(rate*0.080)).toFloat()
         resetState()
         rebuild()
         return f
@@ -85,9 +75,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         x2=Array(12){FloatArray(channels)}
         y1=Array(12){FloatArray(channels)}
         y2=Array(12){FloatArray(channels)}
-        compressorEnvelope=0f
         limiterGain=1f
-        bassLowState=FloatArray(channels)
     }
 
     private fun rebuild() {
@@ -121,19 +109,13 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val input=inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val cfs=coeffs
         val pre=10.0.pow(preampDb/20.0).toFloat()
-        val useDynamics=soundEngineEnabled
-        val threshold=10.0.pow(compressorThresholdDb/20.0).toFloat()
-        val ratio=compressorRatio.coerceIn(1f,4f)
-        val makeup=if(useDynamics)10.0.pow(makeupGainDb/20.0).toFloat() else 1f
+        val useLimiter=limiterEnabled
         val ceiling=limiterCeiling.coerceIn(0.70f,0.98f)
-        val bassAmount=harmonicBassAmount
         var peakLeft=0f
         var peakRight=0f
 
         while(input.remaining()>=2*channels) {
             var framePeak=0f
-
-            // EQ is processed in floating point; no hard clipping occurs before dynamics.
             for(ch in 0 until channels) {
                 var sample=input.short/32768f*pre
                 for(b in 0 until 12) {
@@ -145,42 +127,25 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                     y1[b][ch]=y
                     sample=y
                 }
-                // Parallel low-frequency extraction adds a restrained third-harmonic layer.
-                // This creates bass presence without simply boosting sub-bass level.
-                if(bassAmount>0f) {
-                    val low=bassLowState[ch]+(1f-bassLowPassCoefficient)*(sample-bassLowState[ch])
-                    bassLowState[ch]=low
-                    sample += low*low*low*bassAmount
-                }
                 frameSamples[ch]=sample
                 framePeak=max(framePeak,abs(sample))
             }
 
-            var compressorGain=1f
-            var nextLimiterGain=1f
-            if(useDynamics) {
-                // Fast attack / smooth release keeps transients punchy without abrupt pumping.
-                if(framePeak>compressorEnvelope) compressorEnvelope=framePeak
-                else compressorEnvelope=compressorReleaseCoefficient*compressorEnvelope+
-                    (1f-compressorReleaseCoefficient)*framePeak
-
-                if(compressorEnvelope>threshold && compressorEnvelope>0f) {
-                    compressorGain=(threshold/compressorEnvelope).pow(1f-1f/ratio)
-                }
-
-                var postDynamicsPeak=framePeak*compressorGain*makeup
-                val targetLimiterGain=if(postDynamicsPeak>ceiling && postDynamicsPeak>0f)
-                    ceiling/postDynamicsPeak else 1f
-
-                // Limiter attack is immediate; release is smoothed to avoid distortion modulation.
-                limiterGain=if(targetLimiterGain<limiterGain) targetLimiterGain
-                    else limiterReleaseCoefficient*limiterGain+(1f-limiterReleaseCoefficient)*targetLimiterGain
-                nextLimiterGain=limiterGain
+            var gain=1f
+            if(useLimiter) {
+                val target=if(framePeak>ceiling && framePeak>0f) ceiling/framePeak else 1f
+                limiterGain=if(target<limiterGain) target
+                    else limiterReleaseCoefficient*limiterGain+(1f-limiterReleaseCoefficient)*target
+                gain=limiterGain
+            } else {
+                limiterGain=1f
             }
 
             for(ch in 0 until channels) {
-                val processed=frameSamples[ch]*compressorGain*makeup*nextLimiterGain
-                val outputSample=processed.coerceIn(-ceiling,ceiling)
+                val processed=frameSamples[ch]*gain
+                // PCM16 has a hard representable ceiling; without the optional limiter
+                // this clamp acts only when the EQ/preamp actually exceeds full scale.
+                val outputSample=processed.coerceIn(-1f,0.9999695f)
                 if(ch==0) peakLeft=max(peakLeft,abs(outputSample))
                 else if(ch==1) peakRight=max(peakRight,abs(outputSample))
                 out.putShort((outputSample*32768f).toInt().coerceIn(-32768,32767).toShort())
