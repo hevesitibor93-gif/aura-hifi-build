@@ -1601,8 +1601,9 @@ class MainActivity : Activity() {
             setPadding(0, dp(13), 0, dp(5))
         }
         fun addDial(title: String, shortTitle: String, initial: Int, minValue: Int, maxValue: Int, format: (Int) -> String, onChange: (Int) -> Unit) {
+            var selectedValue = initial
             val dial = TextView(this).apply {
-                text = "${shortTitle}\\n${format(initial)}"
+                text = "${shortTitle}\n${format(initial)}"
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.rgb(255, 214, 145))
@@ -1627,7 +1628,7 @@ class MainActivity : Activity() {
                     setPadding(dp(22), dp(8), dp(22), dp(4))
                 }
                 val currentValue = TextView(this).apply {
-                    text = format(initial)
+                    text = format(selectedValue)
                     textSize = 18f
                     gravity = Gravity.CENTER
                     setTextColor(gold)
@@ -1635,7 +1636,7 @@ class MainActivity : Activity() {
                 }
                 val seek = SeekBar(this).apply {
                     max = maxValue - minValue
-                    progress = (initial - minValue).coerceIn(0, max)
+                    progress = (selectedValue - minValue).coerceIn(0, max)
                     progressTintList = android.content.res.ColorStateList.valueOf(gold)
                     thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 207, 91))
                 }
@@ -1643,8 +1644,9 @@ class MainActivity : Activity() {
                     override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                         if (fromUser) {
                             val value = progress + minValue
+                            selectedValue = value
                             currentValue.text = format(value)
-                            dial.text = "${shortTitle}\\n${format(value)}"
+                            dial.text = "${shortTitle}\n${format(value)}"
                             onChange(value)
                         }
                     }
