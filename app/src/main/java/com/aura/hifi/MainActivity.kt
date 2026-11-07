@@ -42,6 +42,7 @@ class MainActivity : Activity() {
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
     private var centerAurixVu: AurixVuView? = null
+    private var settingsPreviewVu: VuView? = null
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
@@ -175,10 +176,10 @@ class MainActivity : Activity() {
     }
 
     private fun setVuActive(value: Boolean) {
-        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value)
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
-        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right)
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value)
@@ -288,7 +289,8 @@ class MainActivity : Activity() {
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val pages = listOf(playerPage, songsPage, eqPage, settingsPage)
+        val vuSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(16)) }
+        val pages = listOf(playerPage, songsPage, eqPage, settingsPage, vuSettingsPage)
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
         libraryScrollView = pageScrolls[1]
         // A lejátszó cockpit fekvő módban egyetlen, nem görgethető képernyő. A többi lap marad görgethető.
@@ -551,17 +553,48 @@ class MainActivity : Activity() {
         animationRow.addView(vuAnimation)
         settingsPage.addView(animationRow)
 
-        settingsPage.addView(sectionTitle("VU / HANGREAKCIÓ FINOMHANGOLÁSA"))
-        settingsPage.addView(label(
-            "Külön profil a telefonhangszóróhoz és a Bluetooth-kimenethez. A csatlakoztatott hangkimenetet az alkalmazás automatikusan felismeri.",
-            10f, Color.rgb(155, 163, 177)
-        ).apply { setPadding(dp(4), 0, dp(4), dp(8)) })
+        val vuSettingsMenuButton = button("▥  VU-MÉRŐ FINOMHANGOLÁSA", Color.rgb(35, 41, 53), Color.WHITE) {}
+        settingsPage.addView(vuSettingsMenuButton, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(10); bottomMargin = dp(12) })
+
+        vuSettingsPage.addView(label("BEÁLLÍTÁSOK  /  VU-MÉRŐ", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(4)) })
+        vuSettingsPage.addView(label("VU / HANGREAKCIÓ FINOMHANGOLÁSA", 18f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(2), 0, dp(8)) })
+        vuSettingsPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) {}, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(10) }).setOnClickListener {
+            pageScrolls[4].visibility = View.GONE
+            pageScrolls[3].visibility = View.VISIBLE
+            activePageIndex = 3
+            navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == 3) gold else Color.WHITE); b.background = rounded(if (i == 3) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
+        }
+
+        vuSettingsPage.addView(label("ÉLŐ VU-KIJELZÉS", 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(8), 0, dp(5)) })
+        vuSettingsPage.addView(label("Zene lejátszása közben itt azonnal látod, hogyan reagál a mérő a módosításokra.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, dp(2), dp(8)) })
+        val previewCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(28, 27, 24), Color.rgb(9, 12, 17))).apply {
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.rgb(125, 91, 39))
+            }
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+        }
+        val previewHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        previewHeader.addView(label("L  /  BAL", 10f, gold), LinearLayout.LayoutParams(0, -2, 1f))
+        previewHeader.addView(label("R  /  JOBB", 10f, gold).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, -2, 1f))
+        previewCard.addView(previewHeader)
+        settingsPreviewVu = VuView().apply {
+            setStyle(vuPrefs.getString("vu_style", "car") ?: "car")
+            setBrightness(vuPrefs.getInt("vu_brightness", 80))
+            setAnimationEnabled(vuPrefs.getBoolean("vu_animation", true))
+            setActive(player?.isPlaying == true)
+        }
+        previewCard.addView(settingsPreviewVu, LinearLayout.LayoutParams(-1, dp(74)).apply { topMargin = dp(4) })
+        vuSettingsPage.addView(previewCard, LinearLayout.LayoutParams(-1, dp(112)).apply { bottomMargin = dp(12) })
+        vuSettingsPage.addView(label("KÜLÖN HANGKIMENETI PROFILOK", 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(8), 0, dp(5)) })
+        vuSettingsPage.addView(label("A csatlakoztatott kimenetet automatikusan felismeri. A két profil külön mentődik.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, dp(2), dp(8)) })
 
         val profileStatus = label("", 10f, Color.rgb(155, 163, 177)).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(3), 0, dp(7))
         }
-        settingsPage.addView(profileStatus)
+        vuSettingsPage.addView(profileStatus)
         val profileRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -572,7 +605,7 @@ class MainActivity : Activity() {
         val bluetoothProfileButton = button("♫  BLUETOOTH", Color.TRANSPARENT, Color.WHITE) {}
         profileRow.addView(speakerProfileButton, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(3) })
         profileRow.addView(bluetoothProfileButton, LinearLayout.LayoutParams(0, dp(40), 1f))
-        settingsPage.addView(profileRow)
+        vuSettingsPage.addView(profileRow)
 
         fun vuSlider(
             title: String,
@@ -613,7 +646,7 @@ class MainActivity : Activity() {
                 })
             }
             card.addView(seek)
-            settingsPage.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            vuSettingsPage.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
             return seek
         }
 
@@ -655,9 +688,9 @@ class MainActivity : Activity() {
             }
         }
         monoRow.addView(monoSwitch)
-        settingsPage.addView(monoRow)
-        settingsPage.addView(label(
-            "Jelforrás: az EQ és a hangkiemelések utáni digitális hangjel. A két profil külön mentődik.",
+        vuSettingsPage.addView(monoRow)
+        vuSettingsPage.addView(label(
+            "Jelforrás: az EQ és a hangkiemelések utáni digitális hangjel. A beállítások csak a VU-kijelzést módosítják.",
             9f, Color.rgb(145, 153, 166)
         ).apply { setPadding(dp(4), dp(5), dp(4), dp(8)) })
 
@@ -682,7 +715,7 @@ class MainActivity : Activity() {
             loadVuProfile("bluetooth")
             refreshVuProfileControls()
         }
-        settingsPage.addView(button("↺  AKTÍV PROFIL ALAPÉRTÉKEI", Color.rgb(35, 41, 53), Color.WHITE) {
+        vuSettingsPage.addView(button("↺  AKTÍV PROFIL ALAPÉRTÉKEI", Color.rgb(35, 41, 53), Color.WHITE) {
             val profile = vuProfile
             val prefix = if (profile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
             vuThreshold = 0.035f
@@ -697,7 +730,7 @@ class MainActivity : Activity() {
                 .apply()
             refreshVuProfileControls()
             toast("Az aktív VU-profil visszaállítva.")
-        }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(4); bottomMargin = dp(12) })
 
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
         setVuStyle(savedVuStyle)
@@ -713,8 +746,9 @@ class MainActivity : Activity() {
                 showLibraryHome()
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
-            navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == index) gold else Color.WHITE); b.background = rounded(if (i == index) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
+            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
+        vuSettingsMenuButton.setOnClickListener { showPage(4) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
