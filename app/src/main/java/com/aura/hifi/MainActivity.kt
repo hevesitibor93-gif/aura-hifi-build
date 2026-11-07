@@ -88,6 +88,13 @@ class MainActivity : Activity() {
     private lateinit var libraryContainer: LinearLayout
     private lateinit var libraryCategoryRow: LinearLayout
     private var currentIndex = 0
+    private var openPlayerPage: (() -> Unit)? = null
+    private var openVuSettingsPage: (() -> Unit)? = null
+    private var shuffleMode = 0
+    private var repeatMode = 0
+    private var shuffleOriginalQueue: List<Uri>? = null
+    private var shuffleButton: Button? = null
+    private var repeatButton: Button? = null
     private lateinit var nextTrackLabel: TextView
     private lateinit var queueContainer: LinearLayout
     private val bg = Color.rgb(9, 11, 16)
@@ -219,7 +226,7 @@ class MainActivity : Activity() {
         applyArtworkMode()
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
         applyArtworkMode()
-        vu = VuView(); body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
+        vu = VuView().apply { isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() } }; body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
         trackLabel = label("", 18f, Color.rgb(255, 190, 75)).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
         body.addView(trackLabel)
         metadataLabel = label("", 12f, Color.rgb(80, 165, 255)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
@@ -257,7 +264,20 @@ class MainActivity : Activity() {
         controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(22) })
         controls.addView(playButton, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginEnd = dp(22) })
         controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
-        body.addView(controls)
+        val transportExtras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(5)) }
+        val rewindButton = neonRoundButton("↶ 10", 38, false) { seekBy(-10_000L) }
+        val forwardButton = neonRoundButton("10 ↷", 38, false) { seekBy(10_000L) }
+        val shuffleControl = button("SHUFFLE: KI", Color.rgb(35, 41, 53), Color.WHITE) { cycleShuffleMode() }
+        val repeatControl = button("ISMÉTLÉS: KI", Color.rgb(35, 41, 53), Color.WHITE) { cycleRepeatMode() }
+        shuffleButton = shuffleControl; repeatButton = repeatControl
+        transportExtras.addView(rewindButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) })
+        transportExtras.addView(shuffleControl, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) })
+        transportExtras.addView(repeatControl, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) })
+        transportExtras.addView(forwardButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+        val controlStack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        controlStack.addView(controls, LinearLayout.LayoutParams(-1, -2))
+        controlStack.addView(transportExtras, LinearLayout.LayoutParams(-1, -2))
+        body.addView(controlStack)
         // A lejátszási sor listája nem jelenik meg külön a főképernyőn.
         // A sor a háttérben megmarad a következő/előző szám funkcióhoz;
         // a dalok listája kizárólag a Zenetár kategóriájában látható.
@@ -341,6 +361,8 @@ class MainActivity : Activity() {
             }
             leftPanel.addView(label("L", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
             sideVuLeft = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuLeft?.isClickable = true
+            sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
@@ -349,6 +371,8 @@ class MainActivity : Activity() {
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
             sideVuRight = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuRight?.isClickable = true
+            sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
@@ -389,6 +413,8 @@ class MainActivity : Activity() {
             centerAurixVu = AurixVuView().apply {
                 setActive(player?.isPlaying == true)
                 setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80))
+                isClickable = true
+                setOnClickListener { openVuSettingsPage?.invoke() }
             }
             headUnit.addView(centerAurixVu, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
             trackLabel.textSize = 16f
@@ -405,7 +431,7 @@ class MainActivity : Activity() {
             headUnit.addView(albumLabel, LinearLayout.LayoutParams(-1, dp(14)))
             headUnit.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
             headUnit.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(16)))
-            headUnit.addView(controls, LinearLayout.LayoutParams(-1, dp(48)))
+            headUnit.addView(controlStack, LinearLayout.LayoutParams(-1, -2))
             vu.visibility = View.GONE
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
@@ -770,6 +796,8 @@ class MainActivity : Activity() {
         }
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
         vuSettingsBackButton.setOnClickListener { showPage(3) }
+        openPlayerPage = { showPage(0, false) }
+        openVuSettingsPage = { showPage(4, false) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
@@ -1310,6 +1338,52 @@ class MainActivity : Activity() {
             ?: uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
             ?: "Ismeretlen cím"
     }
+    private fun updateShuffleRepeatButtons() {
+        shuffleButton?.text = when (shuffleMode) { 1 -> "SHUFFLE: LISTA"; 2 -> "SHUFFLE: ÖSSZES"; else -> "SHUFFLE: KI" }
+        repeatButton?.text = when (repeatMode) { 1 -> "ISMÉTLÉS: DAL"; 2 -> "ISMÉTLÉS: LISTA"; else -> "ISMÉTLÉS: KI" }
+        shuffleButton?.setTextColor(if (shuffleMode == 0) Color.WHITE else gold)
+        repeatButton?.setTextColor(if (repeatMode == 0) Color.WHITE else gold)
+    }
+    private fun cycleShuffleMode() {
+        if (shuffleMode == 0) shuffleOriginalQueue = queue.toList()
+        shuffleMode = (shuffleMode + 1) % 3
+        when (shuffleMode) {
+            1 -> {
+                val current = selectedUri ?: queue.getOrNull(currentIndex)
+                val source = shuffleOriginalQueue ?: queue.toList()
+                queue.clear(); current?.let { queue.add(it) }; queue.addAll(source.filter { it != current }.shuffled())
+                currentIndex = 0
+            }
+            2 -> {
+                val current = selectedUri ?: queue.getOrNull(currentIndex)
+                val all = librarySongs.map { it.uri }.distinct()
+                queue.clear(); current?.takeIf { all.contains(it) }?.let { queue.add(it) }
+                queue.addAll(all.filter { it != current }.shuffled())
+                if (queue.isEmpty()) queue.addAll((shuffleOriginalQueue ?: emptyList()).shuffled())
+                currentIndex = 0
+            }
+            else -> {
+                val original = shuffleOriginalQueue
+                if (!original.isNullOrEmpty()) {
+                    val current = selectedUri
+                    queue.clear(); queue.addAll(original)
+                    current?.let { uri -> queue.indexOf(uri).takeIf { it >= 0 }?.let { currentIndex = it } }
+                }
+                shuffleOriginalQueue = null
+            }
+        }
+        updateShuffleRepeatButtons(); updateNextTrack()
+        toast(when (shuffleMode) { 1 -> "Az aktuális lista keverése bekapcsolva"; 2 -> "A teljes zenetár keverése bekapcsolva"; else -> "Keverés kikapcsolva" })
+    }
+    private fun cycleRepeatMode() {
+        repeatMode = (repeatMode + 1) % 3
+        updateShuffleRepeatButtons()
+        toast(when (repeatMode) { 1 -> "Aktuális dal ismétlése"; 2 -> "Lista ismétlése"; else -> "Ismétlés kikapcsolva" })
+    }
+    private fun seekBy(deltaMs: Long) {
+        val p = player ?: return
+        try { if (p.duration > 0) p.seekTo((p.currentPosition + deltaMs).coerceIn(0L, p.duration)) } catch (_: Exception) {}
+    }
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
         nextTrackLabel.text = if (next != null) "NEXT TRACK  •  ${metadataTitle(next)}" else "NEXT TRACK  •  Nincs következő szám"
@@ -1356,9 +1430,12 @@ class MainActivity : Activity() {
     private fun playNext() {
         if (queue.isEmpty()) return
         if (currentIndex < queue.lastIndex) currentIndex++
+        else if (repeatMode == 2 || shuffleMode != 0) currentIndex = 0
+        else return
         startTrack(queue[currentIndex])
     }
     private fun startTrack(uri: Uri) {
+        openPlayerPage?.invoke()
         renderQueue()
         releaseAudio()
         eqProcessor.onLevel = { left, right ->
@@ -1398,9 +1475,12 @@ class MainActivity : Activity() {
                             }
                             Player.STATE_ENDED -> {
                                 setVuActive(false)
-                                if (currentIndex + 1 < queue.size) {
-                                    currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex])
-                                } else { playButton.text = "▶"; updateNextTrack() }
+                                when {
+                                    repeatMode == 1 -> { exo.seekTo(0); exo.play() }
+                                    currentIndex + 1 < queue.size -> { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
+                                    repeatMode == 2 || shuffleMode != 0 -> { currentIndex = 0; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
+                                    else -> { playButton.text = "▶"; updateNextTrack() }
+                                }
                             }
                         }
                     }
@@ -1652,11 +1732,39 @@ class MainActivity : Activity() {
             if (next != gain) { gain = next; onGainChanged(next); invalidate() }
         }
 
+        private var downX = 0f
+        private var downY = 0f
+        private var touchDirectionChosen = false
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
-            when (event.action) {
-                android.view.MotionEvent.ACTION_DOWN -> { dragging = true; parent?.requestDisallowInterceptTouchEvent(true); updateFromY(event.y); return true }
-                android.view.MotionEvent.ACTION_MOVE -> { if (dragging) updateFromY(event.y); return true }
-                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> { dragging = false; parent?.requestDisallowInterceptTouchEvent(false); performClick(); return true }
+            val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    dragging = true; touchDirectionChosen = false; downX = event.x; downY = event.y
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    return true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    if (!dragging) return false
+                    val dx = kotlin.math.abs(event.x - downX)
+                    val dy = kotlin.math.abs(event.y - downY)
+                    if (!touchDirectionChosen && (dx > slop || dy > slop)) {
+                        touchDirectionChosen = true
+                        if (dx > dy * 1.15f) {
+                            dragging = false
+                            parent?.requestDisallowInterceptTouchEvent(false)
+                            return false
+                        } else parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    if (dragging) updateFromY(event.y)
+                    return true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    if (dragging) updateFromY(event.y)
+                    dragging = false; parent?.requestDisallowInterceptTouchEvent(false); performClick(); return true
+                }
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    dragging = false; parent?.requestDisallowInterceptTouchEvent(false); return true
+                }
             }
             return true
         }
