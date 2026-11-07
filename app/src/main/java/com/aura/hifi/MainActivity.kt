@@ -62,7 +62,7 @@ class MainActivity : Activity() {
     private var vuSmoothedLevel = 0f
     @Volatile private var vuThreshold = 0.035f
     @Volatile private var vuGain = 1.20f
-    @Volatile private var vuDelayMs = 145L
+    @Volatile private var vuDelayMs = 400L
     @Volatile private var vuMono = false
     @Volatile private var vuProfile = "speaker"
     private var vuProfileControls: (() -> Unit)? = null
@@ -142,11 +142,11 @@ class MainActivity : Activity() {
         val legacyPrefix = "vu_"
         val thresholdDefault = if (vuProfile == "speaker") prefs.getInt("vu_threshold_milli", 35) else 35
         val gainDefault = if (vuProfile == "speaker") prefs.getInt("vu_gain_percent", 120) else 120
-        val delayDefault = if (vuProfile == "speaker") prefs.getInt("vu_delay_ms", 145) else 145
+        val delayDefault = if (vuProfile == "speaker") prefs.getInt("vu_delay_ms", 400) else 400
         val monoDefault = if (vuProfile == "speaker") prefs.getBoolean("vu_mono", false) else false
         vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 100) / 1000f
         vuGain = prefs.getInt(prefix + "gain_percent", gainDefault).coerceIn(50, 200) / 100f
-        vuDelayMs = prefs.getInt(prefix + "delay_ms", delayDefault).coerceIn(0, 500).toLong()
+        vuDelayMs = prefs.getInt(prefix + "delay_ms", delayDefault).coerceIn(400, 1400).toLong()
         vuMono = prefs.getBoolean(prefix + "mono", monoDefault)
         prefs.edit()
             .putInt(prefix + "threshold_milli", (vuThreshold * 1000).toInt())
@@ -667,11 +667,11 @@ class MainActivity : Activity() {
         val delaySeek = vuSlider(
             "KÉSLELTETÉS  •  DELAY",
             "Állítsd a kijelzést a hallható zenéhez. Bluetoothnál gyakran nagyobb érték kell.",
-            800, vuDelayMs.toInt().coerceIn(0, 800),
-            { "$it ms" }
+            1000, (vuDelayMs.toInt() - 400).coerceIn(0, 1000),
+            { "${it + 400} ms" }
         ) { value ->
-            vuDelayMs = value.toLong()
-            saveVuProfileInt("delay_ms", value)
+            vuDelayMs = (value + 400).toLong()
+            saveVuProfileInt("delay_ms", value + 400)
         }
 
         val monoRow = settingRow("MONO KIJELZÉS", "A két csatorna átlaga mindkét oldalon")
@@ -699,7 +699,7 @@ class MainActivity : Activity() {
             bluetoothProfileButton.setTextColor(if (isBluetooth) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
             thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90)
             gainSeek.progress = ((vuGain * 100).toInt() - 50).coerceIn(0, 150)
-            delaySeek.progress = vuDelayMs.toInt().coerceIn(0, 800)
+            delaySeek.progress = (vuDelayMs.toInt() - 400).coerceIn(0, 1000)
             monoSwitch.isChecked = vuMono
         }
         vuProfileControls = { refreshVuProfileControls() }
@@ -716,12 +716,12 @@ class MainActivity : Activity() {
             val prefix = if (profile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
             vuThreshold = 0.035f
             vuGain = 1.20f
-            vuDelayMs = 145L
+            vuDelayMs = 400L
             vuMono = false
             vuPrefs.edit()
                 .putInt(prefix + "threshold_milli", 35)
                 .putInt(prefix + "gain_percent", 120)
-                .putInt(prefix + "delay_ms", 145)
+                .putInt(prefix + "delay_ms", 400)
                 .putBoolean(prefix + "mono", false)
                 .apply()
             refreshVuProfileControls()
