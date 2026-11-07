@@ -649,7 +649,7 @@ class MainActivity : Activity() {
         val thresholdSeek = vuSlider(
             "ÉRZÉKENYSÉG  •  THRESHOLD",
             "Alacsonyabb érték = a halkabb hangokra is reagál.",
-            90, (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90),
+            150, (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 150),
             { "%.3f".format(java.util.Locale.US, (it + 10) / 1000f) }
         ) { value ->
             vuThreshold = (value + 10) / 1000f
@@ -667,7 +667,7 @@ class MainActivity : Activity() {
         val delaySeek = vuSlider(
             "KÉSLELTETÉS  •  DELAY",
             "Állítsd a kijelzést a hallható zenéhez. Bluetoothnál gyakran nagyobb érték kell.",
-            500, vuDelayMs.toInt().coerceIn(0, 500),
+            800, vuDelayMs.toInt().coerceIn(0, 800),
             { "$it ms" }
         ) { value ->
             vuDelayMs = value.toLong()
@@ -699,7 +699,7 @@ class MainActivity : Activity() {
             bluetoothProfileButton.setTextColor(if (isBluetooth) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
             thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90)
             gainSeek.progress = ((vuGain * 100).toInt() - 50).coerceIn(0, 150)
-            delaySeek.progress = vuDelayMs.toInt().coerceIn(0, 500)
+            delaySeek.progress = vuDelayMs.toInt().coerceIn(0, 800)
             monoSwitch.isChecked = vuMono
         }
         vuProfileControls = { refreshVuProfileControls() }
