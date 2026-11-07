@@ -558,12 +558,8 @@ class MainActivity : Activity() {
 
         vuSettingsPage.addView(label("BEÁLLÍTÁSOK  /  VU-MÉRŐ", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(4)) })
         vuSettingsPage.addView(label("VU / HANGREAKCIÓ FINOMHANGOLÁSA", 18f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(2), 0, dp(8)) })
-        vuSettingsPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) {}, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(10) }).setOnClickListener {
-            pageScrolls[4].visibility = View.GONE
-            pageScrolls[3].visibility = View.VISIBLE
-            activePageIndex = 3
-            navButtons.forEachIndexed { i, b -> b.setTextColor(if (i == 3) gold else Color.WHITE); b.background = rounded(if (i == 3) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
-        }
+        val vuSettingsBackButton = button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) {}
+        vuSettingsPage.addView(vuSettingsBackButton, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(10) })
 
         vuSettingsPage.addView(label("ÉLŐ VU-KIJELZÉS", 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(8), 0, dp(5)) })
         vuSettingsPage.addView(label("Zene lejátszása közben itt azonnal látod, hogyan reagál a mérő a módosításokra.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, dp(2), dp(8)) })
@@ -749,6 +745,7 @@ class MainActivity : Activity() {
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
+        vuSettingsBackButton.setOnClickListener { showPage(3) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
