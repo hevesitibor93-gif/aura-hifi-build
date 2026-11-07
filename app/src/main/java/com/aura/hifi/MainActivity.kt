@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         val gainDefault = if (vuProfile == "speaker") prefs.getInt("vu_gain_percent", 120) else 120
         val delayDefault = if (vuProfile == "speaker") prefs.getInt("vu_delay_ms", 400) else 400
         val monoDefault = if (vuProfile == "speaker") prefs.getBoolean("vu_mono", false) else false
-        vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 100) / 1000f
+        vuThreshold = prefs.getInt(prefix + "threshold_milli", thresholdDefault).coerceIn(10, 160) / 1000f
         vuGain = prefs.getInt(prefix + "gain_percent", gainDefault).coerceIn(50, 200) / 100f
         vuDelayMs = prefs.getInt(prefix + "delay_ms", delayDefault).coerceIn(400, 1400).toLong()
         vuMono = prefs.getBoolean(prefix + "mono", monoDefault)
@@ -603,6 +603,30 @@ class MainActivity : Activity() {
         profileRow.addView(bluetoothProfileButton, LinearLayout.LayoutParams(0, dp(40), 1f))
         vuSettingsPage.addView(profileRow)
 
+        fun saveVuProfileNow(profile: String) {
+            val prefix = if (profile == "bluetooth") "vu_bluetooth_" else "vu_speaker_"
+            val isActive = vuProfile == profile
+            val thresholdValue = if (isActive) (vuThreshold * 1000).toInt() else vuPrefs.getInt(prefix + "threshold_milli", 35)
+            val gainValue = if (isActive) (vuGain * 100).toInt() else vuPrefs.getInt(prefix + "gain_percent", 120)
+            val delayValue = if (isActive) vuDelayMs.toInt() else vuPrefs.getInt(prefix + "delay_ms", 400)
+            val monoValue = if (isActive) vuMono else vuPrefs.getBoolean(prefix + "mono", false)
+            val saved = vuPrefs.edit()
+                .putInt(prefix + "threshold_milli", thresholdValue.coerceIn(10, 160))
+                .putInt(prefix + "gain_percent", gainValue.coerceIn(50, 200))
+                .putInt(prefix + "delay_ms", delayValue.coerceIn(400, 1400))
+                .putBoolean(prefix + "mono", monoValue)
+                .commit()
+            toast(if (saved) (if (profile == "bluetooth") "Bluetooth profil elmentve." else "Hangszóró profil elmentve.") else "A mentés nem sikerült.")
+        }
+        val saveProfilesRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        saveProfilesRow.addView(button("💾  HANGSZÓRÓ MENTÉSE", Color.rgb(91, 65, 27), Color.WHITE) {
+            saveVuProfileNow("speaker")
+        }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(4) })
+        saveProfilesRow.addView(button("💾  BT MENTÉSE", Color.rgb(31, 69, 76), Color.WHITE) {
+            saveVuProfileNow("bluetooth")
+        }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(4) })
+        vuSettingsPage.addView(saveProfilesRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+
         fun vuSlider(
             title: String,
             subtitle: String,
@@ -697,7 +721,7 @@ class MainActivity : Activity() {
             bluetoothProfileButton.background = rounded(if (isBluetooth) Color.rgb(31, 69, 76) else Color.TRANSPARENT, 10)
             speakerProfileButton.setTextColor(if (!isBluetooth) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
             bluetoothProfileButton.setTextColor(if (isBluetooth) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
-            thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 90)
+            thresholdSeek.progress = (vuThreshold * 1000).toInt().minus(10).coerceIn(0, 150)
             gainSeek.progress = ((vuGain * 100).toInt() - 50).coerceIn(0, 150)
             delaySeek.progress = (vuDelayMs.toInt() - 400).coerceIn(0, 1000)
             monoSwitch.isChecked = vuMono
@@ -1341,8 +1365,11 @@ class MainActivity : Activity() {
             val threshold = vuThreshold
             val gain = vuGain
             val delay = vuDelayMs
-            val leftLevel = ((left - threshold).coerceAtLeast(0f) * gain).coerceIn(0f, 1f)
-            val rightLevel = ((right - threshold).coerceAtLeast(0f) * gain).coerceIn(0f, 1f)
+            // Soft-knee response: suppresses low-level peaks while keeping strong transients visible.
+            val leftRaw = ((left - threshold).coerceAtLeast(0f) / (1f - threshold).coerceAtLeast(0.01f) * gain).coerceIn(0f, 1f)
+            val rightRaw = ((right - threshold).coerceAtLeast(0f) / (1f - threshold).coerceAtLeast(0.01f) * gain).coerceIn(0f, 1f)
+            val leftLevel = leftRaw * leftRaw
+            val rightLevel = rightRaw * rightRaw
             val mono = vuMono
             val displayLeft = if (mono) (leftLevel + rightLevel) * 0.5f else leftLevel
             val displayRight = if (mono) displayLeft else rightLevel
