@@ -29,6 +29,9 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var compressorRatio = 2.2f
     @Volatile private var makeupGainDb = 1.5f
     @Volatile private var limiterCeiling = 0.8912509f // -1 dBFS sample-peak ceiling
+    @Volatile private var harmonicBassAmount = 0.42f
+    private var bassLowPassCoefficient = 0.98f
+    private var bassLowState = FloatArray(2)
     private var compressorEnvelope = 0f
     private var limiterGain = 1f
     private var compressorReleaseCoefficient = 0.999f
@@ -59,6 +62,9 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     /** Enables/disables AURA dynamics without changing the user's EQ settings. */
     fun setSoundEngineEnabled(enabled:Boolean) { soundEngineEnabled=enabled }
 
+    /** Controls the generated low-bass harmonics; 0 disables the effect. */
+    fun setHarmonicBassAmount(amount:Float) { harmonicBassAmount=amount.coerceIn(0f,0.8f) }
+
     override fun onConfigure(f:AudioProcessor.AudioFormat):AudioProcessor.AudioFormat {
         if(f.encoding!=C.ENCODING_PCM_16BIT) throw AudioProcessor.UnhandledAudioFormatException(f)
         rate=f.sampleRate.coerceAtLeast(8000)
@@ -66,6 +72,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         frameSamples=FloatArray(channels)
         compressorReleaseCoefficient=exp(-1.0/(rate*0.090)).toFloat()
         limiterReleaseCoefficient=exp(-1.0/(rate*0.075)).toFloat()
+        bassLowPassCoefficient=exp(-2.0*PI*145.0/rate).toFloat()
         resetState()
         rebuild()
         return f
@@ -80,6 +87,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         y2=Array(12){FloatArray(channels)}
         compressorEnvelope=0f
         limiterGain=1f
+        bassLowState=FloatArray(channels)
     }
 
     private fun rebuild() {
@@ -118,7 +126,9 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val ratio=compressorRatio.coerceIn(1f,4f)
         val makeup=if(useDynamics)10.0.pow(makeupGainDb/20.0).toFloat() else 1f
         val ceiling=limiterCeiling.coerceIn(0.70f,0.98f)
-        val peaks=FloatArray(2)
+        val bassAmount=harmonicBassAmount
+        var peakLeft=0f
+        var peakRight=0f
 
         while(input.remaining()>=2*channels) {
             var framePeak=0f
@@ -134,6 +144,13 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                     y2[b][ch]=y1[b][ch]
                     y1[b][ch]=y
                     sample=y
+                }
+                // Parallel low-frequency extraction adds a restrained third-harmonic layer.
+                // This creates bass presence without simply boosting sub-bass level.
+                if(bassAmount>0f) {
+                    val low=bassLowState[ch]+(1f-bassLowPassCoefficient)*(sample-bassLowState[ch])
+                    bassLowState[ch]=low
+                    sample += low*low*low*bassAmount
                 }
                 frameSamples[ch]=sample
                 framePeak=max(framePeak,abs(sample))
@@ -164,15 +181,15 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             for(ch in 0 until channels) {
                 val processed=frameSamples[ch]*compressorGain*makeup*nextLimiterGain
                 val outputSample=processed.coerceIn(-ceiling,ceiling)
-                val meterChannel=if(ch==0)0 else 1
-                peaks[meterChannel]=max(peaks[meterChannel],abs(outputSample))
+                if(ch==0) peakLeft=max(peakLeft,abs(outputSample))
+                else if(ch==1) peakRight=max(peakRight,abs(outputSample))
                 out.putShort((outputSample*32768f).toInt().coerceIn(-32768,32767).toShort())
             }
         }
 
         input.position(input.limit())
         out.flip()
-        val rightPeak=if(channels>1)peaks[1] else peaks[0]
-        onLevel?.invoke(peaks[0],rightPeak)
+        if(channels==1) peakRight=peakLeft
+        onLevel?.invoke(peakLeft,peakRight)
     }
 }
