@@ -128,13 +128,13 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     private fun rebuild() {
         val currentGains = gains
         coeffs = Array(12) { index ->
-            val extraTreble = if (index in 9..11) trebleDb else 0f
+            val extraTreble = if (index in 8..11) trebleDb else 0f
             peaking(
                 frequencies[index],
                 (currentGains[index] + extraTreble).coerceIn(-18f, 18f)
             )
         }
-        bassCoeff = lowShelf(90f, bassDb)
+        bassCoeff = lowShelf(75f, bassDb)
     }
 
     private fun peaking(frequency: Float, gainDb: Float): Coeff {
