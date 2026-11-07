@@ -36,6 +36,8 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var bassCoeff = Coeff()
     @Volatile private var limiterEnabled = false
     @Volatile private var limiterCeiling = 0.8912509f
+    // Finom, fix kimeneti tartalék: -0,2 dB az összes EQ-feldolgozás után.
+    private val outputTrim = 10.0.pow(-0.2 / 20.0).toFloat()
 
     private var limiterGain = 1f
     private var limiterReleaseCoefficient = 0.999f
@@ -254,7 +256,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
             }
 
             for (channel in 0 until channels) {
-                val sample = frameSamples[channel] * outputGain
+                val sample = frameSamples[channel] * outputGain * outputTrim
                 if (channel == 0) peakLeft = max(peakLeft, abs(sample))
                 else if (channel == 1) peakRight = max(peakRight, abs(sample))
 
