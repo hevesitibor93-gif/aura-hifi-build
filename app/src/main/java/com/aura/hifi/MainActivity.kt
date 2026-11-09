@@ -2034,17 +2034,6 @@ class MainActivity : Activity() {
     }
 
 
-        songs.forEachIndexed { index, song ->
-            val row = label("♫  " + song.title + " — " + song.artist, 12f, Color.WHITE).apply {
-                setPadding(dp(9), dp(11), dp(8), dp(11))
-                setOnClickListener { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = index; startTrack(song.uri); updateNextTrack() }
-            }
-            markLibrarySongRow(row, song.uri)
-            libraryContainer.addView(row)
-        }
-        if (songs.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
-    }
-
     private fun showRecentAdded() {
         activeLibraryRenderer = { showRecentAdded() }
         libraryMode = "recent_added"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
