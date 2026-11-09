@@ -819,7 +819,66 @@ class MainActivity : Activity() {
         }
         soundPage.addView(bypassRow)
 
-        soundPage.addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
+        // Six compact sections keep the Sound Engine controls easy to navigate.
+        val soundCategoryHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val soundCategoryViews = linkedMapOf<String, LinearLayout>()
+        val soundCategoryButtons = linkedMapOf<String, TextView>()
+        val soundCategoryNames = listOf(
+            "bass" to "MÉLY",
+            "dynamics" to "DINAMIKA",
+            "tone" to "MAGAS / HANGSZÍN",
+            "stereo" to "SZTEREÓ",
+            "level" to "HANGERŐ",
+            "ab" to "A/B TESZT"
+        )
+        val soundCategoryNav = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun showSoundCategory(key: String) {
+            soundCategoryViews.forEach { (name, panel) -> panel.visibility = if (name == key) View.VISIBLE else View.GONE }
+            soundCategoryButtons.forEach { (name, item) ->
+                val selected = name == key
+                item.background = GradientDrawable().apply {
+                    cornerRadius = dp(10).toFloat()
+                    setColor(if (selected) Color.rgb(111, 83, 42) else Color.rgb(35, 42, 58))
+                    setStroke(dp(1), if (selected) gold else Color.rgb(67, 76, 98))
+                }
+                item.setTextColor(if (selected) Color.rgb(255, 224, 160) else Color.rgb(220, 225, 237))
+            }
+        }
+        soundCategoryNames.chunked(3).forEach { group ->
+            val navRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            group.forEach { (key, title) ->
+                val item = TextView(this).apply {
+                    text = title
+                    textSize = 10f
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(dp(4), dp(12), dp(4), dp(12))
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { showSoundCategory(key) }
+                }
+                soundCategoryButtons[key] = item
+                navRow.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                    if (navRow.childCount > 0) marginStart = dp(5)
+                })
+            }
+            soundCategoryNav.addView(navRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+        }
+        soundPage.addView(label("HANGMOTOR BEÁLLÍTÁSAI", 10f, Color.rgb(255, 207, 112)).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(2), dp(12), 0, dp(7))
+        })
+        soundPage.addView(soundCategoryNav)
+        soundCategoryNames.forEach { (key, _) ->
+            val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            soundCategoryViews[key] = panel
+            soundCategoryHost.addView(panel, LinearLayout.LayoutParams(-1, -2))
+        }
+        soundPage.addView(soundCategoryHost)
+        var activeSoundCategory = soundCategoryViews.getValue("bass")
+        showSoundCategory("bass")
+
+        activeSoundCategory.addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
         val abProfileRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -875,12 +934,12 @@ class MainActivity : Activity() {
             abSaveButtons[slot] = saveButton
             abSaveRow.addView(saveButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         }
-        soundPage.addView(abProfileRow)
-        soundPage.addView(abSaveRow)
+        soundCategoryViews.getValue("ab").addView(abProfileRow)
+        soundCategoryViews.getValue("ab").addView(abSaveRow)
         soundProfileRefreshers.add { refreshAbButtons() }
         refreshAbButtons()
 
-        soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
+        activeSoundCategory.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
         fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
             val row = settingRow(title, subtitle)
             val toggle = Switch(this).apply {
@@ -903,7 +962,7 @@ class MainActivity : Activity() {
                 }
                 toggle.isEnabled = !bypassSwitch.isChecked
             }
-            soundPage.addView(row)
+            activeSoundCategory.addView(row)
             val valueLabel = label("", 10f, Color.rgb(255, 207, 112)).apply { gravity = Gravity.END }
             val seek = SeekBar(this).apply {
                 max = maxValue - minValue
@@ -926,8 +985,8 @@ class MainActivity : Activity() {
             }
             val initial = soundPrefs.getInt(prefKey, defaultValue).coerceIn(minValue, maxValue)
             valueLabel.text = if (suffix == " dB") String.format(java.util.Locale.US, "%.1f dB", initial / scale) else if (suffix == "%") "$initial%" else initial.toString()
-            soundPage.addView(valueLabel)
-            soundPage.addView(seek, LinearLayout.LayoutParams(-1, dp(34)))
+            activeSoundCategory.addView(valueLabel)
+            activeSoundCategory.addView(seek, LinearLayout.LayoutParams(-1, dp(34)))
             soundControlViews.add(seek)
             soundProfileRefreshers.add {
                 val restored = soundPrefs.getInt(prefKey, defaultValue).coerceIn(minValue, maxValue)
@@ -939,20 +998,24 @@ class MainActivity : Activity() {
         addSoundSlider("BASSZUSMÉLYSÉG", "Alsó frekvenciák finom emelése", "sound_bass_depth_db", 0, 600, 0, "sound_bass_depth_enabled", { soundEngineProcessor.setBassDepthEnabled(it) }, { soundEngineProcessor.setBassDepthDb(it) }, 100f, " dB")
         addSoundSlider("BASSZUSÜTÉS", "Dobok és basszusok ütősebb tartománya", "sound_bass_punch_db", 0, 600, 0, "sound_bass_punch_enabled", { soundEngineProcessor.setBassPunchEnabled(it) }, { soundEngineProcessor.setBassPunchDb(it) }, 100f, " dB")
         addSoundSlider("HARMONIKUS BASSZUS", "Érzékelt mélyhangok kiegészítése", "sound_harmonic_bass", 0, 100, 0, "sound_harmonic_bass_enabled", { soundEngineProcessor.setHarmonicBassEnabled(it) }, { soundEngineProcessor.setHarmonicBassAmount(it) }, 100f, "%")
-        soundPage.addView(sectionTitle("DINAMIKA ÉS ÜTÉS"))
+        activeSoundCategory = soundCategoryViews.getValue("dynamics")
+        activeSoundCategory.addView(sectionTitle("DINAMIKA ÉS ÜTÉS"))
         addSoundSlider("DYNAMIC PUNCH", "A dobok és tranziensek támadását emeli — kompresszor és limiter nélkül; legfeljebb +6 dB tranzienskiemelés", "sound_dynamic_punch", 0, 100, 35, "sound_dynamic_punch_enabled", { soundEngineProcessor.setDynamicPunchEnabled(it) }, { soundEngineProcessor.setDynamicPunchAmount(it) }, 100f, "%")
-        soundPage.addView(sectionTitle("MAGASAK ÉS HANGSZÍN"))
+        activeSoundCategory = soundCategoryViews.getValue("tone")
+        activeSoundCategory.addView(sectionTitle("MAGASAK ÉS HANGSZÍN"))
         addSoundSlider("MAGAS TISZTASÁG", "Részletek és felső frekvenciák", "sound_clarity_db", 0, 600, 0, "sound_clarity_enabled", { soundEngineProcessor.setClarityEnabled(it) }, { soundEngineProcessor.setClarityDb(it) }, 100f, " dB")
         addSoundSlider("HANGSZÍN", "Melegebb ↔ világosabb karakter", "sound_tone_amount", -100, 100, 0, "sound_tone_enabled", { soundEngineProcessor.setToneEnabled(it) }, { soundEngineProcessor.setToneAmount(it) }, 100f, "%")
-        soundPage.addView(sectionTitle("SZTEREÓ TÉR ÉS CSATORNÁK"))
+        activeSoundCategory = soundCategoryViews.getValue("stereo")
+        activeSoundCategory.addView(sectionTitle("SZTEREÓ TÉR ÉS CSATORNÁK"))
         addSoundSlider("SZTEREÓ SZÉLESSÉG", "100% = eredeti sztereó tér", "sound_stereo_width", 0, 150, 100, "sound_stereo_width_enabled", { soundEngineProcessor.setStereoWidthEnabled(it) }, { soundEngineProcessor.setStereoWidth(it) }, 100f, "%")
         addSoundSlider("BAL / JOBB BALANSZ", "Középállás = egyenlő csatornaszint", "sound_balance", -100, 100, 0, "sound_balance_enabled", { soundEngineProcessor.setBalanceEnabled(it) }, { soundEngineProcessor.setBalance(it) }, 100f, "%")
-        soundPage.addView(sectionTitle("HANGERŐ ÉS JELFIGYELÉS"))
+        activeSoundCategory = soundCategoryViews.getValue("level")
+        activeSoundCategory.addView(sectionTitle("HANGERŐ ÉS JELFIGYELÉS"))
         clippingStatusLabel = label("JELSZINT: RENDBEN — nincs digitális túlvezérlés", 10f, Color.rgb(120, 205, 145)).apply {
             setPadding(dp(10), dp(9), dp(10), dp(9))
             background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
         }
-        soundPage.addView(clippingStatusLabel)
+        activeSoundCategory.addView(clippingStatusLabel)
         soundEngineProcessor.onClipping = { clipping ->
             handler.post {
                 soundEngineClippingActive = clipping
@@ -990,7 +1053,7 @@ class MainActivity : Activity() {
             refreshSoundProfileStatus()
         }
         soundProfileRefreshers.add { refreshSoundProfileStatus() }
-        soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
+        activeSoundCategory.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         settingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
         val playbackPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val resumeRow = settingRow("INDULÁSKOR FOLYTATÁS", "Az előző lejátszás folytatása az alkalmazás megnyitásakor")
