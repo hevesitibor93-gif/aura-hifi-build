@@ -38,6 +38,7 @@ import kotlin.math.min
 class MainActivity : Activity() {
     private var player: ExoPlayer? = null
     private val eqProcessor = AurixEqualizerAudioProcessor()
+    private val soundEngineProcessor = AuraSoundEngineAudioProcessor()
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
@@ -110,6 +111,7 @@ class MainActivity : Activity() {
             for (i in 0 until 12) safeEq.putInt("eq_band_${i}", 0)
             safeEq.putBoolean("eq_safe_neutral_reset_v1", true).apply()
         }
+        loadAuraSoundEngineSettings(prefs)
         vuProfile = detectVuOutputProfile()
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
@@ -135,6 +137,26 @@ class MainActivity : Activity() {
         albumLabel.text = savedAlbum
     }
 
+
+    private fun loadAuraSoundEngineSettings(prefs: android.content.SharedPreferences) {
+        // Neutral and disabled defaults preserve the original AURA EQ sound.
+        soundEngineProcessor.setBassDepthEnabled(prefs.getBoolean("sound_bass_depth_enabled", false))
+        soundEngineProcessor.setBassPunchEnabled(prefs.getBoolean("sound_bass_punch_enabled", false))
+        soundEngineProcessor.setHarmonicBassEnabled(prefs.getBoolean("sound_harmonic_bass_enabled", false))
+        soundEngineProcessor.setClarityEnabled(prefs.getBoolean("sound_clarity_enabled", false))
+        soundEngineProcessor.setToneEnabled(prefs.getBoolean("sound_tone_enabled", false))
+        soundEngineProcessor.setStereoWidthEnabled(prefs.getBoolean("sound_stereo_width_enabled", false))
+        soundEngineProcessor.setBalanceEnabled(prefs.getBoolean("sound_balance_enabled", false))
+        soundEngineProcessor.setPreampEnabled(prefs.getBoolean("sound_preamp_enabled", false))
+        soundEngineProcessor.setBassDepthDb(prefs.getInt("sound_bass_depth_db", 0) / 100f)
+        soundEngineProcessor.setBassPunchDb(prefs.getInt("sound_bass_punch_db", 0) / 100f)
+        soundEngineProcessor.setHarmonicBassAmount(prefs.getInt("sound_harmonic_bass", 0) / 100f)
+        soundEngineProcessor.setClarityDb(prefs.getInt("sound_clarity_db", 0) / 100f)
+        soundEngineProcessor.setToneAmount(prefs.getInt("sound_tone_amount", 0) / 100f)
+        soundEngineProcessor.setStereoWidth(prefs.getInt("sound_stereo_width", 100) / 100f)
+        soundEngineProcessor.setBalance(prefs.getInt("sound_balance", 0) / 100f)
+        soundEngineProcessor.setPreampDb(prefs.getInt("sound_preamp_db", 0) / 100f)
+    }
 
     private fun detectVuOutputProfile(): String {
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -1462,7 +1484,7 @@ class MainActivity : Activity() {
             val renderersFactory = object : DefaultRenderersFactory(this) {
                 override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink {
                     return DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
-                        .setAudioProcessors(arrayOf(eqProcessor)).build()
+                        .setAudioProcessors(arrayOf(eqProcessor, soundEngineProcessor)).build()
                 }
             }
             player = ExoPlayer.Builder(this, renderersFactory).build().also { exo ->
