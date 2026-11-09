@@ -178,6 +178,14 @@ class MainActivity : Activity() {
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("aura_open_player", false)) {
+            openPlayerPage?.invoke()
+        }
+    }
+
     override fun onPause() {
         // Persist the active output profile even if Android later recreates the Activity.
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
