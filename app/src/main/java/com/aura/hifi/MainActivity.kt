@@ -1912,25 +1912,214 @@ class MainActivity : Activity() {
 
     private fun showPlaylists() {
         activeLibraryRenderer = { showPlaylists() }
-        libraryMode = "playlists"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
+        libraryMode = "playlists"
+        libraryCategoryRow.visibility = View.GONE
+        libraryContainer.visibility = View.VISIBLE
+        libraryContainer.removeAllViews()
+        addLibraryBackButton()
         libraryContainer.addView(label("LEJÁTSZÁSI LISTÁK", 11f, Color.WHITE))
+
         val prefs = getSharedPreferences("aurix_library", MODE_PRIVATE)
-        val names = prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()
-        names.sorted().forEach { name ->
-            libraryContainer.addView(label("♫  " + name + "  ›", 13f, Color.WHITE).apply { setPadding(dp(9), dp(13), dp(8), dp(13)); setOnClickListener {
-                val arr = org.json.JSONArray(prefs.getString("playlist_" + name, "[]") ?: "[]")
-                val songs = (0 until arr.length()).mapNotNull { librarySongByUri[arr.optString(it)] }
-                if (songs.isNotEmpty()) { queue.clear(); queue.addAll(songs.map { it.uri }); currentIndex = 0; startTrack(queue[0]); updateNextTrack() }
-            } })
+        fun playlistNames(): MutableSet<String> =
+            (prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()).toMutableSet()
+        fun playlistUris(name: String): MutableList<String> {
+            val raw = prefs.getString("playlist_" + name, "[]") ?: "[]"
+            return try {
+                val arr = org.json.JSONArray(raw)
+                MutableList(arr.length()) { index -> arr.optString(index) }.filter { it.isNotBlank() }.toMutableList()
+            } catch (_: Exception) { mutableListOf() }
         }
-        libraryContainer.addView(button("＋ Aktuális sor mentése listaként", Color.rgb(91, 67, 157), Color.WHITE) {
+        fun savePlaylist(name: String, uris: List<String>) {
+            val arr = org.json.JSONArray()
+            uris.forEach { arr.put(it) }
+            prefs.edit().putString("playlist_" + name, arr.toString()).apply()
+        }
+
+        lateinit var showPlaylistDetail: (String) -> Unit
+        showPlaylistDetail = { playlistName ->
+            activeLibraryRenderer = { showPlaylistDetail(playlistName) }
+            libraryContainer.removeAllViews()
+            libraryContainer.addView(label("‹  VISSZA A LISTÁKHOZ", 13f, Color.rgb(235, 205, 145)).apply {
+                setPadding(dp(8), dp(12), dp(8), dp(12))
+                setOnClickListener { showPlaylists() }
+            })
+            val uris = playlistUris(playlistName)
+            val songs = uris.mapNotNull { librarySongByUri[it] }
+            libraryContainer.addView(label(playlistName.uppercase(), 16f, Color.WHITE).apply {
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+            })
+            libraryContainer.addView(label("${songs.size} dal", 10f, Color.rgb(165, 172, 190)).apply {
+                setPadding(dp(8), 0, dp(8), dp(10))
+            })
+            libraryContainer.addView(button("▶  TELJES LISTA LEJÁTSZÁSA", Color.rgb(91, 67, 157), Color.WHITE) {
+                if (songs.isEmpty()) { toast("Ez a lista jelenleg üres."); return@button }
+                queue.clear()
+                queue.addAll(songs.map { it.uri })
+                currentIndex = 0
+                startTrack(queue[0])
+                updateNextTrack()
+            }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+            libraryContainer.addView(button("＋  DALOK HOZZÁADÁSA", Color.rgb(35, 65, 75), Color.WHITE) {
+                if (librarySongs.isEmpty()) { toast("Előbb frissítsd a zenetárat."); return@button }
+                val titles = librarySongs.map { it.title + " — " + it.artist }.toTypedArray()
+                val checked = BooleanArray(librarySongs.size)
+                val chosen = mutableListOf<Int>()
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("Dalok hozzáadása")
+                    .setMultiChoiceItems(titles, checked) { _, which, isChecked ->
+                        if (isChecked) chosen.add(which) else chosen.remove(which)
+                    }
+                    .setNegativeButton("Mégse", null)
+                    .setPositiveButton("HOZZÁADÁS") { _, _ ->
+                        val updated = playlistUris(playlistName)
+                        chosen.sorted().forEach { index ->
+                            val uri = librarySongs[index].uri.toString()
+                            if (!updated.contains(uri)) updated.add(uri)
+                        }
+                        savePlaylist(playlistName, updated)
+                        showPlaylistDetail(playlistName)
+                        toast("A kiválasztott dalok hozzáadva.")
+                    }.show()
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(10) })
+
+            if (songs.isEmpty()) {
+                libraryContainer.addView(label("Még nincs dal ebben a listában.", 12f, Color.LTGRAY).apply {
+                    setPadding(dp(8), dp(10), dp(8), dp(10))
+                })
+            }
+            songs.forEachIndexed { index, song ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = rounded(Color.rgb(24, 29, 39), 10)
+                    setPadding(dp(8), dp(3), dp(4), dp(3))
+                }
+                row.addView(label("${index + 1}.  ${song.title}\n${song.artist}", 11f, Color.WHITE).apply {
+                    setPadding(dp(3), dp(8), dp(3), dp(8))
+                    setOnClickListener {
+                        queue.clear()
+                        queue.addAll(songs.map { it.uri })
+                        currentIndex = index
+                        startTrack(song.uri)
+                        updateNextTrack()
+                    }
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                row.addView(button("↑", Color.rgb(35, 41, 53), Color.WHITE) {
+                    val updated = playlistUris(playlistName)
+                    if (index > 0 && index < updated.size) {
+                        val item = updated.removeAt(index)
+                        updated.add(index - 1, item)
+                        savePlaylist(playlistName, updated)
+                        showPlaylistDetail(playlistName)
+                    }
+                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
+                row.addView(button("↓", Color.rgb(35, 41, 53), Color.WHITE) {
+                    val updated = playlistUris(playlistName)
+                    if (index >= 0 && index < updated.lastIndex) {
+                        val item = updated.removeAt(index)
+                        updated.add(index + 1, item)
+                        savePlaylist(playlistName, updated)
+                        showPlaylistDetail(playlistName)
+                    }
+                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
+                row.addView(button("×", Color.rgb(83, 39, 43), Color.WHITE) {
+                    val updated = playlistUris(playlistName)
+                    if (index in updated.indices) {
+                        updated.removeAt(index)
+                        savePlaylist(playlistName, updated)
+                        showPlaylistDetail(playlistName)
+                    }
+                }, LinearLayout.LayoutParams(dp(34), dp(34)))
+                libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+            }
+
+            val actions = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }
+            actions.addView(button("ÁTNEVEZÉS", Color.rgb(49, 57, 72), Color.WHITE) {
+                val edit = EditText(this).apply { setText(playlistName); hint = "Lista neve" }
+                android.app.AlertDialog.Builder(this).setTitle("Lista átnevezése").setView(edit)
+                    .setNegativeButton("Mégse", null)
+                    .setPositiveButton("MENTÉS") { _, _ ->
+                        val newName = edit.text.toString().trim()
+                        val currentNames = playlistNames()
+                        if (newName.isBlank()) toast("A név nem lehet üres.")
+                        else if (newName != playlistName && currentNames.contains(newName)) toast("Ilyen nevű lista már létezik.")
+                        else if (newName != playlistName) {
+                            val content = prefs.getString("playlist_" + playlistName, "[]") ?: "[]"
+                            currentNames.remove(playlistName)
+                            currentNames.add(newName)
+                            prefs.edit().remove("playlist_" + playlistName)
+                                .putString("playlist_" + newName, content)
+                                .putStringSet("playlist_names", currentNames).apply()
+                            showPlaylists()
+                        }
+                    }.show()
+            }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(4) })
+            actions.addView(button("LISTA TÖRLÉSE", Color.rgb(83, 39, 43), Color.WHITE) {
+                android.app.AlertDialog.Builder(this).setTitle("Lejátszási lista törlése?")
+                    .setMessage("A dalok a telefonról nem törlődnek, csak ez a lista.")
+                    .setNegativeButton("Mégse", null)
+                    .setPositiveButton("TÖRLÉS") { _, _ ->
+                        val currentNames = playlistNames()
+                        currentNames.remove(playlistName)
+                        prefs.edit().remove("playlist_" + playlistName)
+                            .putStringSet("playlist_names", currentNames).apply()
+                        showPlaylists()
+                    }.show()
+            }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(4) })
+            libraryContainer.addView(actions, LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(12)
+                bottomMargin = dp(12)
+            })
+        }
+
+        val names = playlistNames()
+        names.sorted().forEach { name ->
+            val uris = playlistUris(name)
+            val songCount = uris.count { librarySongByUri.containsKey(it) }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = rounded(Color.rgb(24, 29, 39), 12)
+                setPadding(dp(12), dp(10), dp(8), dp(10))
+                isClickable = true
+                isFocusable = true
+            }
+            row.addView(label("♫  ${name}\n     ${songCount} dal", 12f, Color.WHITE).apply {
+                typeface = Typeface.DEFAULT_BOLD
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(button("MEGNYIT", Color.rgb(49, 57, 72), Color.WHITE) {
+                showPlaylistDetail(name)
+            }, LinearLayout.LayoutParams(dp(88), dp(38)))
+            row.setOnClickListener { showPlaylistDetail(name) }
+            libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) })
+        }
+
+        libraryContainer.addView(button("＋ AKTUÁLIS SOR MENTÉSE LISTAKÉNT", Color.rgb(91, 67, 157), Color.WHITE) {
             if (queue.isEmpty()) { toast("Előbb válassz zenéket."); return@button }
             val edit = EditText(this).apply { hint = "Lejátszási lista neve" }
-            android.app.AlertDialog.Builder(this).setTitle("Új lejátszási lista").setView(edit).setNegativeButton("Mégse", null).setPositiveButton("Mentés") { _, _ ->
-                val name = edit.text.toString().trim()
-                if (name.isNotEmpty()) { val arr = org.json.JSONArray(); queue.forEach { arr.put(it.toString()) }; val set = (prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()).toMutableSet(); set.add(name); prefs.edit().putStringSet("playlist_names", set).putString("playlist_" + name, arr.toString()).apply(); showPlaylists() }
-            }.show()
-        })
+            android.app.AlertDialog.Builder(this).setTitle("Új lejátszási lista").setView(edit)
+                .setNegativeButton("Mégse", null)
+                .setPositiveButton("MENTÉS") { _, _ ->
+                    val name = edit.text.toString().trim()
+                    val currentNames = playlistNames()
+                    if (name.isBlank()) toast("Adj nevet a listának.")
+                    else if (currentNames.contains(name)) toast("Ilyen nevű lista már létezik.")
+                    else {
+                        currentNames.add(name)
+                        val snapshot = queue.map { it.toString() }
+                        val arr = org.json.JSONArray()
+                        snapshot.forEach { arr.put(it) }
+                        prefs.edit().putStringSet("playlist_names", currentNames)
+                            .putString("playlist_" + name, arr.toString()).apply()
+                        showPlaylists()
+                    }
+                }.show()
+        }, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8); bottomMargin = dp(8) })
+
         if (names.isEmpty()) libraryContainer.addView(label("Még nincs mentett lejátszási listád.", 12f, Color.LTGRAY))
     }
 
