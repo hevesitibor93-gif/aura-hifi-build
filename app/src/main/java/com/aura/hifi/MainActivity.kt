@@ -1592,6 +1592,7 @@ class MainActivity : Activity() {
             readMetadata(uri)
             updateNextTrack()
             refreshLibrarySelection()
+            AuraPlaybackService.syncQueue(queue.toList(), currentIndex, repeatMode, shuffleMode)
             val exo = player ?: throw IllegalStateException("A háttérlejátszó még nem indult el.")
             playbackListener?.let { exo.removeListener(it) }
             val listener = object : Player.Listener {
@@ -2033,7 +2034,6 @@ class MainActivity : Activity() {
         }
         playbackListener?.let { player?.removeListener(it) }; playbackListener = null
         eqProcessor.onLevel = null
-        soundEngineProcessor.onClipping = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
@@ -2041,7 +2041,9 @@ class MainActivity : Activity() {
         audioDeviceCallback = null
         AuraPlaybackService.onPreviousRequested = null
         AuraPlaybackService.onNextRequested = null
-        releaseAudio(); libraryExecutor.shutdownNow(); super.onDestroy()
+        releaseAudio()
+        soundEngineProcessor.onClipping = null
+        libraryExecutor.shutdownNow(); super.onDestroy()
     }
 
     private inner class VinylView : View(this@MainActivity) {
