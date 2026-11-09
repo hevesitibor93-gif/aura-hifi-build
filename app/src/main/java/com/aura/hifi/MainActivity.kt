@@ -1672,6 +1672,15 @@ class MainActivity : Activity() {
                 if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
             }, delay)
         }
+        eqProcessor.onClipping = {
+            handler.post {
+                clippingStatusLabel?.apply {
+                    text = "FIGYELEM: CLIPPING AZ EREDETI EQ KIMENETÉN — a jel már az új DSP előtt túlvezérlődik"
+                    setTextColor(Color.rgb(255, 130, 105))
+                    background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(55, 28, 27)); setStroke(dp(1), Color.rgb(150, 65, 55)) }
+                }
+            }
+        }
         try {
             selectedUri = uri
             readMetadata(uri)
@@ -2123,6 +2132,7 @@ class MainActivity : Activity() {
         }
         playbackListener?.let { player?.removeListener(it) }; playbackListener = null
         eqProcessor.onLevel = null
+        eqProcessor.onClipping = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
