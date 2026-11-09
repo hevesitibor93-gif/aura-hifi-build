@@ -106,6 +106,16 @@ class AuraPlaybackService : MediaSessionService() {
         exo.play()
     }
 
+    data class QueueSnapshot(
+        val uris: List<Uri>,
+        val index: Int,
+        val repeatMode: Int,
+        val shuffleMode: Int
+    )
+
+    private fun snapshotQueue(): QueueSnapshot =
+        QueueSnapshot(queueUris.toList(), queueIndex, queueRepeatMode, queueShuffleMode)
+
     private fun updateQueue(items: List<Uri>, index: Int, repeatMode: Int, shuffleMode: Int) {
         queueUris = items.toList()
         queueIndex = index.coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
@@ -129,6 +139,9 @@ class AuraPlaybackService : MediaSessionService() {
         fun syncQueue(items: List<Uri>, index: Int, repeatMode: Int, shuffleMode: Int) {
             instance?.updateQueue(items, index, repeatMode, shuffleMode)
         }
+
+        fun getQueueSnapshot(): QueueSnapshot =
+            instance?.snapshotQueue() ?: QueueSnapshot(emptyList(), 0, 0, 0)
 
         @Volatile
         var player: ExoPlayer? = null
