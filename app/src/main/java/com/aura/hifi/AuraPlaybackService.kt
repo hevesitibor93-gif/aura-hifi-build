@@ -3,6 +3,9 @@ package com.aura.hifi
 import android.content.Context
 import android.net.Uri
 import android.media.MediaMetadataRetriever
+import android.os.Handler
+import android.os.Looper
+import org.json.JSONArray
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -23,6 +26,14 @@ class AuraPlaybackService : MediaSessionService() {
     private var queueIndex = 0
     private var queueRepeatMode = 0
     private var queueShuffleMode = 0
+    private val playbackPrefs by lazy { getSharedPreferences("aura_playback_state", Context.MODE_PRIVATE) }
+    private val saveHandler = Handler(Looper.getMainLooper())
+    private val savePositionTask = object : Runnable {
+        override fun run() {
+            savePlaybackState()
+            if (player?.isPlaying == true) saveHandler.postDelayed(this, 5000L)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -42,6 +53,33 @@ class AuraPlaybackService : MediaSessionService() {
 
         val exoPlayer = ExoPlayer.Builder(this, renderersFactory).build()
         player = exoPlayer
+        restoreSavedQueue()
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val uri = mediaItem?.localConfiguration?.uri ?: return
+                val index = queueUris.indexOf(uri)
+                if (index >= 0) queueIndex = index
+                savePlaybackState()
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                savePlaybackState()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                saveHandler.removeCallbacks(savePositionTask)
+                if (isPlaying) saveHandler.postDelayed(savePositionTask, 5000L)
+                savePlaybackState()
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                savePlaybackState()
+            }
+        })
 
         val sessionPlayer = object : androidx.media3.common.ForwardingPlayer(exoPlayer) {
             override fun getAvailableCommands(): Player.Commands {
@@ -82,10 +120,7 @@ class AuraPlaybackService : MediaSessionService() {
         }
     }
 
-    private fun playQueueIndex(index: Int) {
-        val exo = player ?: return
-        val uri = queueUris.getOrNull(index) ?: return
-        queueIndex = index
+    private fun buildMediaItem(uri: Uri): MediaItem {
         val retriever = MediaMetadataRetriever()
         val metadata = try {
             retriever.setDataSource(this, uri)
@@ -101,9 +136,65 @@ class AuraPlaybackService : MediaSessionService() {
         } finally {
             try { retriever.release() } catch (_: Exception) {}
         }
-        exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(metadata).build())
+        return MediaItem.Builder().setUri(uri).setMediaMetadata(metadata).build()
+    }
+
+    private fun playQueueIndex(index: Int) {
+        val exo = player ?: return
+        val uri = queueUris.getOrNull(index) ?: return
+        queueIndex = index
+        exo.setMediaItem(buildMediaItem(uri))
         exo.prepare()
         exo.play()
+        savePlaybackState()
+    }
+
+    private fun restoreSavedQueue() {
+        val saved = playbackPrefs
+        val array = try { JSONArray(saved.getString(KEY_QUEUE, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        val restored = mutableListOf<Uri>()
+        for (i in 0 until array.length()) {
+            val value = array.optString(i)
+            if (value.isNotBlank()) {
+                val uri = Uri.parse(value)
+                try {
+                    contentResolver.openFileDescriptor(uri, "r")?.use { restored.add(uri) }
+                } catch (_: Exception) {
+                    // A document may have been moved or its persisted permission revoked.
+                }
+            }
+        }
+        queueUris = restored
+        queueIndex = saved.getInt(KEY_INDEX, 0).coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
+        queueRepeatMode = saved.getInt(KEY_REPEAT, 0)
+        queueShuffleMode = saved.getInt(KEY_SHUFFLE, 0)
+        val exo = player ?: return
+        val uri = queueUris.getOrNull(queueIndex) ?: return
+        val position = saved.getLong(KEY_POSITION, 0L).coerceAtLeast(0L)
+        val shouldResume = saved.getBoolean(KEY_WAS_PLAYING, false)
+        exo.setMediaItem(buildMediaItem(uri))
+        exo.prepare()
+        if (position > 0L) exo.seekTo(position)
+        exo.playWhenReady = shouldResume
+    }
+
+    private fun savePlaybackState() {
+        val exo = player
+        val currentUri = exo?.currentMediaItem?.localConfiguration?.uri
+        if (currentUri != null) {
+            val foundIndex = queueUris.indexOf(currentUri)
+            if (foundIndex >= 0) queueIndex = foundIndex
+        }
+        val queueJson = JSONArray()
+        queueUris.forEach { queueJson.put(it.toString()) }
+        playbackPrefs.edit()
+            .putString(KEY_QUEUE, queueJson.toString())
+            .putInt(KEY_INDEX, queueIndex)
+            .putInt(KEY_REPEAT, queueRepeatMode)
+            .putInt(KEY_SHUFFLE, queueShuffleMode)
+            .putLong(KEY_POSITION, exo?.currentPosition?.coerceAtLeast(0L) ?: 0L)
+            .putBoolean(KEY_WAS_PLAYING, exo?.isPlaying == true || exo?.playWhenReady == true)
+            .apply()
     }
 
     data class QueueSnapshot(
@@ -121,9 +212,12 @@ class AuraPlaybackService : MediaSessionService() {
         queueIndex = index.coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
         queueRepeatMode = repeatMode
         queueShuffleMode = shuffleMode
+        savePlaybackState()
     }
 
     override fun onDestroy() {
+        savePlaybackState()
+        saveHandler.removeCallbacks(savePositionTask)
         instance = null
         mediaSession?.release()
         mediaSession = null
@@ -133,6 +227,13 @@ class AuraPlaybackService : MediaSessionService() {
     }
 
     companion object {
+        private const val KEY_QUEUE = "queue_uris"
+        private const val KEY_INDEX = "queue_index"
+        private const val KEY_REPEAT = "repeat_mode"
+        private const val KEY_SHUFFLE = "shuffle_mode"
+        private const val KEY_POSITION = "playback_position"
+        private const val KEY_WAS_PLAYING = "was_playing"
+
         @Volatile
         private var instance: AuraPlaybackService? = null
 
