@@ -173,7 +173,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
                 output.putShort((bounded * 32768f).toInt().toShort())
             }
         }
-        input.position(input.position() + (input.remaining() / frameBytes) * frameBytes)
+        input.position(input.limit())
         output.flip()
         if (channelCount == 1) peakRight = peakLeft
         onPeak?.invoke(peakLeft.coerceAtMost(1f), peakRight.coerceAtMost(1f))
