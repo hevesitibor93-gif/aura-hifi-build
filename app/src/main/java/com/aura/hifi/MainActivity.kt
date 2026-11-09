@@ -745,6 +745,8 @@ class MainActivity : Activity() {
         refreshSoundProfileStatus()
         soundPage.addView(soundProfileStatus)
         val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val soundControlViews = mutableListOf<View>()
+        soundProfileRefreshers.clear()
         val bypassRow = settingRow("DSP BYPASS", "Az új DSP-modulok kikapcsolása; az EQ aktív marad")
         val bypassSwitch = Switch(this).apply {
             text = ""
@@ -773,8 +775,6 @@ class MainActivity : Activity() {
         }
         soundPage.addView(bypassRow)
         soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
-        val soundControlViews = mutableListOf<View>()
-        soundProfileRefreshers.clear()
         fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
             val row = settingRow(title, subtitle)
             val toggle = Switch(this).apply {
