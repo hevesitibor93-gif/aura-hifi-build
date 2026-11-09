@@ -788,6 +788,7 @@ class MainActivity : Activity() {
         refreshSoundProfileStatus()
         soundPage.addView(soundProfileStatus)
         val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        // Keep this list declared before the BYPASS listener, which updates these controls.
         val soundControlViews = mutableListOf<View>()
         soundProfileRefreshers.clear()
         val bypassRow = settingRow("DSP BYPASS", "Az új DSP-modulok kikapcsolása; az EQ aktív marad")
