@@ -188,31 +188,6 @@ class MainActivity : Activity() {
         }
     }
 
-    @Deprecated("Uses the Storage Access Framework")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
-        when (requestCode) {
-            backupExportRequest -> runCatching { AuraBackupManager.write(this, uri) }
-                .onSuccess { toast("AURA biztonsági mentés elkészült.") }
-                .onFailure { toast("A mentés nem sikerült: ${it.message ?: "hiba"}") }
-            backupImportRequest -> runCatching { AuraBackupManager.read(this, uri) }
-                .onSuccess { backup ->
-                    android.app.AlertDialog.Builder(this)
-                        .setTitle("Beállítások visszaállítása?")
-                        .setMessage("A mentés felülírja az AURA jelenlegi beállításait és lejátszási listáit. A zenefájlokat nem módosítja.")
-                        .setNegativeButton("MÉGSE", null)
-                        .setPositiveButton("VISSZAÁLLÍTÁS") { _, _ ->
-                            runCatching { AuraBackupManager.restore(this, backup) }
-                                .onSuccess { toast("AURA mentés visszaállítva."); recreate() }
-                                .onFailure { toast("A visszaállítás nem sikerült: ${it.message ?: "hiba"}") }
-                        }.show()
-                }
-                .onFailure { toast("A mentés nem olvasható: ${it.message ?: "hiba"}") }
-        }
-    }
-
     private fun openBackupExport() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -2633,6 +2608,30 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK || data == null) return
+        if (requestCode == backupExportRequest) {
+            val uri = data.data ?: return
+            runCatching { AuraBackupManager.write(this, uri) }
+                .onSuccess { toast("AURA biztonsági mentés elkészült.") }
+                .onFailure { toast("A mentés nem sikerült: ${it.message ?: "hiba"}") }
+            return
+        }
+        if (requestCode == backupImportRequest) {
+            val uri = data.data ?: return
+            runCatching { AuraBackupManager.read(this, uri) }
+                .onSuccess { backup ->
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("Beállítások visszaállítása?")
+                        .setMessage("A mentés felülírja az AURA jelenlegi beállításait és lejátszási listáit. A zenefájlokat nem módosítja.")
+                        .setNegativeButton("MÉGSE", null)
+                        .setPositiveButton("VISSZAÁLLÍTÁS") { _, _ ->
+                            runCatching { AuraBackupManager.restore(this, backup) }
+                                .onSuccess { toast("AURA mentés visszaállítva."); recreate() }
+                                .onFailure { toast("A visszaállítás nem sikerült: ${it.message ?: "hiba"}") }
+                        }.show()
+                }
+                .onFailure { toast("A mentés nem olvasható: ${it.message ?: "hiba"}") }
+            return
+        }
         if (requestCode == 2) {
             val uri = data.data ?: return
             try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); window.decorView.background = android.graphics.drawable.Drawable.createFromStream(contentResolver.openInputStream(uri), null) } catch (_: Exception) { toast("A háttérkép nem tölthető be.") }
