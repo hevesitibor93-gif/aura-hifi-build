@@ -334,6 +334,43 @@ class MainActivity : Activity() {
         soundProfileRefreshers.forEach { it() }
     }
 
+    private fun saveSoundAbSlot(prefs: android.content.SharedPreferences, profile: String, slot: String) {
+        val prefix = "sound_ab_${profile}_${slot}_"
+        val editor = prefs.edit()
+        val all = prefs.all
+        soundProfileKeys.forEach { key ->
+            when (val value = all[key]) {
+                is Boolean -> editor.putBoolean(prefix + key, value)
+                is Int -> editor.putInt(prefix + key, value)
+                is Long -> editor.putLong(prefix + key, value)
+                is Float -> editor.putFloat(prefix + key, value)
+                is String -> editor.putString(prefix + key, value)
+            }
+        }
+        editor.putBoolean("sound_ab_${profile}_${slot}_saved", true).apply()
+    }
+
+    private fun loadSoundAbSlot(prefs: android.content.SharedPreferences, profile: String, slot: String): Boolean {
+        if (!prefs.getBoolean("sound_ab_${profile}_${slot}_saved", false)) return false
+        val prefix = "sound_ab_${profile}_${slot}_"
+        val editor = prefs.edit()
+        soundProfileKeys.forEach { key ->
+            val storedKey = prefix + key
+            if (!prefs.contains(storedKey)) return@forEach
+            when (val value = prefs.all[storedKey]) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+            }
+        }
+        editor.apply()
+        loadAuraSoundEngineSettings(prefs)
+        soundProfileRefreshers.forEach { it() }
+        return true
+    }
+
     private fun refreshSoundOutputProfile() {
         val detected = if (detectVuOutputProfile() == "bluetooth") "bluetooth" else "speaker"
         if (detected == soundOutputProfile) return
@@ -780,6 +817,68 @@ class MainActivity : Activity() {
             soundControlViews.forEach { it.isEnabled = !bypassSwitch.isChecked }
         }
         soundPage.addView(bypassRow)
+
+        soundPage.addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
+        val abProfileRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, dp(4))
+        }
+        val abSaveRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(8))
+        }
+        val abButtons = mutableMapOf<String, Button>()
+        val abSaveButtons = mutableMapOf<String, Button>()
+        fun refreshAbButtons() {
+            val selected = soundPrefs.getString("sound_ab_active_${soundOutputProfile}", "A") ?: "A"
+            listOf("A", "B").forEach { slot ->
+                abButtons[slot]?.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    if (selected == slot) gold else Color.rgb(48, 54, 64)
+                )
+                abButtons[slot]?.setTextColor(if (selected == slot) Color.BLACK else Color.WHITE)
+            }
+        }
+        fun selectAbSlot(slot: String) {
+            val savedKey = "sound_ab_${soundOutputProfile}_${slot}_saved"
+            if (!soundPrefs.getBoolean(savedKey, false)) {
+                // First use creates a safe snapshot from the current sound.
+                saveSoundAbSlot(soundPrefs, soundOutputProfile, slot)
+            }
+            soundPrefs.edit().putString("sound_ab_active_${soundOutputProfile}", slot).apply()
+            loadSoundAbSlot(soundPrefs, soundOutputProfile, slot)
+            refreshAbButtons()
+        }
+        listOf("A", "B").forEach { slot ->
+            val selectButton = Button(this).apply {
+                text = slot
+                isAllCaps = false
+                textSize = 15f
+                setOnClickListener { selectAbSlot(slot) }
+            }
+            abButtons[slot] = selectButton
+            abProfileRow.addView(selectButton, LinearLayout.LayoutParams(0, dp(42), 1f))
+
+            val saveButton = Button(this).apply {
+                text = "MENTÉS $slot"
+                isAllCaps = false
+                textSize = 10f
+                setOnClickListener {
+                    saveSoundAbSlot(soundPrefs, soundOutputProfile, slot)
+                    soundPrefs.edit().putString("sound_ab_active_${soundOutputProfile}", slot).apply()
+                    refreshAbButtons()
+                    toast("A ${slot} hangbeállítás elmentve")
+                }
+            }
+            abSaveButtons[slot] = saveButton
+            abSaveRow.addView(saveButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+        }
+        soundPage.addView(abProfileRow)
+        soundPage.addView(abSaveRow)
+        soundProfileRefreshers.add { refreshAbButtons() }
+        refreshAbButtons()
+
         soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
         fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
             val row = settingRow(title, subtitle)
