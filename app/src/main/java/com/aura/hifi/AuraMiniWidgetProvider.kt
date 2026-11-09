@@ -37,7 +37,7 @@ class AuraMiniWidgetProvider : AppWidgetProvider() {
         private fun updateWidget(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
             val views = RemoteViews(context.packageName, R.layout.aura_mini_widget)
             val active = AuraPlaybackService.player
-            val metadata = active?.currentMediaMetadata
+            val metadata = active?.currentMediaItem?.mediaMetadata
             views.setTextViewText(R.id.widget_title, metadata?.title?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi")
             views.setTextViewText(R.id.widget_artist, metadata?.artist?.toString()?.takeIf { it.isNotBlank() } ?: "Válassz zenét")
             views.setTextViewText(R.id.widget_play, if (active?.isPlaying == true) "Ⅱ" else "▶")
