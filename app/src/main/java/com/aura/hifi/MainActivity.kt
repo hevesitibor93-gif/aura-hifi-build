@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private val eqProcessor get() = AuraPlaybackService.eqProcessor
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
+    private var playbackRestoreAttempts = 0
     private var clippingStatusLabel: TextView? = null
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
@@ -134,12 +135,35 @@ class MainActivity : Activity() {
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Reattach the meter whenever the screen returns, not only after a track change.
+        handler.post {
+            val exo = player
+            if (exo != null) {
+                attachVuMeter()
+                setVuActive(exo.isPlaying)
+            }
+        }
+    }
+
 
     /**
      * Reconnects the screen to playback that may have continued in AuraPlaybackService
      * while the Activity was closed or recreated.
      */
     private fun restorePlaybackState() {
+        // The service is started asynchronously. A fixed 250 ms delay is not
+        // enough on every device/startup, so retry until its player is ready.
+        val exo = player
+        if (exo == null) {
+            if (playbackRestoreAttempts < 50) {
+                playbackRestoreAttempts++
+                handler.postDelayed({ restorePlaybackState() }, 100L)
+            }
+            return
+        }
+        playbackRestoreAttempts = 0
         val snapshot = AuraPlaybackService.getQueueSnapshot()
         queue.clear()
         queue.addAll(snapshot.uris)
@@ -147,7 +171,6 @@ class MainActivity : Activity() {
         repeatMode = snapshot.repeatMode
         shuffleMode = snapshot.shuffleMode
 
-        val exo = player ?: return
         // Respect the user's startup preference even when the playback service
         // was already alive in the background before the Activity was opened.
         val resumeOnAppStart = getSharedPreferences("aurix_settings", MODE_PRIVATE)
