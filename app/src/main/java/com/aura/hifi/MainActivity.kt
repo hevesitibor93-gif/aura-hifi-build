@@ -39,10 +39,10 @@ import kotlin.math.min
 
 @androidx.media3.common.util.UnstableApi
 class MainActivity : Activity() {
-    private var player: ExoPlayer? = null
-    private var mediaSession: MediaSession? = null
-    private val eqProcessor = AurixEqualizerAudioProcessor()
-    private val soundEngineProcessor = AuraSoundEngineAudioProcessor()
+    private val player: ExoPlayer? get() = AuraPlaybackService.player
+    private val eqProcessor get() = AuraPlaybackService.eqProcessor
+    private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
+    private var playbackListener: Player.Listener? = null
     private var clippingStatusLabel: TextView? = null
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
@@ -109,6 +109,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        startService(Intent(this, AuraPlaybackService::class.java))
+        AuraPlaybackService.onPreviousRequested = { playPrevious() }
+        AuraPlaybackService.onNextRequested = { playNext() }
         window.statusBarColor = bg; window.navigationBarColor = bg
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         if (!prefs.getBoolean("eq_safe_neutral_reset_v1", false)) {
@@ -1589,63 +1592,46 @@ class MainActivity : Activity() {
             readMetadata(uri)
             updateNextTrack()
             refreshLibrarySelection()
-            val renderersFactory = object : DefaultRenderersFactory(this) {
-                override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink {
-                    return DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
-                        .setAudioProcessors(arrayOf(eqProcessor, soundEngineProcessor)).build()
-                }
-            }
-            player = ExoPlayer.Builder(this, renderersFactory).build().also { exo ->
-                exo.addListener(object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        when (playbackState) {
-                            Player.STATE_READY -> if (exo.playWhenReady) {
-                                setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate()
-                                handler.removeCallbacks(progressTask); handler.post(progressTask)
-                            }
-                            Player.STATE_ENDED -> {
-                                setVuActive(false)
-                                when {
-                                    repeatMode == 1 -> { exo.seekTo(0); exo.play() }
-                                    currentIndex + 1 < queue.size -> { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
-                                    repeatMode == 2 || shuffleMode != 0 -> { currentIndex = 0; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
-                                    else -> { playButton.text = "▶"; updateNextTrack() }
-                                }
+            val exo = player ?: throw IllegalStateException("A háttérlejátszó még nem indult el.")
+            playbackListener?.let { exo.removeListener(it) }
+            val listener = object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_READY -> if (exo.playWhenReady) {
+                            setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate()
+                            handler.removeCallbacks(progressTask); handler.post(progressTask)
+                        }
+                        Player.STATE_ENDED -> {
+                            setVuActive(false)
+                            when {
+                                repeatMode == 1 -> { exo.seekTo(0); exo.play() }
+                                currentIndex + 1 < queue.size -> { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
+                                repeatMode == 2 || shuffleMode != 0 -> { currentIndex = 0; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
+                                else -> { playButton.text = "▶"; updateNextTrack() }
                             }
                         }
                     }
-                    override fun onPlayerError(error: PlaybackException) {
-                        playButton.text = "▶"; toast("Lejátszási hiba: " + (error.message ?: "ismeretlen hiba"))
-                    }
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        setVuActive(isPlaying); playButton.text = if (isPlaying) "Ⅱ" else "▶"; vinylView.invalidate()
-                    }
-                })
-                val mediaMetadata = MediaMetadata.Builder()
-                    .setTitle(trackLabel.text.toString())
-                    .setArtist(metadataLabel.text.toString())
-                    .setAlbumTitle(albumLabel.text.toString())
-                    .build()
-                exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(mediaMetadata).build())
-                exo.prepare()
-                val sessionPlayer = object : ForwardingPlayer(exo) {
-                    override fun getAvailableCommands(): Player.Commands {
-                        return super.getAvailableCommands().buildUpon()
-                            .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-                            .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                            .build()
-                    }
-                    override fun seekToPreviousMediaItem() { this@MainActivity.playPrevious() }
-                    override fun seekToNextMediaItem() { this@MainActivity.playNext() }
                 }
-                mediaSession = MediaSession.Builder(this@MainActivity, sessionPlayer)
-                    .setId("aura-hifi-session")
-                    .build()
-                exo.playWhenReady = true
+                override fun onPlayerError(error: PlaybackException) {
+                    playButton.text = "▶"; toast("Lejátszási hiba: " + (error.message ?: "ismeretlen hiba"))
+                }
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    setVuActive(isPlaying); playButton.text = if (isPlaying) "Ⅱ" else "▶"; vinylView.invalidate()
+                }
             }
+            playbackListener = listener
+            exo.addListener(listener)
+            val mediaMetadata = MediaMetadata.Builder()
+                .setTitle(trackLabel.text.toString())
+                .setArtist(metadataLabel.text.toString())
+                .setAlbumTitle(albumLabel.text.toString())
+                .build()
+            exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(mediaMetadata).build())
+            exo.prepare()
+            exo.playWhenReady = true
         } catch (e: Exception) {
-            try { player?.release() } catch (_: Exception) {}
-            player = null; playButton.text = "▶"
+            try { player?.stop() } catch (_: Exception) {}
+            playButton.text = "▶"
             toast("Nem sikerült megnyitni: " + (e.message ?: "ismeretlen hiba"))
         }
     }
@@ -2045,13 +2031,16 @@ class MainActivity : Activity() {
             setVuActive(false)
             setVuLevels(0f, 0f)
         }
-        try { mediaSession?.release() } catch (_: Exception) {}; mediaSession = null
-        try { player?.release() } catch (_: Exception) {}; player = null
+        playbackListener?.let { player?.removeListener(it) }; playbackListener = null
+        eqProcessor.onLevel = null
+        soundEngineProcessor.onClipping = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
         audioDeviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = null
+        AuraPlaybackService.onPreviousRequested = null
+        AuraPlaybackService.onNextRequested = null
         releaseAudio(); libraryExecutor.shutdownNow(); super.onDestroy()
     }
 
