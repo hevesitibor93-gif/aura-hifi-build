@@ -1,6 +1,8 @@
 package com.aura.hifi
 
 import android.content.Context
+import android.content.Intent
+import android.app.PendingIntent
 import android.net.Uri
 import android.media.MediaMetadataRetriever
 import android.os.Handler
@@ -124,8 +126,20 @@ class AuraPlaybackService : MediaSessionService() {
             }
         }
 
+        // Tapping the system media notification returns directly to the AURA player tab.
+        val launchIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("aura_open_player", true)
+        }
+        val sessionActivity = PendingIntent.getActivity(
+            this,
+            7101,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         mediaSession = MediaSession.Builder(this, sessionPlayer)
             .setId("aura-hifi-session")
+            .setSessionActivity(sessionActivity)
             .build()
     }
 
