@@ -195,7 +195,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
 
             for (ch in 0 until channelCount) {
                 val sample = frame[ch]
-                if (abs(sample) >= 1f) clipped = true
+                if (sample < -1f || sample > 0.9999695f) clipped = true
                 val bounded = sample.coerceIn(-1f, 0.9999695f)
                 if (ch == 0) peakLeft = maxOf(peakLeft, abs(sample))
                 else if (ch == 1) peakRight = maxOf(peakRight, abs(sample))
