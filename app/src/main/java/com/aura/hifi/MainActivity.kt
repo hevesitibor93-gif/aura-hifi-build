@@ -1666,10 +1666,24 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
         soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
 
-        vuSettingsMenuButton.setOnClickListener { showPage(4) }
-        vuSettingsBackButton.setOnClickListener { showPage(3) }
+        var vuSettingsReturnToCategory = false
+        vuSettingsMenuButton.setOnClickListener {
+            vuSettingsReturnToCategory = true
+            showPage(4)
+        }
+        vuSettingsBackButton.setOnClickListener {
+            if (vuSettingsReturnToCategory) {
+                showPage(3)
+                showSettingsCategory(vuAppearanceSettingsPage)
+            } else {
+                showPage(0, false)
+            }
+        }
         openPlayerPage = { showPage(0, false) }
-        openVuSettingsPage = { showPage(4, false) }
+        openVuSettingsPage = {
+            vuSettingsReturnToCategory = false
+            showPage(4, false)
+        }
         openSoundEnginePage = { showPage(5, false) }
         openLibraryPage = {
             showPage(1, false)
