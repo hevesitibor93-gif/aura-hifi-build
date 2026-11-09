@@ -1884,7 +1884,151 @@ class MainActivity : Activity() {
         libraryContainer.addView(label("‹  Vissza a zenetárhoz", 13f, Color.rgb(235, 205, 145)).apply { setPadding(dp(8), dp(12), dp(8), dp(12)); setOnClickListener { showLibraryHome() } })
     }
 
-    private fun renderSongRows(songs: List<LibrarySong>) {
+    private fun listPreferenceKey(scope: String, kind: String): String {
+        val safe = scope.hashCode().toUInt().toString(16)
+        return "list_${kind}_${safe}"
+    }
+
+    private fun listSortMode(scope: String, allowManual: Boolean = false): String {
+        val fallback = if (allowManual) "manual" else "title_asc"
+        return getSharedPreferences("aurix_library", MODE_PRIVATE).getString(listPreferenceKey(scope, "sort"), fallback) ?: fallback
+    }
+
+    private fun listViewMode(scope: String): String =
+        getSharedPreferences("aurix_library", MODE_PRIVATE).getString(listPreferenceKey(scope, "view"), "detailed") ?: "detailed"
+
+    private fun sortLibrarySongs(songs: List<LibrarySong>, scope: String, allowManual: Boolean = false): List<LibrarySong> {
+        val mode = listSortMode(scope, allowManual)
+        return when (mode) {
+            "title_desc" -> songs.sortedByDescending { it.title.lowercase() }
+            "artist_asc" -> songs.sortedBy { it.artist.lowercase() }
+            "artist_desc" -> songs.sortedByDescending { it.artist.lowercase() }
+            "album_asc" -> songs.sortedBy { it.album.lowercase() }
+            "album_desc" -> songs.sortedByDescending { it.album.lowercase() }
+            "added_new" -> songs.sortedByDescending { it.dateAdded }
+            "added_old" -> songs.sortedBy { it.dateAdded }
+            "file_asc" -> songs.sortedBy { java.io.File(it.uri.lastPathSegment ?: it.title).name.lowercase() }
+            "file_desc" -> songs.sortedByDescending { java.io.File(it.uri.lastPathSegment ?: it.title).name.lowercase() }
+            "manual" -> if (allowManual) songs else songs.sortedBy { it.title.lowercase() }
+            else -> songs.sortedBy { it.title.lowercase() }
+        }.let { if (mode == "added_old") it else if (mode == "added_new") it else it }
+    }
+
+    private fun addListOptionsHeader(title: String, scope: String, refresh: () -> Unit, allowManual: Boolean = false) {
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(7), dp(5), dp(3), dp(8)) }
+        header.addView(label(title, 11f, Color.rgb(235, 205, 145)).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
+        val more = button("⋮", Color.rgb(48, 52, 72), Color.WHITE) {
+            val popup = android.widget.PopupMenu(this, it)
+            val sort = popup.menu.addSubMenu("Rendezés")
+            val choices = mutableListOf(
+                "Cím • A–Z" to "title_asc", "Cím • Z–A" to "title_desc",
+                "Előadó • A–Z" to "artist_asc", "Előadó • Z–A" to "artist_desc",
+                "Album • A–Z" to "album_asc", "Album • Z–A" to "album_desc",
+                "Hozzáadás • legújabb" to "added_new", "Hozzáadás • legrégebbi" to "added_old",
+                "Fájlnév • A–Z" to "file_asc", "Fájlnév • Z–A" to "file_desc"
+            )
+            if (allowManual) choices.add("Kézi sorrend" to "manual")
+            choices.forEachIndexed { index, pair ->
+                val item = sort.add(0, 100 + index, index, pair.first)
+                item.isCheckable = true
+                item.isChecked = listSortMode(scope, allowManual) == pair.second
+            }
+            val view = popup.menu.addSubMenu("Megjelenítés")
+            listOf("Kompakt lista" to "compact", "Részletes lista" to "detailed", "Borítórács" to "grid").forEachIndexed { index, pair ->
+                val item = view.add(0, 200 + index, index, pair.first)
+                item.isCheckable = true
+                item.isChecked = listViewMode(scope) == pair.second
+            }
+            popup.menu.add("Frissítés")
+            popup.setOnMenuItemClickListener { item ->
+                val prefs = getSharedPreferences("aurix_library", MODE_PRIVATE)
+                when (item.itemId) {
+                    in 100..199 -> {
+                        val selected = choices.getOrNull(item.itemId - 100)?.second ?: return@setOnMenuItemClickListener false
+                        prefs.edit().putString(listPreferenceKey(scope, "sort"), selected).apply()
+                        refresh()
+                        true
+                    }
+                    in 200..299 -> {
+                        val selected = listOf("compact", "detailed", "grid").getOrNull(item.itemId - 200) ?: return@setOnMenuItemClickListener false
+                        prefs.edit().putString(listPreferenceKey(scope, "view"), selected).apply()
+                        refresh()
+                        true
+                    }
+                    else -> { refresh(); true }
+                }
+            }
+            popup.show()
+        }
+        header.addView(more, LinearLayout.LayoutParams(dp(42), dp(38)))
+        libraryContainer.addView(header)
+    }
+
+    private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
+        val ordered = sortLibrarySongs(songs, scope, allowManual)
+        val viewMode = listViewMode(scope)
+        fun playFrom(index: Int, song: LibrarySong) {
+            queue.clear()
+            queue.addAll(ordered.map { it.uri })
+            currentIndex = index
+            startTrack(song.uri)
+            updateNextTrack()
+        }
+        if (viewMode == "grid") {
+            var index = 0
+            while (index < ordered.size) {
+                val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
+                for (column in 0..1) {
+                    if (index >= ordered.size) {
+                        line.addView(View(this), LinearLayout.LayoutParams(0, dp(110), 1f))
+                    } else {
+                        val song = ordered[index]
+                        val itemIndex = index
+                        val tile = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                            background = rounded(Color.rgb(27, 32, 48), 12)
+                            setPadding(dp(7), dp(10), dp(7), dp(10))
+                            addView(label("♫", 25f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER })
+                            addView(label(song.title, 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
+                            addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                            setOnClickListener { playFrom(itemIndex, song) }
+                        }
+                        markLibrarySongRow(tile, song.uri)
+                        line.addView(tile, LinearLayout.LayoutParams(0, dp(112), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                        index++
+                    }
+                }
+                libraryContainer.addView(line)
+            }
+        } else {
+            ordered.forEachIndexed { index, song ->
+                val row = if (viewMode == "compact") {
+                    label("♫  ${song.title} — ${song.artist}", 12f, Color.WHITE).apply {
+                        setPadding(dp(9), dp(10), dp(8), dp(10))
+                        setOnClickListener { playFrom(index, song) }
+                    }
+                } else {
+                    LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                        background = rounded(Color.rgb(27, 32, 48), 10)
+                        setPadding(dp(8), dp(8), dp(8), dp(8))
+                        addView(label("♫", 20f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(38), dp(42)))
+                        val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+                        details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+                        setOnClickListener { playFrom(index, song) }
+                    }
+                }
+                markLibrarySongRow(row, song.uri)
+                libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+            }
+        }
+        if (ordered.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
+    }
+
+
         songs.forEachIndexed { index, song ->
             val row = label("♫  " + song.title + " — " + song.artist, 12f, Color.WHITE).apply {
                 setPadding(dp(9), dp(11), dp(8), dp(11))
@@ -1899,15 +2043,15 @@ class MainActivity : Activity() {
     private fun showRecentAdded() {
         activeLibraryRenderer = { showRecentAdded() }
         libraryMode = "recent_added"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
-        libraryContainer.addView(label("LEGUTÓBB HOZZÁADOTT • 100 DAL", 11f, Color.WHITE))
-        renderSongRows(librarySongs.sortedByDescending { it.dateAdded }.take(100))
+        addListOptionsHeader("LEGUTÓBB HOZZÁADOTT • 100 DAL", "recent_added", { showRecentAdded() })
+        renderSongRows(librarySongs.take(100), "recent_added")
     }
 
     private fun showRecentlyPlayed() {
         activeLibraryRenderer = { showRecentlyPlayed() }
         libraryMode = "recent_played"; libraryCategoryRow.visibility = View.GONE; libraryContainer.visibility = View.VISIBLE; libraryContainer.removeAllViews(); addLibraryBackButton()
-        libraryContainer.addView(label("NEMRÉG JÁTSZOTT", 11f, Color.WHITE))
-        renderSongRows(recentlyPlayed.mapNotNull { librarySongByUri[it] }.distinctBy { it.uri.toString() }.take(100))
+        addListOptionsHeader("NEMRÉG JÁTSZOTT", "recent_played", { showRecentlyPlayed() })
+        renderSongRows(recentlyPlayed.mapNotNull { librarySongByUri[it] }.distinctBy { it.uri.toString() }.take(100), "recent_played")
     }
 
     private fun showPlaylists() {
@@ -2306,21 +2450,10 @@ class MainActivity : Activity() {
             })
         }
 
-        val songs = librarySongs.filter { it.folder == path }.sortedBy { it.title.lowercase() }
-        songs.forEachIndexed { index, song ->
-            val row = label("♫  " + song.title + "  —  " + song.artist, 12f, Color.WHITE).apply {
-                setPadding(dp(9), dp(11), dp(8), dp(11))
-                setOnClickListener {
-                    queue.clear()
-                    queue.addAll(songs.map { it.uri })
-                    currentIndex = index
-                    startTrack(song.uri)
-                    updateNextTrack()
-                }
-            }
-            markLibrarySongRow(row, song.uri)
-            libraryContainer.addView(row)
-        }
+        val songs = librarySongs.filter { it.folder == path }
+        val folderScope = "folder:${path}"
+        addListOptionsHeader("DALOK A MAPPÁBAN • ${songs.size}", folderScope, { renderFolderBrowser(path, isRoot) })
+        renderSongRows(songs, folderScope)
         if (children.isEmpty() && songs.isEmpty()) libraryContainer.addView(label("Ebben a mappában nincs beolvasott zene.", 12f, Color.rgb(190,194,215)))
     }
 
@@ -2336,33 +2469,14 @@ class MainActivity : Activity() {
             lastLibraryQuery = query
             libraryVisibleLimit = 80
         }
-        val filtered = librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) }.let { songs -> when (librarySortMode) { "Előadó szerint" -> songs.sortedBy { it.artist.lowercase() }; "Legújabb elöl" -> songs.sortedByDescending { it.dateAdded }; "Legrégebbi elöl" -> songs.sortedBy { it.dateAdded }; else -> songs.sortedBy { it.title.lowercase() } } }
+        val filtered = sortLibrarySongs(librarySongs.filter { it.title.contains(query, true) || it.artist.contains(query, true) || it.album.contains(query, true) || it.folder.contains(query, true) }, "library")
+        addListOptionsHeader("ZENETÁR • ${filtered.size} DAL", "library", { renderLibrary(query) })
         if (filtered.isEmpty()) {
             libraryContainer.addView(label(if (librarySongs.isEmpty()) "Még nincs zene a könyvtárban. Adj hozzá fájlokat vagy frissítsd a listát." else "Nincs találat erre a keresésre.", 12f, Color.rgb(190, 194, 215)).apply { setPadding(dp(8), dp(14), dp(8), dp(14)) })
             return
         }
         val end = minOf(filtered.size, libraryVisibleLimit)
-        for (index in 0 until end) {
-            val song = filtered[index]
-            val item = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(10), dp(8), dp(10)); isClickable = true; isFocusable = true; background = rounded(Color.argb(35, 255, 255, 255), 12) }
-            val coverIcon = label("♫", 20f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER }
-            item.addView(coverIcon, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(10) })
-            val names = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            names.addView(label(song.title, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-            names.addView(label(song.artist, 11f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-            item.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
-            markLibrarySongRow(item, song.uri)
-            item.setOnClickListener {
-                queue.clear()
-                queue.addAll(filtered.map { it.uri })
-                currentIndex = index
-                startTrack(song.uri)
-                updateNextTrack()
-                toast("Zenetár: " + song.title)
-            }
-            libraryContainer.addView(item)
-            if (index < end - 1) libraryContainer.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 48, 58)) }, LinearLayout.LayoutParams(-1, dp(1)))
-        }
+        renderSongRows(filtered.take(end), "library")
         if (filtered.size > end) {
             val remaining = filtered.size - end
             libraryContainer.addView(button("TOVÁBBI ${minOf(80, remaining)} DAL BETÖLTÉSE  •  MÉG $remaining", Color.rgb(73, 54, 135), Color.WHITE) {
