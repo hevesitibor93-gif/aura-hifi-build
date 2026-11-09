@@ -41,7 +41,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     @Volatile private var dynamicPunchAmount = 0f
 
     @Volatile var onPeak: ((Float, Float) -> Unit)? = null
-    @Volatile var onClipping: (() -> Unit)? = null
+    @Volatile var onClipping: ((Boolean) -> Unit)? = null
 
     private var sampleRate = 44100
     private var channelCount = 2
@@ -53,6 +53,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     private var bassLowPass = FloatArray(2)
     private var harmonicDc = FloatArray(2)
     private var clippingFrames = 0
+    private var cleanFrames = 0
+    private var clippingState = false
     private var punchFastEnvelope = 0f
     private var punchSlowEnvelope = 0f
 
@@ -101,6 +103,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         lowToneFilters = Array(channelCount) { Biquad() }
         highToneFilters = Array(channelCount) { Biquad() }
         clippingFrames = 0
+        cleanFrames = 0
+        clippingState = false
         punchFastEnvelope = 0f
         punchSlowEnvelope = 0f
     }
@@ -208,9 +212,20 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         onPeak?.invoke(peakLeft.coerceAtMost(1f), peakRight.coerceAtMost(1f))
         if (clipped) {
             clippingFrames++
-            if (clippingFrames == 1 || clippingFrames % 20 == 0) onClipping?.invoke()
+            cleanFrames = 0
+            if (!clippingState) {
+                clippingState = true
+                onClipping?.invoke(true)
+            }
         } else {
             clippingFrames = 0
+            cleanFrames++
+            // Clear the warning only after several consecutive clean buffers,
+            // so brief gaps do not make the indicator flicker.
+            if (clippingState && cleanFrames >= 10) {
+                clippingState = false
+                onClipping?.invoke(false)
+            }
         }
     }
 
