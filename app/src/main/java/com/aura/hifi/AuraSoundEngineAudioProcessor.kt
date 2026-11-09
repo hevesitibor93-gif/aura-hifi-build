@@ -28,6 +28,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     @Volatile private var stereoWidthEnabled = false
     @Volatile private var balanceEnabled = false
     @Volatile private var preampEnabled = false
+    @Volatile private var dynamicPunchEnabled = false
 
     @Volatile private var bassDepthDb = 0f
     @Volatile private var bassPunchDb = 0f
@@ -37,6 +38,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     @Volatile private var stereoWidth = 1f
     @Volatile private var balance = 0f
     @Volatile private var preampDb = 0f
+    @Volatile private var dynamicPunchAmount = 0f
 
     @Volatile var onPeak: ((Float, Float) -> Unit)? = null
     @Volatile var onClipping: (() -> Unit)? = null
@@ -51,6 +53,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     private var bassLowPass = FloatArray(2)
     private var harmonicDc = FloatArray(2)
     private var clippingFrames = 0
+    private var punchFastEnvelope = 0f
+    private var punchSlowEnvelope = 0f
 
     fun setBassDepthEnabled(v: Boolean) { bassDepthEnabled = v }
     fun setBassPunchEnabled(v: Boolean) { bassPunchEnabled = v }
@@ -60,6 +64,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     fun setStereoWidthEnabled(v: Boolean) { stereoWidthEnabled = v }
     fun setBalanceEnabled(v: Boolean) { balanceEnabled = v }
     fun setPreampEnabled(v: Boolean) { preampEnabled = v }
+    fun setDynamicPunchEnabled(v: Boolean) { dynamicPunchEnabled = v }
 
     fun setBassDepthDb(v: Float) { bassDepthDb = v.coerceIn(0f, 6f); rebuildFilters() }
     fun setBassPunchDb(v: Float) { bassPunchDb = v.coerceIn(0f, 6f); rebuildFilters() }
@@ -69,6 +74,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     fun setStereoWidth(v: Float) { stereoWidth = v.coerceIn(0f, 1.5f) }
     fun setBalance(v: Float) { balance = v.coerceIn(-1f, 1f) }
     fun setPreampDb(v: Float) { preampDb = v.coerceIn(-12f, 6f) }
+    fun setDynamicPunchAmount(v: Float) { dynamicPunchAmount = v.coerceIn(0f, 1f) }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
@@ -95,6 +101,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         lowToneFilters = Array(channelCount) { Biquad() }
         highToneFilters = Array(channelCount) { Biquad() }
         clippingFrames = 0
+        punchFastEnvelope = 0f
+        punchSlowEnvelope = 0f
     }
 
     private fun rebuildFilters() {
@@ -121,6 +129,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         val useTone = toneEnabled
         val useWidth = stereoWidthEnabled && channelCount >= 2
         val useBalance = balanceEnabled && channelCount >= 2
+        val useDynamicPunch = dynamicPunchEnabled && dynamicPunchAmount > 0f
+        val punchAmount = dynamicPunchAmount
         val gain = if (preampEnabled) 10.0.pow(preampDb / 20.0).toFloat() else 1f
         val width = if (useWidth) stereoWidth else 1f
         val bal = if (useBalance) balance else 0f
@@ -152,6 +162,24 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
                     x += (square - harmonicDc[ch]) * harmonicBassAmount * 0.75f
                 }
                 frame[ch] = x * gain
+            }
+
+            // Stereo-linked transient shaper: a fast envelope follows attacks while
+            // a slower envelope represents the local body. Only positive attack
+            // difference adds gain; there is no compressor or limiter.
+            if (useDynamicPunch) {
+                var detector = 0f
+                for (ch in 0 until channelCount) detector = maxOf(detector, abs(frame[ch]))
+                val fastTau = if (detector > punchFastEnvelope) 0.0015 else 0.060
+                val slowTau = if (detector > punchSlowEnvelope) 0.035 else 0.120
+                val fastAlpha = (1.0 - kotlin.math.exp(-1.0 / (fastTau * sampleRate))).toFloat()
+                val slowAlpha = (1.0 - kotlin.math.exp(-1.0 / (slowTau * sampleRate))).toFloat()
+                punchFastEnvelope += fastAlpha * (detector - punchFastEnvelope)
+                punchSlowEnvelope += slowAlpha * (detector - punchSlowEnvelope)
+                val attack = ((punchFastEnvelope - punchSlowEnvelope) / (punchSlowEnvelope + 0.025f)).coerceIn(0f, 1f)
+                val boostDb = 6f * punchAmount * attack
+                val punchGain = 10.0.pow(boostDb / 20.0).toFloat()
+                for (ch in 0 until channelCount) frame[ch] *= punchGain
             }
 
             if (useWidth) {
