@@ -1663,8 +1663,10 @@ class MainActivity : Activity() {
             // Soft-knee response: suppresses low-level peaks while keeping strong transients visible.
             val leftRaw = ((left - threshold).coerceAtLeast(0f) / (1f - threshold).coerceAtLeast(0.01f) * gain).coerceIn(0f, 1f)
             val rightRaw = ((right - threshold).coerceAtLeast(0f) / (1f - threshold).coerceAtLeast(0.01f) * gain).coerceIn(0f, 1f)
-            val leftLevel = leftRaw * leftRaw
-            val rightLevel = rightRaw * rightRaw
+            // Keep the VU response proportional to signal amplitude. Squaring
+            // the level made normal and medium passages look far too weak.
+            val leftLevel = leftRaw
+            val rightLevel = rightRaw
             val mono = vuMono
             val displayLeft = if (mono) (leftLevel + rightLevel) * 0.5f else leftLevel
             val displayRight = if (mono) displayLeft else rightLevel
