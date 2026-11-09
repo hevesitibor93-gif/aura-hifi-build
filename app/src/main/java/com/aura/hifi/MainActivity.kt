@@ -45,6 +45,8 @@ class MainActivity : Activity() {
     private var playbackListener: Player.Listener? = null
     private var playbackRestoreAttempts = 0
     private var clippingStatusLabel: TextView? = null
+    private var eqClippingActive = false
+    private var soundEngineClippingActive = false
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
@@ -730,12 +732,23 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
         }
         soundPage.addView(clippingStatusLabel)
-        soundEngineProcessor.onClipping = {
+        soundEngineProcessor.onClipping = { clipping ->
             handler.post {
+                soundEngineClippingActive = clipping
                 clippingStatusLabel?.apply {
-                    text = "FIGYELEM: DIGITÁLIS CLIPPING ÉSZLELVE — csökkentsd az EQ vagy az előerősítés szintjét"
-                    setTextColor(Color.rgb(255, 130, 105))
-                    background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(55, 28, 27)); setStroke(dp(1), Color.rgb(150, 65, 55)) }
+                    if (eqClippingActive) {
+                        text = "FIGYELEM: CLIPPING AZ EREDETI EQ KIMENETÉN — a jel már az új DSP előtt túlvezérlődik"
+                        setTextColor(Color.rgb(255, 130, 105))
+                        background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(55, 28, 27)); setStroke(dp(1), Color.rgb(150, 65, 55)) }
+                    } else if (soundEngineClippingActive) {
+                        text = "FIGYELEM: DIGITÁLIS CLIPPING ÉSZLELVE — csökkentsd az EQ vagy az előerősítés szintjét"
+                        setTextColor(Color.rgb(255, 130, 105))
+                        background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(55, 28, 27)); setStroke(dp(1), Color.rgb(150, 65, 55)) }
+                    } else {
+                        text = "JELSZINT: RENDBEN — nincs digitális túlvezérlés"
+                        setTextColor(Color.rgb(120, 205, 145))
+                        background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
+                    }
                 }
             }
         }
@@ -1730,6 +1743,8 @@ class MainActivity : Activity() {
     }
 
     private fun startTrack(uri: Uri) {
+        eqClippingActive = false
+        soundEngineClippingActive = false
         clippingStatusLabel?.apply {
             text = "JELSZINT: RENDBEN — nincs digitális túlvezérlés"
             setTextColor(Color.rgb(120, 205, 145))
@@ -1741,6 +1756,7 @@ class MainActivity : Activity() {
         attachVuMeter()
         eqProcessor.onClipping = {
             handler.post {
+                eqClippingActive = true
                 clippingStatusLabel?.apply {
                     text = "FIGYELEM: CLIPPING AZ EREDETI EQ KIMENETÉN — a jel már az új DSP előtt túlvezérlődik"
                     setTextColor(Color.rgb(255, 130, 105))
