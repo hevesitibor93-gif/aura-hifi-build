@@ -89,12 +89,13 @@ class AuraPlaybackService : MediaSessionService() {
         val retriever = MediaMetadataRetriever()
         val metadata = try {
             retriever.setDataSource(this, uri)
-            MediaMetadata.Builder()
+            val builder = MediaMetadata.Builder()
                 .setTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
                     ?: uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím")
                 .setArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó")
                 .setAlbumTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album")
-                .build()
+            retriever.embeddedPicture?.let { builder.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+            builder.build()
         } catch (_: Exception) {
             MediaMetadata.Builder().setTitle(uri.lastPathSegment ?: "Ismeretlen cím").build()
         } finally {
