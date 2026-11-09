@@ -52,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
+    private var currentArtworkData: ByteArray? = null
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
     private lateinit var eqContainer: LinearLayout
@@ -110,8 +111,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startService(Intent(this, AuraPlaybackService::class.java))
-        AuraPlaybackService.onPreviousRequested = { playPrevious() }
-        AuraPlaybackService.onNextRequested = { playNext() }
         window.statusBarColor = bg; window.navigationBarColor = bg
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         if (!prefs.getBoolean("eq_safe_neutral_reset_v1", false)) {
@@ -1592,6 +1591,8 @@ class MainActivity : Activity() {
             readMetadata(uri)
             updateNextTrack()
             refreshLibrarySelection()
+            AuraPlaybackService.onPreviousRequested = { playPrevious() }
+            AuraPlaybackService.onNextRequested = { playNext() }
             AuraPlaybackService.syncQueue(queue.toList(), currentIndex, repeatMode, shuffleMode)
             val exo = player ?: throw IllegalStateException("A háttérlejátszó még nem indult el.")
             playbackListener?.let { exo.removeListener(it) }
@@ -1622,11 +1623,12 @@ class MainActivity : Activity() {
             }
             playbackListener = listener
             exo.addListener(listener)
-            val mediaMetadata = MediaMetadata.Builder()
+            val metadataBuilder = MediaMetadata.Builder()
                 .setTitle(trackLabel.text.toString())
                 .setArtist(metadataLabel.text.toString())
                 .setAlbumTitle(albumLabel.text.toString())
-                .build()
+            currentArtworkData?.let { metadataBuilder.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+            val mediaMetadata = metadataBuilder.build()
             exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(mediaMetadata).build())
             exo.prepare()
             exo.playWhenReady = true
@@ -1989,6 +1991,7 @@ class MainActivity : Activity() {
                 ?: uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".")?.takeIf { it.isNotBlank() && !it.all { ch -> ch.isDigit() } }
                 ?: "Ismeretlen cím"
             val cover = r.embeddedPicture
+            currentArtworkData = cover
             if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
             val artist = librarySong?.artist?.takeIf { it.isNotBlank() } ?: r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
