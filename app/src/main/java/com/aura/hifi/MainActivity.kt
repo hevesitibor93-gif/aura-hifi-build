@@ -400,7 +400,7 @@ class MainActivity : Activity() {
         val identity = if (address.isNotBlank()) "${device.type}|$address"
             else "${device.type}|${device.productName.toString().trim().lowercase(java.util.Locale.ROOT)}"
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
-        val suffix = digest.take(8).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
+        val suffix = digest.take(8).joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 0xff) }
         return "device_$suffix"
     }
 
@@ -504,17 +504,10 @@ class MainActivity : Activity() {
         }
         editor.apply()
         loadAuraSoundEngineSettings(prefs)
+        applyEqualizerSettings(prefs)
+        if (::eqContainer.isInitialized) renderEqualizer()
         soundProfileRefreshers.forEach { it() }
         return true
-    }
-
-    private fun refreshSoundOutputProfile() {
-        val detected = if (detectVuOutputProfile() == "bluetooth") "bluetooth" else "speaker"
-        if (detected == soundOutputProfile) return
-        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        saveSoundProfile(prefs, soundOutputProfile)
-        soundOutputProfile = detected
-        loadSoundProfile(prefs, detected)
     }
 
     private fun loadAuraSoundEngineSettings(prefs: android.content.SharedPreferences) {
