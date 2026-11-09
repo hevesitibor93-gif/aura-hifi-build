@@ -16,6 +16,9 @@ import android.os.Handler
 import android.os.Looper
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.session.MediaSession
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -37,6 +40,7 @@ import kotlin.math.min
 @androidx.media3.common.util.UnstableApi
 class MainActivity : Activity() {
     private var player: ExoPlayer? = null
+    private var mediaSession: MediaSession? = null
     private val eqProcessor = AurixEqualizerAudioProcessor()
     private val soundEngineProcessor = AuraSoundEngineAudioProcessor()
     private var clippingStatusLabel: TextView? = null
@@ -1617,7 +1621,27 @@ class MainActivity : Activity() {
                         setVuActive(isPlaying); playButton.text = if (isPlaying) "Ⅱ" else "▶"; vinylView.invalidate()
                     }
                 })
-                exo.setMediaItem(MediaItem.fromUri(uri)); exo.prepare(); exo.playWhenReady = true
+                val mediaMetadata = MediaMetadata.Builder()
+                    .setTitle(trackLabel.text.toString())
+                    .setArtist(metadataLabel.text.toString())
+                    .setAlbumTitle(albumLabel.text.toString())
+                    .build()
+                exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(mediaMetadata).build())
+                exo.prepare()
+                val sessionPlayer = object : ForwardingPlayer(exo) {
+                    override fun getAvailableCommands(): Player.Commands {
+                        return super.getAvailableCommands().buildUpon()
+                            .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                            .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                            .build()
+                    }
+                    override fun seekToPreviousMediaItem() { this@MainActivity.playPrevious() }
+                    override fun seekToNextMediaItem() { this@MainActivity.playNext() }
+                }
+                mediaSession = MediaSession.Builder(this@MainActivity, sessionPlayer)
+                    .setId("aura-hifi-session")
+                    .build()
+                exo.playWhenReady = true
             }
         } catch (e: Exception) {
             try { player?.release() } catch (_: Exception) {}
@@ -2021,6 +2045,7 @@ class MainActivity : Activity() {
             setVuActive(false)
             setVuLevels(0f, 0f)
         }
+        try { mediaSession?.release() } catch (_: Exception) {}; mediaSession = null
         try { player?.release() } catch (_: Exception) {}; player = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
