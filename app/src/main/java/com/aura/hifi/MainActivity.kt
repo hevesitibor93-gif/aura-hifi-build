@@ -39,6 +39,8 @@ import kotlin.math.min
 
 @androidx.media3.common.util.UnstableApi
 class MainActivity : Activity() {
+    private val backupExportRequest = 7102
+    private val backupImportRequest = 7103
     private val player: ExoPlayer? get() = AuraPlaybackService.player
     private val eqProcessor get() = AuraPlaybackService.eqProcessor
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
@@ -184,6 +186,48 @@ class MainActivity : Activity() {
         if (intent.getBooleanExtra("aura_open_player", false)) {
             openPlayerPage?.invoke()
         }
+    }
+
+    @Deprecated("Uses the Storage Access Framework")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        when (requestCode) {
+            backupExportRequest -> runCatching { AuraBackupManager.write(this, uri) }
+                .onSuccess { toast("AURA biztonsági mentés elkészült.") }
+                .onFailure { toast("A mentés nem sikerült: ${it.message ?: "hiba"}") }
+            backupImportRequest -> runCatching { AuraBackupManager.read(this, uri) }
+                .onSuccess { backup ->
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("Beállítások visszaállítása?")
+                        .setMessage("A mentés felülírja az AURA jelenlegi beállításait és lejátszási listáit. A zenefájlokat nem módosítja.")
+                        .setNegativeButton("MÉGSE", null)
+                        .setPositiveButton("VISSZAÁLLÍTÁS") { _, _ ->
+                            runCatching { AuraBackupManager.restore(this, backup) }
+                                .onSuccess { toast("AURA mentés visszaállítva."); recreate() }
+                                .onFailure { toast("A visszaállítás nem sikerült: ${it.message ?: "hiba"}") }
+                        }.show()
+                }
+                .onFailure { toast("A mentés nem olvasható: ${it.message ?: "hiba"}") }
+        }
+    }
+
+    private fun openBackupExport() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "AURA-HiFi-backup.json")
+        }
+        startActivityForResult(intent, backupExportRequest)
+    }
+
+    private fun openBackupImport() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(intent, backupImportRequest)
     }
 
     override fun onPause() {
@@ -1322,7 +1366,8 @@ class MainActivity : Activity() {
         val displaySettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         val appearanceSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         val vuAppearanceSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
-        val settingsSubPages = listOf(playbackSettingsPage, displaySettingsPage, appearanceSettingsPage, vuAppearanceSettingsPage)
+        val backupSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val settingsSubPages = listOf(playbackSettingsPage, displaySettingsPage, appearanceSettingsPage, vuAppearanceSettingsPage, backupSettingsPage)
         fun showSettingsCategory(page: LinearLayout?) {
             settingsMenu.visibility = if (page == null) View.VISIBLE else View.GONE
             settingsSubPages.forEach { it.visibility = if (it === page) View.VISIBLE else View.GONE }
@@ -1337,6 +1382,7 @@ class MainActivity : Activity() {
         settingsPage.addView(displaySettingsPage)
         settingsPage.addView(appearanceSettingsPage)
         settingsPage.addView(vuAppearanceSettingsPage)
+        settingsPage.addView(backupSettingsPage)
         settingsMenu.addView(label("BEÁLLÍTÁSOK", 18f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(3), dp(4), 0, dp(12)) })
         fun settingsCategoryButton(title: String, subtitle: String, page: LinearLayout) {
             val item = LinearLayout(this).apply {
@@ -1355,11 +1401,17 @@ class MainActivity : Activity() {
         settingsCategoryButton("▣  KIJELZŐ", "Képernyőforgatás és tájolás", displaySettingsPage)
         settingsCategoryButton("◈  MEGJELENÉS", "Borító és kazetta megjelenítése", appearanceSettingsPage)
         settingsCategoryButton("▥  VU-MÉRŐ", "Stílus, fényerő, animáció és részletes beállítások", vuAppearanceSettingsPage)
+        settingsCategoryButton("▣  MENTÉS ÉS VISSZAÁLLÍTÁS", "Az összes AURA-beállítás és lejátszási lista közös mentése", backupSettingsPage)
 
         settingsBackButton(playbackSettingsPage)
         settingsBackButton(displaySettingsPage)
         settingsBackButton(appearanceSettingsPage)
         settingsBackButton(vuAppearanceSettingsPage)
+        settingsBackButton(backupSettingsPage)
+        backupSettingsPage.addView(sectionTitle("TELJES AURA BIZTONSÁGI MENTÉS"))
+        backupSettingsPage.addView(label("Egyetlen fájlba menti az EQ-t, a Sound Engine-t, a kimeneti profilokat, a VU-beállításokat, a könyvtárnézeteket és a lejátszási listákat. A zenefájlokat nem másolja.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(4), dp(3), dp(12)) })
+        backupSettingsPage.addView(button("💾  TELJES MENTÉS KÉSZÍTÉSE", Color.rgb(91, 65, 27), Color.WHITE) { openBackupExport() }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(8) })
+        backupSettingsPage.addView(button("↻  MENTÉS VISSZAÁLLÍTÁSA", Color.rgb(31, 69, 76), Color.WHITE) { openBackupImport() }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(8) })
 
         playbackSettingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
         val playbackPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
