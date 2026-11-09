@@ -140,14 +140,15 @@ class MainActivity : Activity() {
 
     private fun loadAuraSoundEngineSettings(prefs: android.content.SharedPreferences) {
         // Neutral and disabled defaults preserve the original AURA EQ sound.
-        soundEngineProcessor.setBassDepthEnabled(prefs.getBoolean("sound_bass_depth_enabled", false))
-        soundEngineProcessor.setBassPunchEnabled(prefs.getBoolean("sound_bass_punch_enabled", false))
-        soundEngineProcessor.setHarmonicBassEnabled(prefs.getBoolean("sound_harmonic_bass_enabled", false))
-        soundEngineProcessor.setClarityEnabled(prefs.getBoolean("sound_clarity_enabled", false))
-        soundEngineProcessor.setToneEnabled(prefs.getBoolean("sound_tone_enabled", false))
-        soundEngineProcessor.setStereoWidthEnabled(prefs.getBoolean("sound_stereo_width_enabled", false))
-        soundEngineProcessor.setBalanceEnabled(prefs.getBoolean("sound_balance_enabled", false))
-        soundEngineProcessor.setPreampEnabled(prefs.getBoolean("sound_preamp_enabled", false))
+        val dspActive = !prefs.getBoolean("sound_dsp_bypass", true)
+        soundEngineProcessor.setBassDepthEnabled(dspActive && prefs.getBoolean("sound_bass_depth_enabled", false))
+        soundEngineProcessor.setBassPunchEnabled(dspActive && prefs.getBoolean("sound_bass_punch_enabled", false))
+        soundEngineProcessor.setHarmonicBassEnabled(dspActive && prefs.getBoolean("sound_harmonic_bass_enabled", false))
+        soundEngineProcessor.setClarityEnabled(dspActive && prefs.getBoolean("sound_clarity_enabled", false))
+        soundEngineProcessor.setToneEnabled(dspActive && prefs.getBoolean("sound_tone_enabled", false))
+        soundEngineProcessor.setStereoWidthEnabled(dspActive && prefs.getBoolean("sound_stereo_width_enabled", false))
+        soundEngineProcessor.setBalanceEnabled(dspActive && prefs.getBoolean("sound_balance_enabled", false))
+        soundEngineProcessor.setPreampEnabled(dspActive && prefs.getBoolean("sound_preamp_enabled", false))
         soundEngineProcessor.setBassDepthDb(prefs.getInt("sound_bass_depth_db", 0) / 100f)
         soundEngineProcessor.setBassPunchDb(prefs.getInt("sound_bass_punch_db", 0) / 100f)
         soundEngineProcessor.setHarmonicBassAmount(prefs.getInt("sound_harmonic_bass", 0) / 100f)
@@ -542,22 +543,12 @@ class MainActivity : Activity() {
         val bypassSwitch = Switch(this).apply {
             text = ""
             isChecked = soundPrefs.getBoolean("sound_dsp_bypass", true)
-            setOnCheckedChangeListener { _, checked ->
-                soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
-                val enabled = !checked
-                soundEngineProcessor.setBassDepthEnabled(enabled && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
-                soundEngineProcessor.setBassPunchEnabled(enabled && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
-                soundEngineProcessor.setHarmonicBassEnabled(enabled && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
-                soundEngineProcessor.setClarityEnabled(enabled && soundPrefs.getBoolean("sound_clarity_enabled", false))
-                soundEngineProcessor.setToneEnabled(enabled && soundPrefs.getBoolean("sound_tone_enabled", false))
-                soundEngineProcessor.setStereoWidthEnabled(enabled && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
-                soundEngineProcessor.setBalanceEnabled(enabled && soundPrefs.getBoolean("sound_balance_enabled", false))
-                soundEngineProcessor.setPreampEnabled(enabled && soundPrefs.getBoolean("sound_preamp_enabled", false))
-            }
+
         }
         bypassRow.addView(bypassSwitch)
         soundPage.addView(bypassRow)
         soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
+        val soundControlViews = mutableListOf<View>()
         fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
             val row = settingRow(title, subtitle)
             val toggle = Switch(this).apply {
@@ -570,6 +561,7 @@ class MainActivity : Activity() {
                 }
             }
             row.addView(toggle)
+            soundControlViews.add(toggle)
             soundPage.addView(row)
             val valueLabel = label("", 10f, Color.rgb(255, 207, 112)).apply { gravity = Gravity.END }
             val seek = SeekBar(this).apply {
@@ -595,20 +587,7 @@ class MainActivity : Activity() {
             valueLabel.text = if (suffix == " dB") String.format(java.util.Locale.US, "%.1f dB", initial / scale) else if (suffix == "%") "$initial%" else initial.toString()
             soundPage.addView(valueLabel)
             soundPage.addView(seek, LinearLayout.LayoutParams(-1, dp(34)))
-            bypassSwitch.setOnCheckedChangeListener { _, checked ->
-                soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
-                val active = !checked
-                toggle.isEnabled = active
-                seek.isEnabled = active
-                soundEngineProcessor.setBassDepthEnabled(active && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
-                soundEngineProcessor.setBassPunchEnabled(active && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
-                soundEngineProcessor.setHarmonicBassEnabled(active && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
-                soundEngineProcessor.setClarityEnabled(active && soundPrefs.getBoolean("sound_clarity_enabled", false))
-                soundEngineProcessor.setToneEnabled(active && soundPrefs.getBoolean("sound_tone_enabled", false))
-                soundEngineProcessor.setStereoWidthEnabled(active && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
-                soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
-                soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
-            }
+            soundControlViews.add(seek)
         }
         addSoundSlider("BASSZUSMÉLYSÉG", "Alsó frekvenciák finom emelése", "sound_bass_depth_db", 0, 600, 0, "sound_bass_depth_enabled", { soundEngineProcessor.setBassDepthEnabled(it) }, { soundEngineProcessor.setBassDepthDb(it) }, 100f, " dB")
         addSoundSlider("BASSZUSÜTÉS", "Dobok és basszusok ütősebb tartománya", "sound_bass_punch_db", 0, 600, 0, "sound_bass_punch_enabled", { soundEngineProcessor.setBassPunchEnabled(it) }, { soundEngineProcessor.setBassPunchDb(it) }, 100f, " dB")
@@ -621,6 +600,19 @@ class MainActivity : Activity() {
         addSoundSlider("BAL / JOBB BALANSZ", "Középállás = egyenlő csatornaszint", "sound_balance", -100, 100, 0, "sound_balance_enabled", { soundEngineProcessor.setBalanceEnabled(it) }, { soundEngineProcessor.setBalance(it) }, 100f, "%")
         soundPage.addView(sectionTitle("HANGERŐ ÉS JELFIGYELÉS"))
         addSoundSlider("ELŐERŐSÍTÉS", "Kimeneti szint korrekciója", "sound_preamp_db", -1200, 600, 0, "sound_preamp_enabled", { soundEngineProcessor.setPreampEnabled(it) }, { soundEngineProcessor.setPreampDb(it) }, 100f, " dB")
+        bypassSwitch.setOnCheckedChangeListener { _, checked ->
+            soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
+            soundControlViews.forEach { it.isEnabled = !checked }
+            val active = !checked
+            soundEngineProcessor.setBassDepthEnabled(active && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
+            soundEngineProcessor.setBassPunchEnabled(active && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
+            soundEngineProcessor.setHarmonicBassEnabled(active && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
+            soundEngineProcessor.setClarityEnabled(active && soundPrefs.getBoolean("sound_clarity_enabled", false))
+            soundEngineProcessor.setToneEnabled(active && soundPrefs.getBoolean("sound_tone_enabled", false))
+            soundEngineProcessor.setStereoWidthEnabled(active && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
+            soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
+            soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
+        }
         soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
