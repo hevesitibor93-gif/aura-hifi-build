@@ -2156,8 +2156,8 @@ class MainActivity : Activity() {
                         updateNextTrack()
                     }
                 }, LinearLayout.LayoutParams(0, -2, 1f))
+                val originalIndex = uris.indexOf(song.uri.toString())
                 if (listSortMode(playlistScope, true) == "manual") {
-                    val originalIndex = uris.indexOf(song.uri.toString())
                     row.addView(button("↑", Color.rgb(35, 41, 53), Color.WHITE) {
                         val updated = playlistUris(playlistName)
                         if (originalIndex > 0 && originalIndex < updated.size) {
@@ -2179,8 +2179,8 @@ class MainActivity : Activity() {
                 }
                 row.addView(button("×", Color.rgb(83, 39, 43), Color.WHITE) {
                     val updated = playlistUris(playlistName)
-                    if (index in updated.indices) {
-                        updated.removeAt(index)
+                    if (originalIndex in updated.indices) {
+                        updated.removeAt(originalIndex)
                         savePlaylist(playlistName, updated)
                         showPlaylistDetail(playlistName)
                     }
