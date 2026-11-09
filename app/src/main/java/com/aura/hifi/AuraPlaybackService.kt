@@ -28,6 +28,7 @@ class AuraPlaybackService : MediaSessionService() {
     private var queueShuffleMode = 0
     private val playbackPrefs by lazy { getSharedPreferences("aura_playback_state", Context.MODE_PRIVATE) }
     private val saveHandler = Handler(Looper.getMainLooper())
+    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private val savePositionTask = object : Runnable {
         override fun run() {
             savePlaybackState()
@@ -54,6 +55,29 @@ class AuraPlaybackService : MediaSessionService() {
         val exoPlayer = ExoPlayer.Builder(this, renderersFactory).build()
         player = exoPlayer
         restoreSavedQueue()
+
+        // Keep Bluetooth auto-start available while the Activity is not visible.
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) {
+                val bluetoothOutputAdded = addedDevices.any { device ->
+                    device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                        device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                        (android.os.Build.VERSION.SDK_INT >= 31 &&
+                            (device.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                                device.type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
+                }
+                if (!bluetoothOutputAdded) return
+                val enabled = getSharedPreferences("aurix_settings", Context.MODE_PRIVATE)
+                    .getBoolean("auto_play_on_bluetooth_connect", false)
+                val activePlayer = player ?: return
+                if (enabled && activePlayer.mediaItemCount > 0 && !activePlayer.isPlaying) {
+                    activePlayer.play()
+                }
+            }
+        }
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, saveHandler)
+
         exoPlayer.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val uri = mediaItem?.localConfiguration?.uri ?: return
@@ -171,7 +195,10 @@ class AuraPlaybackService : MediaSessionService() {
         val exo = player ?: return
         val uri = queueUris.getOrNull(queueIndex) ?: return
         val position = saved.getLong(KEY_POSITION, 0L).coerceAtLeast(0L)
-        val shouldResume = saved.getBoolean(KEY_WAS_PLAYING, false)
+        val wasPlaying = saved.getBoolean(KEY_WAS_PLAYING, false)
+        val resumeOnAppStart = getSharedPreferences("aurix_settings", Context.MODE_PRIVATE)
+            .getBoolean("resume_on_app_start", true)
+        val shouldResume = wasPlaying && resumeOnAppStart
         exo.setMediaItem(buildMediaItem(uri))
         exo.prepare()
         if (position > 0L) exo.seekTo(position)
@@ -218,6 +245,9 @@ class AuraPlaybackService : MediaSessionService() {
     override fun onDestroy() {
         savePlaybackState()
         saveHandler.removeCallbacks(savePositionTask)
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioDeviceCallback?.let { audioManager.unregisterAudioDeviceCallback(it) }
+        audioDeviceCallback = null
         instance = null
         mediaSession?.release()
         mediaSession = null
