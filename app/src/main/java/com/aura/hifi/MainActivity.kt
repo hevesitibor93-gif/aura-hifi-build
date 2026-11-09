@@ -1917,8 +1917,12 @@ class MainActivity : Activity() {
     private fun addListOptionsHeader(title: String, scope: String, refresh: () -> Unit, allowManual: Boolean = false) {
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(7), dp(5), dp(3), dp(8)) }
         header.addView(label(title, 11f, Color.rgb(235, 205, 145)).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
-        val more = button("⋮", Color.rgb(48, 52, 72), Color.WHITE) {
-            val popup = android.widget.PopupMenu(this, it)
+        val more = Button(this).apply {
+            text = "⋮"; textSize = 20f; setTextColor(Color.WHITE); isAllCaps = false
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(48, 52, 72))
+            minHeight = dp(34); minWidth = dp(42); setPadding(0, 0, 0, 0)
+            setOnClickListener {
+            val popup = android.widget.PopupMenu(this@MainActivity, this)
             val sort = popup.menu.addSubMenu("Rendezés")
             val choices = mutableListOf(
                 "Cím • A–Z" to "title_asc", "Cím • Z–A" to "title_desc",
@@ -1959,6 +1963,7 @@ class MainActivity : Activity() {
                 }
             }
             popup.show()
+            }
         }
         header.addView(more, LinearLayout.LayoutParams(dp(42), dp(38)))
         libraryContainer.addView(header)
