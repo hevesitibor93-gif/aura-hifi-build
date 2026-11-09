@@ -826,7 +826,7 @@ class MainActivity : Activity() {
         val soundCategoryNames = listOf(
             "bass" to "MÉLY",
             "dynamics" to "DINAMIKA",
-            "tone" to "MAGAS / HANGSZÍN",
+            "tone" to "HANGSZÍN",
             "stereo" to "SZTEREÓ",
             "level" to "HANGERŐ",
             "ab" to "A/B TESZT"
@@ -878,7 +878,7 @@ class MainActivity : Activity() {
         var activeSoundCategory = soundCategoryViews.getValue("bass")
         showSoundCategory("bass")
 
-        activeSoundCategory.addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
+        soundCategoryViews.getValue("ab").addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
         val abProfileRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
