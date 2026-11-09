@@ -331,8 +331,9 @@ class MainActivity : Activity() {
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val soundPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(16)) }
         val vuSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(16)) }
-        val pages = listOf(playerPage, songsPage, eqPage, settingsPage, vuSettingsPage)
+        val pages = listOf(playerPage, songsPage, eqPage, settingsPage, vuSettingsPage, soundPage)
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
         libraryScrollView = pageScrolls[1]
         // A lejátszó cockpit fekvő módban egyetlen, nem görgethető képernyő. A többi lap marad görgethető.
@@ -531,6 +532,96 @@ class MainActivity : Activity() {
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
         loadMusicLibrary()
+        settingsPage.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
+        soundPage.addView(label("BEÁLLÍTÁSOK  /  HANG", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(3)) })
+        soundPage.addView(label("AURA SOUND ENGINE", 21f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); setPadding(dp(2), 0, 0, dp(5)) })
+        soundPage.addView(label("Az eredeti AURA EQ változatlan marad. Az új modulok külön aktiválhatók.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, 0, dp(12)) })
+        val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+        val bypassRow = settingRow("DSP BYPASS", "Az új DSP-modulok kikapcsolása; az EQ aktív marad")
+        val bypassSwitch = Switch(this).apply {
+            text = ""
+            isChecked = soundPrefs.getBoolean("sound_dsp_bypass", true)
+            setOnCheckedChangeListener { _, checked ->
+                soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
+                val enabled = !checked
+                soundEngineProcessor.setBassDepthEnabled(enabled && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
+                soundEngineProcessor.setBassPunchEnabled(enabled && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
+                soundEngineProcessor.setHarmonicBassEnabled(enabled && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
+                soundEngineProcessor.setClarityEnabled(enabled && soundPrefs.getBoolean("sound_clarity_enabled", false))
+                soundEngineProcessor.setToneEnabled(enabled && soundPrefs.getBoolean("sound_tone_enabled", false))
+                soundEngineProcessor.setStereoWidthEnabled(enabled && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
+                soundEngineProcessor.setBalanceEnabled(enabled && soundPrefs.getBoolean("sound_balance_enabled", false))
+                soundEngineProcessor.setPreampEnabled(enabled && soundPrefs.getBoolean("sound_preamp_enabled", false))
+            }
+        }
+        bypassRow.addView(bypassSwitch)
+        soundPage.addView(bypassRow)
+        soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
+        fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
+            val row = settingRow(title, subtitle)
+            val toggle = Switch(this).apply {
+                text = ""
+                isChecked = soundPrefs.getBoolean(enabledKey, false)
+                isEnabled = !bypassSwitch.isChecked
+                setOnCheckedChangeListener { _, checked ->
+                    soundPrefs.edit().putBoolean(enabledKey, checked).apply()
+                    enabledSetter(checked && !bypassSwitch.isChecked)
+                }
+            }
+            row.addView(toggle)
+            soundPage.addView(row)
+            val valueLabel = label("", 10f, Color.rgb(255, 207, 112)).apply { gravity = Gravity.END }
+            val seek = SeekBar(this).apply {
+                max = maxValue - minValue
+                progress = (soundPrefs.getInt(prefKey, defaultValue) - minValue).coerceIn(0, max)
+                progressTintList = android.content.res.ColorStateList.valueOf(gold)
+                thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+                isEnabled = !bypassSwitch.isChecked
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                        val raw = minValue + progress
+                        valueLabel.text = if (suffix == " dB") String.format(java.util.Locale.US, "%.1f dB", raw / scale) else if (suffix == "%") "$raw%" else raw.toString()
+                        if (fromUser) {
+                            soundPrefs.edit().putInt(prefKey, raw).apply()
+                            valueSetter(raw / scale)
+                        }
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) {}
+                    override fun onStopTrackingTouch(sb: SeekBar?) {}
+                })
+            }
+            val initial = soundPrefs.getInt(prefKey, defaultValue).coerceIn(minValue, maxValue)
+            valueLabel.text = if (suffix == " dB") String.format(java.util.Locale.US, "%.1f dB", initial / scale) else if (suffix == "%") "$initial%" else initial.toString()
+            soundPage.addView(valueLabel)
+            soundPage.addView(seek, LinearLayout.LayoutParams(-1, dp(34)))
+            bypassSwitch.setOnCheckedChangeListener { _, checked ->
+                soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
+                val active = !checked
+                toggle.isEnabled = active
+                seek.isEnabled = active
+                soundEngineProcessor.setBassDepthEnabled(active && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
+                soundEngineProcessor.setBassPunchEnabled(active && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
+                soundEngineProcessor.setHarmonicBassEnabled(active && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
+                soundEngineProcessor.setClarityEnabled(active && soundPrefs.getBoolean("sound_clarity_enabled", false))
+                soundEngineProcessor.setToneEnabled(active && soundPrefs.getBoolean("sound_tone_enabled", false))
+                soundEngineProcessor.setStereoWidthEnabled(active && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
+                soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
+                soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
+            }
+        }
+        addSoundSlider("BASSZUSMÉLYSÉG", "Alsó frekvenciák finom emelése", "sound_bass_depth_db", 0, 600, 0, "sound_bass_depth_enabled", { soundEngineProcessor.setBassDepthEnabled(it) }, { soundEngineProcessor.setBassDepthDb(it) }, 100f, " dB")
+        addSoundSlider("BASSZUSÜTÉS", "Dobok és basszusok ütősebb tartománya", "sound_bass_punch_db", 0, 600, 0, "sound_bass_punch_enabled", { soundEngineProcessor.setBassPunchEnabled(it) }, { soundEngineProcessor.setBassPunchDb(it) }, 100f, " dB")
+        addSoundSlider("HARMONIKUS BASSZUS", "Érzékelt mélyhangok kiegészítése", "sound_harmonic_bass", 0, 100, 0, "sound_harmonic_bass_enabled", { soundEngineProcessor.setHarmonicBassEnabled(it) }, { soundEngineProcessor.setHarmonicBassAmount(it) }, 100f, "%")
+        soundPage.addView(sectionTitle("MAGASAK ÉS HANGSZÍN"))
+        addSoundSlider("MAGAS TISZTASÁG", "Részletek és felső frekvenciák", "sound_clarity_db", 0, 600, 0, "sound_clarity_enabled", { soundEngineProcessor.setClarityEnabled(it) }, { soundEngineProcessor.setClarityDb(it) }, 100f, " dB")
+        addSoundSlider("HANGSZÍN", "Melegebb ↔ világosabb karakter", "sound_tone_amount", -100, 100, 0, "sound_tone_enabled", { soundEngineProcessor.setToneEnabled(it) }, { soundEngineProcessor.setToneAmount(it) }, 100f, "%")
+        soundPage.addView(sectionTitle("SZTEREÓ TÉR ÉS CSATORNÁK"))
+        addSoundSlider("SZTEREÓ SZÉLESSÉG", "100% = eredeti sztereó tér", "sound_stereo_width", 0, 150, 100, "sound_stereo_width_enabled", { soundEngineProcessor.setStereoWidthEnabled(it) }, { soundEngineProcessor.setStereoWidth(it) }, 100f, "%")
+        addSoundSlider("BAL / JOBB BALANSZ", "Középállás = egyenlő csatornaszint", "sound_balance", -100, 100, 0, "sound_balance_enabled", { soundEngineProcessor.setBalanceEnabled(it) }, { soundEngineProcessor.setBalance(it) }, 100f, "%")
+        soundPage.addView(sectionTitle("HANGERŐ ÉS JELFIGYELÉS"))
+        addSoundSlider("ELŐERŐSÍTÉS", "Kimeneti szint korrekciója", "sound_preamp_db", -1200, 600, 0, "sound_preamp_enabled", { soundEngineProcessor.setPreampEnabled(it) }, { soundEngineProcessor.setPreampDb(it) }, 100f, " dB")
+        soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
         val rotationSwitch = Switch(this).apply {
@@ -814,7 +905,7 @@ class MainActivity : Activity() {
                 showLibraryHome()
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
-            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
+            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
         vuSettingsBackButton.setOnClickListener { showPage(3) }
