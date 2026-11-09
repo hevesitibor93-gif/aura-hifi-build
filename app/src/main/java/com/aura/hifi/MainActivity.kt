@@ -1064,6 +1064,11 @@ class MainActivity : Activity() {
         showSoundCategory("bass")
 
         soundCategoryViews.getValue("ab").addView(sectionTitle("A/B HANGZÁS-ÖSSZEHASONLÍTÁS"))
+        soundCategoryViews.getValue("ab").addView(label(
+            "Ments el két külön hangbeállítást, majd válts közöttük lejátszás közben.",
+            11f, Color.rgb(174, 178, 187)
+        ).apply { setPadding(dp(2), 0, dp(2), dp(8)) })
+
         val abProfileRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -1072,29 +1077,42 @@ class MainActivity : Activity() {
         val abSaveRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(6))
         }
         val abButtons = mutableMapOf<String, Button>()
-        val abSaveButtons = mutableMapOf<String, Button>()
+        val abStatusLabel = label("", 11f, Color.rgb(255, 207, 112)).apply {
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(4), dp(5), dp(4), dp(8))
+        }
+        fun isAbSlotSaved(slot: String): Boolean =
+            soundPrefs.getBoolean("sound_ab_${soundOutputProfile}_${slot}_saved", false)
+
         fun refreshAbButtons() {
             val selected = soundPrefs.getString("sound_ab_active_${soundOutputProfile}", "A") ?: "A"
             listOf("A", "B").forEach { slot ->
+                val saved = isAbSlotSaved(slot)
+                abButtons[slot]?.text = if (saved) "$slot  ✓" else "$slot  +"
                 abButtons[slot]?.backgroundTintList = android.content.res.ColorStateList.valueOf(
                     if (selected == slot) gold else Color.rgb(48, 54, 64)
                 )
                 abButtons[slot]?.setTextColor(if (selected == slot) Color.BLACK else Color.WHITE)
             }
+            val other = if (selected == "A") "B" else "A"
+            abStatusLabel.text = "AKTÍV: $selected   •   A: ${if (isAbSlotSaved("A")) "mentve" else "üres"}   •   B: ${if (isAbSlotSaved("B")) "mentve" else "üres"}"
+            abButtons[other]?.contentDescription = "Váltás a $other hangállapotra"
         }
+
         fun selectAbSlot(slot: String) {
-            val savedKey = "sound_ab_${soundOutputProfile}_${slot}_saved"
-            if (!soundPrefs.getBoolean(savedKey, false)) {
-                // First use creates a safe snapshot from the current sound.
+            if (!isAbSlotSaved(slot)) {
+                // An empty slot is initialized from the currently audible settings.
                 saveSoundAbSlot(soundPrefs, soundOutputProfile, slot)
             }
             soundPrefs.edit().putString("sound_ab_active_${soundOutputProfile}", slot).apply()
             loadSoundAbSlot(soundPrefs, soundOutputProfile, slot)
             refreshAbButtons()
         }
+
         listOf("A", "B").forEach { slot ->
             val selectButton = Button(this).apply {
                 text = slot
@@ -1103,7 +1121,9 @@ class MainActivity : Activity() {
                 setOnClickListener { selectAbSlot(slot) }
             }
             abButtons[slot] = selectButton
-            abProfileRow.addView(selectButton, LinearLayout.LayoutParams(0, dp(42), 1f))
+            abProfileRow.addView(selectButton, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                marginEnd = dp(4)
+            })
 
             val saveButton = Button(this).apply {
                 text = "MENTÉS $slot"
@@ -1113,14 +1133,63 @@ class MainActivity : Activity() {
                     saveSoundAbSlot(soundPrefs, soundOutputProfile, slot)
                     soundPrefs.edit().putString("sound_ab_active_${soundOutputProfile}", slot).apply()
                     refreshAbButtons()
-                    toast("A ${slot} hangbeállítás elmentve")
+                    toast("A $slot hangállapot elmentve")
                 }
             }
-            abSaveButtons[slot] = saveButton
-            abSaveRow.addView(saveButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+            abSaveRow.addView(saveButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                marginEnd = dp(4)
+            })
         }
+
+        val swapButton = Button(this).apply {
+            text = "A ↔ B CSERE"
+            isAllCaps = false
+            textSize = 10f
+            setOnClickListener {
+                if (!isAbSlotSaved("A") || !isAbSlotSaved("B")) {
+                    toast("Előbb mentsd el külön az A és B állapotot")
+                } else {
+                    val prefixA = "sound_ab_${soundOutputProfile}_A_"
+                    val prefixB = "sound_ab_${soundOutputProfile}_B_"
+                    val editor = soundPrefs.edit()
+                    val all = soundPrefs.all
+                    soundProfileKeys.forEach { key ->
+                        val valueA = all[prefixA + key]
+                        val valueB = all[prefixB + key]
+                        when (valueB) {
+                            is Boolean -> editor.putBoolean(prefixA + key, valueB)
+                            is Int -> editor.putInt(prefixA + key, valueB)
+                            is Long -> editor.putLong(prefixA + key, valueB)
+                            is Float -> editor.putFloat(prefixA + key, valueB)
+                            is String -> editor.putString(prefixA + key, valueB)
+                            null -> editor.remove(prefixA + key)
+                        }
+                        when (valueA) {
+                            is Boolean -> editor.putBoolean(prefixB + key, valueA)
+                            is Int -> editor.putInt(prefixB + key, valueA)
+                            is Long -> editor.putLong(prefixB + key, valueA)
+                            is Float -> editor.putFloat(prefixB + key, valueA)
+                            is String -> editor.putString(prefixB + key, valueA)
+                            null -> editor.remove(prefixB + key)
+                        }
+                    }
+                    editor.apply()
+                    val active = soundPrefs.getString("sound_ab_active_${soundOutputProfile}", "A") ?: "A"
+                    loadSoundAbSlot(soundPrefs, soundOutputProfile, active)
+                    refreshAbButtons()
+                    toast("Az A és B hangállapot felcserélve")
+                }
+            }
+        }
+        abSaveRow.addView(swapButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+
         soundCategoryViews.getValue("ab").addView(abProfileRow)
+        soundCategoryViews.getValue("ab").addView(abStatusLabel)
         soundCategoryViews.getValue("ab").addView(abSaveRow)
+        soundCategoryViews.getValue("ab").addView(label(
+            "Az A/B mentések külön-külön tárolódnak az aktuális kimeneti eszközhöz.",
+            10f, Color.rgb(145, 150, 160)
+        ).apply { setPadding(dp(2), 0, dp(2), dp(6)) })
         soundProfileRefreshers.add { refreshAbButtons() }
         refreshAbButtons()
 
