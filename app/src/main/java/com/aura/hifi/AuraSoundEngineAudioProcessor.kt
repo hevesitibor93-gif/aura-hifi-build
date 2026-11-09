@@ -57,6 +57,12 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     private var clippingState = false
     private var punchFastEnvelope = 0f
     private var punchSlowEnvelope = 0f
+    // Envelope coefficients are calculated once per sample-rate configuration,
+    // not once per audio frame. This keeps the transient shaper lightweight.
+    private var punchFastAttackAlpha = 0f
+    private var punchFastReleaseAlpha = 0f
+    private var punchSlowAttackAlpha = 0f
+    private var punchSlowReleaseAlpha = 0f
 
     fun setBassDepthEnabled(v: Boolean) { bassDepthEnabled = v }
     fun setBassPunchEnabled(v: Boolean) { bassPunchEnabled = v }
@@ -84,6 +90,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         }
         sampleRate = inputAudioFormat.sampleRate.coerceAtLeast(8000)
         channelCount = inputAudioFormat.channelCount.coerceIn(1, 8)
+        updatePunchEnvelopeCoefficients()
         resetState()
         rebuildFilters()
         return inputAudioFormat
@@ -92,6 +99,16 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     override fun onFlush() {
         resetState()
         rebuildFilters()
+    }
+
+    private fun updatePunchEnvelopeCoefficients() {
+        val rate = sampleRate.toDouble()
+        fun alpha(tauSeconds: Double): Float =
+            (1.0 - kotlin.math.exp(-1.0 / (tauSeconds * rate))).toFloat()
+        punchFastAttackAlpha = alpha(0.0015)
+        punchFastReleaseAlpha = alpha(0.060)
+        punchSlowAttackAlpha = alpha(0.035)
+        punchSlowReleaseAlpha = alpha(0.120)
     }
 
     private fun resetState() {
@@ -174,10 +191,8 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
             if (useDynamicPunch) {
                 var detector = 0f
                 for (ch in 0 until channelCount) detector = maxOf(detector, abs(frame[ch]))
-                val fastTau = if (detector > punchFastEnvelope) 0.0015 else 0.060
-                val slowTau = if (detector > punchSlowEnvelope) 0.035 else 0.120
-                val fastAlpha = (1.0 - kotlin.math.exp(-1.0 / (fastTau * sampleRate))).toFloat()
-                val slowAlpha = (1.0 - kotlin.math.exp(-1.0 / (slowTau * sampleRate))).toFloat()
+                val fastAlpha = if (detector > punchFastEnvelope) punchFastAttackAlpha else punchFastReleaseAlpha
+                val slowAlpha = if (detector > punchSlowEnvelope) punchSlowAttackAlpha else punchSlowReleaseAlpha
                 punchFastEnvelope += fastAlpha * (detector - punchFastEnvelope)
                 punchSlowEnvelope += slowAlpha * (detector - punchSlowEnvelope)
                 val attack = ((punchFastEnvelope - punchSlowEnvelope) / (punchSlowEnvelope + 0.025f)).coerceIn(0f, 1f)
