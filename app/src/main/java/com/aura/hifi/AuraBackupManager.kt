@@ -6,13 +6,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Portable, versioned backup for AURA's settings, library preferences and saved queue.
+ * Portable, versioned backup for AURA's settings and library preferences.
  * Audio files themselves are never copied; playlist entries retain their content URIs.
  */
 object AuraBackupManager {
     private const val FORMAT = "AURA_HIFI_BACKUP"
     private const val VERSION = 1
-    private val stores = listOf("aurix_settings", "aurix_library", "aura_playback_state")
+    private val stores = listOf("aurix_settings", "aurix_library")
 
     fun write(context: Context, uri: Uri) {
         val root = JSONObject()
