@@ -153,6 +153,8 @@ class MainActivity : Activity() {
         val resumeOnAppStart = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             .getBoolean("resume_on_app_start", true)
         if (!resumeOnAppStart) exo.pause()
+        // Reconnect the EQ tap whenever the Activity is recreated while the service keeps playing.
+        attachVuMeter()
         val item = exo.currentMediaItem
         val uri = item?.localConfiguration?.uri
         if (uri != null) {
@@ -1683,15 +1685,7 @@ class MainActivity : Activity() {
         else return
         startTrack(queue[currentIndex])
     }
-    private fun startTrack(uri: Uri) {
-        clippingStatusLabel?.apply {
-            text = "JELSZINT: RENDBEN — nincs digitális túlvezérlés"
-            setTextColor(Color.rgb(120, 205, 145))
-            background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
-        }
-        openPlayerPage?.invoke()
-        renderQueue()
-        releaseAudio()
+    private fun attachVuMeter() {
         eqProcessor.onLevel = { left, right ->
             val threshold = vuThreshold
             val gain = vuGain
@@ -1710,6 +1704,18 @@ class MainActivity : Activity() {
                 if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
             }, delay)
         }
+    }
+
+    private fun startTrack(uri: Uri) {
+        clippingStatusLabel?.apply {
+            text = "JELSZINT: RENDBEN — nincs digitális túlvezérlés"
+            setTextColor(Color.rgb(120, 205, 145))
+            background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
+        }
+        openPlayerPage?.invoke()
+        renderQueue()
+        releaseAudio()
+        attachVuMeter()
         eqProcessor.onClipping = {
             handler.post {
                 clippingStatusLabel?.apply {
