@@ -1093,8 +1093,6 @@ class MainActivity : Activity() {
         settingsCategoryButton("▣  KIJELZŐ", "Képernyőforgatás és tájolás", displaySettingsPage)
         settingsCategoryButton("◈  MEGJELENÉS", "Borító és kazetta megjelenítése", appearanceSettingsPage)
         settingsCategoryButton("▥  VU-MÉRŐ", "Stílus, fényerő, animáció és részletes beállítások", vuAppearanceSettingsPage)
-        settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
-            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
 
         settingsBackButton(playbackSettingsPage)
         settingsBackButton(displaySettingsPage)
@@ -1410,6 +1408,8 @@ class MainActivity : Activity() {
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
+        settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
+            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
         soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
 
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
