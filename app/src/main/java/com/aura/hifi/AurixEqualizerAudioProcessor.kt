@@ -69,7 +69,9 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                 val y=c.b0*sample+c.b1*x1[b][ch]+c.b2*x2[b][ch]-c.a1*y1[b][ch]-c.a2*y2[b][ch]
                 x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
             }
-            if (abs(sample) >= 1f) clipped = true
+            // PCM16 represents -1.0 exactly; +0.9999695 is also the normal positive maximum.
+            // Only values outside that representable range indicate actual clipping.
+            if (sample < -1f || sample > 0.9999695f) clipped = true
             val bounded = sample.coerceIn(-1f,0.9999695f)
             if (ch == 0) peakLeft = maxOf(peakLeft, kotlin.math.abs(bounded))
             else if (ch == 1) peakRight = maxOf(peakRight, kotlin.math.abs(bounded))
