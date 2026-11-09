@@ -48,7 +48,11 @@ class MainActivity : Activity() {
     private var eqClippingActive = false
     private var soundEngineClippingActive = false
 
-    private var soundOutputProfile = "speaker"
+    private var soundOutputProfile = "default"
+    private var soundOutputDeviceLabel = "Telefonhangszóró"
+    private var preferredOutputDeviceId: Int? = null
+    private var forceDefaultOutputProfile = false
+    private var soundProfileStatusRefresher: (() -> Unit)? = null
     private val soundProfileRefreshers = mutableListOf<() -> Unit>()
     private val soundProfileKeys = listOf(
         "sound_dsp_bypass",
@@ -60,7 +64,11 @@ class MainActivity : Activity() {
         "sound_tone_enabled", "sound_tone_amount",
         "sound_stereo_width_enabled", "sound_stereo_width",
         "sound_balance_enabled", "sound_balance",
-        "sound_preamp_enabled", "sound_preamp_db"
+        "sound_preamp_enabled", "sound_preamp_db",
+        "eq_bass", "eq_treble", "eq_preamp",
+        "eq_band_0", "eq_band_1", "eq_band_2", "eq_band_3",
+        "eq_band_4", "eq_band_5", "eq_band_6", "eq_band_7",
+        "eq_band_8", "eq_band_9", "eq_band_10", "eq_band_11"
     )
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
@@ -138,8 +146,11 @@ class MainActivity : Activity() {
             safeEq.putBoolean("eq_safe_neutral_reset_v1", true).apply()
         }
         vuProfile = detectVuOutputProfile()
-        initializeSoundOutputProfiles(prefs, vuProfile)
+        val initialSoundTarget = resolveSoundOutputProfile()
+        soundOutputDeviceLabel = initialSoundTarget.second
+        initializeSoundOutputProfiles(prefs, initialSoundTarget.first)
         loadAuraSoundEngineSettings(prefs)
+        applyEqualizerSettings(prefs)
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -147,15 +158,29 @@ class MainActivity : Activity() {
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioDeviceCallback = object : android.media.AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile(); refreshSoundOutputProfile() }
-            override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile(); refreshSoundOutputProfile() }
+            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) {
+                val newestExternal = addedDevices.lastOrNull { isExternalAudioOutput(it) }
+                if (newestExternal != null) {
+                    preferredOutputDeviceId = newestExternal.id
+                    forceDefaultOutputProfile = false
+                }
+                refreshVuOutputProfile()
+                refreshSoundOutputProfile()
+            }
+            override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) {
+                if (removedDevices.any { it.id == preferredOutputDeviceId }) preferredOutputDeviceId = null
+                forceDefaultOutputProfile = false
+                refreshVuOutputProfile()
+                refreshSoundOutputProfile()
+            }
         }
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
 
     override fun onPause() {
         // Persist the active output profile even if Android later recreates the Activity.
-        saveSoundProfile(getSharedPreferences("aurix_settings", MODE_PRIVATE), soundOutputProfile)
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        if (isSoundProfileSaved(prefs, soundOutputProfile)) saveSoundProfile(prefs, soundOutputProfile)
         super.onPause()
     }
 
@@ -168,6 +193,7 @@ class MainActivity : Activity() {
                 attachVuMeter()
                 setVuActive(exo.isPlaying)
             }
+            refreshSoundOutputProfile()
         }
     }
 
@@ -290,14 +316,22 @@ class MainActivity : Activity() {
     private fun initializeSoundOutputProfiles(prefs: android.content.SharedPreferences, activeProfile: String) {
         val initialized = prefs.getBoolean("sound_profiles_initialized_v1", false)
         if (!initialized) {
-            // Preserve the user's existing settings and use them as the starting point for both outputs.
+            // Preserve the old two-output snapshots during the migration.
             saveSoundProfile(prefs, "speaker")
             saveSoundProfile(prefs, "bluetooth")
             prefs.edit().putBoolean("sound_profiles_initialized_v1", true).apply()
         }
-        soundOutputProfile = if (activeProfile == "bluetooth") "bluetooth" else "speaker"
-        loadSoundProfile(prefs, soundOutputProfile)
+        if (!prefs.getBoolean("sound_profiles_initialized_v2", false)) {
+            // The current, already-tested sound becomes the universal starting profile.
+            saveSoundProfile(prefs, "default")
+            prefs.edit().putBoolean("sound_profiles_initialized_v2", true).apply()
+        }
+        soundOutputProfile = activeProfile
+        loadSoundProfile(prefs, activeProfile)
     }
+
+    private fun isSoundProfileSaved(prefs: android.content.SharedPreferences, profile: String): Boolean =
+        prefs.getBoolean("sound_profile_${profile}_saved", false)
 
     private fun saveSoundProfile(prefs: android.content.SharedPreferences, profile: String) {
         val prefix = "sound_profile_${profile}_"
@@ -312,11 +346,19 @@ class MainActivity : Activity() {
                 is String -> editor.putString(prefix + key, value)
             }
         }
-        editor.apply()
+        editor.putBoolean(prefix + "saved", true).apply()
+    }
+
+    private fun removeSoundProfile(prefs: android.content.SharedPreferences, profile: String) {
+        if (profile == "default") return
+        val editor = prefs.edit()
+        soundProfileKeys.forEach { editor.remove("sound_profile_${profile}_$it") }
+        editor.remove("sound_profile_${profile}_saved").apply()
     }
 
     private fun loadSoundProfile(prefs: android.content.SharedPreferences, profile: String) {
-        val prefix = "sound_profile_${profile}_"
+        val sourceProfile = if (profile != "default" && !isSoundProfileSaved(prefs, profile)) "default" else profile
+        val prefix = "sound_profile_${sourceProfile}_"
         val editor = prefs.edit()
         soundProfileKeys.forEach { key ->
             val storedKey = prefix + key
@@ -331,7 +373,102 @@ class MainActivity : Activity() {
         }
         editor.apply()
         loadAuraSoundEngineSettings(prefs)
+        applyEqualizerSettings(prefs)
+        if (::eqContainer.isInitialized) renderEqualizer()
         soundProfileRefreshers.forEach { it() }
+    }
+
+    private fun applyEqualizerSettings(prefs: android.content.SharedPreferences) {
+        for (i in 0 until 12) eqProcessor.setBandGainDb(i, prefs.getInt("eq_band_$i", 0).coerceIn(-12, 12).toFloat())
+        eqProcessor.setBassBoostDb(prefs.getInt("eq_bass", 0).coerceIn(0, 120) / 10f)
+        eqProcessor.setTrebleBoostDb(prefs.getInt("eq_treble", 0).coerceIn(0, 120) / 10f)
+        eqProcessor.setPreampDb(prefs.getInt("eq_preamp", 0).coerceIn(-6, 6).toFloat())
+    }
+
+    private fun isBluetoothAudioOutput(device: android.media.AudioDeviceInfo): Boolean =
+        device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+            (Build.VERSION.SDK_INT >= 31 && (device.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                device.type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
+
+    private fun isExternalAudioOutput(device: android.media.AudioDeviceInfo): Boolean =
+        device.type != android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER &&
+            device.type != android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+
+    private fun audioDeviceProfileKey(device: android.media.AudioDeviceInfo): String {
+        val address = if (Build.VERSION.SDK_INT >= 28) device.address.trim() else ""
+        val identity = if (address.isNotBlank()) "${device.type}|$address"
+            else "${device.type}|${device.productName.toString().trim().lowercase(java.util.Locale.ROOT)}"
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
+        val suffix = digest.take(8).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
+        return "device_$suffix"
+    }
+
+    private fun audioDeviceDisplayName(device: android.media.AudioDeviceInfo): String {
+        val name = device.productName.toString().trim().ifBlank { "Ismeretlen eszköz" }
+        val type = when (device.type) {
+            android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "Bluetooth"
+            android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "Vezetékes"
+            android.media.AudioDeviceInfo.TYPE_USB_DEVICE,
+            android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+            android.media.AudioDeviceInfo.TYPE_USB_ACCESSORY -> "USB"
+            else -> "Külső kimenet"
+        }
+        return "$name • $type"
+    }
+
+    private fun resolveSoundOutputProfile(): Pair<String, String> {
+        if (forceDefaultOutputProfile) return "default" to "Alapértelmezett / telefonhangszóró"
+        val outputs = (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
+            .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+            .filter { isExternalAudioOutput(it) }
+        val selected = preferredOutputDeviceId?.let { id -> outputs.firstOrNull { it.id == id } }
+            ?: outputs.lastOrNull()
+        if (selected == null) {
+            preferredOutputDeviceId = null
+            return "default" to "Telefonhangszóró / alapértelmezett"
+        }
+        preferredOutputDeviceId = selected.id
+        return audioDeviceProfileKey(selected) to audioDeviceDisplayName(selected)
+    }
+
+    private fun showOutputDeviceChooser() {
+        val outputs = (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
+            .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+            .filter { isExternalAudioOutput(it) }
+        val labels = mutableListOf("Alapértelmezett / telefonhangszóró")
+        labels.addAll(outputs.map { audioDeviceDisplayName(it) })
+        android.app.AlertDialog.Builder(this)
+            .setTitle("KIMENETI ESZKÖZ PROFILJA")
+            .setItems(labels.toTypedArray()) { _, which ->
+                if (which == 0) {
+                    preferredOutputDeviceId = null
+                    forceDefaultOutputProfile = true
+                } else {
+                    preferredOutputDeviceId = outputs[which - 1].id
+                    forceDefaultOutputProfile = false
+                }
+                refreshSoundOutputProfile(true)
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
+    private fun refreshSoundOutputProfile(force: Boolean = false) {
+        val (detected, label) = resolveSoundOutputProfile()
+        if (!force && detected == soundOutputProfile) {
+            soundOutputDeviceLabel = label
+            soundProfileStatusRefresher?.invoke()
+            return
+        }
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        if (isSoundProfileSaved(prefs, soundOutputProfile)) saveSoundProfile(prefs, soundOutputProfile)
+        soundOutputProfile = detected
+        soundOutputDeviceLabel = label
+        loadSoundProfile(prefs, detected)
+        soundProfileStatusRefresher?.invoke()
     }
 
     private fun saveSoundAbSlot(prefs: android.content.SharedPreferences, profile: String, slot: String) {
@@ -781,13 +918,39 @@ class MainActivity : Activity() {
         soundPage.addView(label("AURA SOUND ENGINE", 21f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); setPadding(dp(2), 0, 0, dp(5)) })
         soundPage.addView(label("Az eredeti AURA EQ változatlan marad. Az új modulok külön aktiválhatók.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, 0, dp(12)) })
         soundPage.addView(label("AUTOMATIKUS KIMENETI PROFIL", 10f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), 0, 0, dp(4)) })
-        val soundProfileStatus = label("", 11f, Color.rgb(119, 224, 218)).apply { setPadding(dp(2), 0, 0, dp(12)) }
+        val soundProfileStatus = label("", 11f, Color.rgb(119, 224, 218)).apply { setPadding(dp(2), 0, 0, dp(8)) }
         fun refreshSoundProfileStatus() {
-            soundProfileStatus.text = if (soundOutputProfile == "bluetooth") "AKTÍV: BLUETOOTH HANGPROFIL" else "AKTÍV: TELEFONHANGSZÓRÓ HANGPROFIL"
+            val profileName = if (soundOutputProfile == "default") "ALAP PROFIL" else
+                if (isSoundProfileSaved(getSharedPreferences("aurix_settings", MODE_PRIVATE), soundOutputProfile)) "SAJÁT ESZKÖZPROFIL" else "AZ ALAP PROFILT HASZNÁLJA"
+            soundProfileStatus.text = "AKTÍV KIMENET: $soundOutputDeviceLabel\n$profileName"
         }
         refreshSoundProfileStatus()
         soundPage.addView(soundProfileStatus)
         val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        soundPage.addView(button("♫  KIMENETI ESZKÖZ / PROFIL KIVÁLASZTÁSA", Color.rgb(35, 55, 67), Color.WHITE) {
+            showOutputDeviceChooser()
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(6) })
+        soundPage.addView(button("💾  AKTÍV ESZKÖZPROFIL MENTÉSE", Color.rgb(91, 65, 27), Color.WHITE) {
+            saveSoundProfile(soundPrefs, soundOutputProfile)
+            refreshSoundProfileStatus()
+            toast("Hangprofil elmentve: $soundOutputDeviceLabel")
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(6) })
+        soundPage.addView(button("💾  ALAPBEÁLLÍTÁS MENTÉSE", Color.rgb(31, 69, 76), Color.WHITE) {
+            saveSoundProfile(soundPrefs, "default")
+            refreshSoundProfileStatus()
+            toast("Az AURA alap hangprofil elmentve.")
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(6) })
+        soundPage.addView(button("↺  AKTÍV ESZKÖZ VISSZAÁLLÍTÁSA AZ ALAPRA", Color.rgb(35, 41, 53), Color.WHITE) {
+            if (soundOutputProfile == "default") {
+                toast("Most az alap profil aktív.")
+            } else {
+                removeSoundProfile(soundPrefs, soundOutputProfile)
+                loadSoundProfile(soundPrefs, "default")
+                refreshSoundProfileStatus()
+                toast("Az eszköz mostantól az alap profilt használja.")
+            }
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(12) })
+        soundProfileStatusRefresher = { refreshSoundProfileStatus() }
         // Keep this list declared before the BYPASS listener, which updates these controls.
         val soundControlViews = mutableListOf<View>()
         soundProfileRefreshers.clear()
