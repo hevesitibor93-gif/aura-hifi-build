@@ -1054,7 +1054,54 @@ class MainActivity : Activity() {
         }
         soundProfileRefreshers.add { refreshSoundProfileStatus() }
         activeSoundCategory.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
-        settingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
+        // Settings hub: every non-audio setting lives in its own category page.
+        val settingsMenu = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val playbackSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val displaySettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val appearanceSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val vuAppearanceSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val settingsSubPages = listOf(playbackSettingsPage, displaySettingsPage, appearanceSettingsPage, vuAppearanceSettingsPage)
+        fun showSettingsCategory(page: LinearLayout?) {
+            settingsMenu.visibility = if (page == null) View.VISIBLE else View.GONE
+            settingsSubPages.forEach { it.visibility = if (it === page) View.VISIBLE else View.GONE }
+        }
+        fun settingsBackButton(target: LinearLayout) {
+            target.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) {
+                showSettingsCategory(null)
+            }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+        }
+        settingsPage.addView(settingsMenu)
+        settingsPage.addView(playbackSettingsPage)
+        settingsPage.addView(displaySettingsPage)
+        settingsPage.addView(appearanceSettingsPage)
+        settingsPage.addView(vuAppearanceSettingsPage)
+        settingsMenu.addView(label("BEÁLLÍTÁSOK", 18f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(3), dp(4), 0, dp(12)) })
+        fun settingsCategoryButton(title: String, subtitle: String, page: LinearLayout) {
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = rounded(Color.rgb(24, 29, 39), 14)
+                setPadding(dp(14), dp(12), dp(12), dp(12))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { showSettingsCategory(page) }
+            }
+            item.addView(label(title, 14f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD })
+            item.addView(label(subtitle, 10f, Color.rgb(155, 163, 177)).apply { setPadding(0, dp(3), 0, 0) })
+            settingsMenu.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+        }
+        settingsCategoryButton("▶  LEJÁTSZÁS", "Automatikus indítás és folytatás", playbackSettingsPage)
+        settingsCategoryButton("▣  KIJELZŐ", "Képernyőforgatás és tájolás", displaySettingsPage)
+        settingsCategoryButton("◈  MEGJELENÉS", "Borító és kazetta megjelenítése", appearanceSettingsPage)
+        settingsCategoryButton("▥  VU-MÉRŐ", "Stílus, fényerő, animáció és részletes beállítások", vuAppearanceSettingsPage)
+        settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
+            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
+
+        settingsBackButton(playbackSettingsPage)
+        settingsBackButton(displaySettingsPage)
+        settingsBackButton(appearanceSettingsPage)
+        settingsBackButton(vuAppearanceSettingsPage)
+
+        playbackSettingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
         val playbackPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val resumeRow = settingRow("INDULÁSKOR FOLYTATÁS", "Az előző lejátszás folytatása az alkalmazás megnyitásakor")
         val resumeSwitch = Switch(this).apply {
@@ -1065,7 +1112,7 @@ class MainActivity : Activity() {
             }
         }
         resumeRow.addView(resumeSwitch)
-        settingsPage.addView(resumeRow)
+        playbackSettingsPage.addView(resumeRow)
 
         val bluetoothAutoPlayRow = settingRow("BLUETOOTH AUTO-INDÍTÁS", "Lejátszás indítása Bluetooth-füles, hangszóró vagy autórádió csatlakozásakor")
         val bluetoothAutoPlaySwitch = Switch(this).apply {
@@ -1076,9 +1123,9 @@ class MainActivity : Activity() {
             }
         }
         bluetoothAutoPlayRow.addView(bluetoothAutoPlaySwitch)
-        settingsPage.addView(bluetoothAutoPlayRow)
+        playbackSettingsPage.addView(bluetoothAutoPlayRow)
 
-        settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
+        displaySettingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
         val rotationSwitch = Switch(this).apply {
             text = ""
@@ -1089,10 +1136,10 @@ class MainActivity : Activity() {
             }
         }
         rotationRow.addView(rotationSwitch)
-        settingsPage.addView(rotationRow)
-        settingsPage.addView(sectionTitle("MEGJELENÉS"))
-        settingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
-        settingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
+        displaySettingsPage.addView(rotationRow)
+        appearanceSettingsPage.addView(sectionTitle("MEGJELENÉS"))
+        appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
+        vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
         val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val vuStyleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1119,9 +1166,9 @@ class MainActivity : Activity() {
         }
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
-        settingsPage.addView(vuStyleRow)
-        settingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
-        settingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
+        vuAppearanceSettingsPage.addView(vuStyleRow)
+        vuAppearanceSettingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        vuAppearanceSettingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
             progress = vuPrefs.getInt("vu_brightness", 80).coerceIn(20, 100)
@@ -1135,7 +1182,7 @@ class MainActivity : Activity() {
                 override fun onStopTrackingTouch(seek: SeekBar?) {}
             })
         }
-        settingsPage.addView(vuBrightness)
+        vuAppearanceSettingsPage.addView(vuBrightness)
         val animationRow = settingRow("VU-ANIMÁCIÓ", "LED mozgás")
         val vuAnimation = Switch(this).apply {
             text = ""
@@ -1146,10 +1193,10 @@ class MainActivity : Activity() {
             }
         }
         animationRow.addView(vuAnimation)
-        settingsPage.addView(animationRow)
+        vuAppearanceSettingsPage.addView(animationRow)
 
         val vuSettingsMenuButton = button("▥  VU-MÉRŐ FINOMHANGOLÁSA", Color.rgb(35, 41, 53), Color.WHITE) {}
-        settingsPage.addView(vuSettingsMenuButton, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(10); bottomMargin = dp(12) })
+        vuAppearanceSettingsPage.addView(vuSettingsMenuButton, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(10); bottomMargin = dp(12) })
 
         vuSettingsPage.addView(label("BEÁLLÍTÁSOK  /  VU-MÉRŐ", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(4)) })
         vuSettingsPage.addView(label("VU / HANGREAKCIÓ FINOMHANGOLÁSA", 18f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(2), 0, dp(8)) })
@@ -1363,7 +1410,6 @@ class MainActivity : Activity() {
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
-        settingsPage.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
         soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
 
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
