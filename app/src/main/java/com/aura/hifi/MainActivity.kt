@@ -153,6 +153,12 @@ class MainActivity : Activity() {
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
 
+    override fun onPause() {
+        // Persist the active output profile even if Android later recreates the Activity.
+        saveSoundProfile(getSharedPreferences("aurix_settings", MODE_PRIVATE), soundOutputProfile)
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
         // Reattach the meter whenever the screen returns, not only after a track change.
