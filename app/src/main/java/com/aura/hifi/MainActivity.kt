@@ -145,6 +145,7 @@ class MainActivity : Activity() {
             for (i in 0 until 12) safeEq.putInt("eq_band_${i}", 0)
             safeEq.putBoolean("eq_safe_neutral_reset_v1", true).apply()
         }
+        ensureSoundProfileDefaults(prefs)
         vuProfile = detectVuOutputProfile()
         val initialSoundTarget = resolveSoundOutputProfile()
         soundOutputDeviceLabel = initialSoundTarget.second
@@ -312,6 +313,23 @@ class MainActivity : Activity() {
     }
 
 
+
+    private fun ensureSoundProfileDefaults(prefs: android.content.SharedPreferences) {
+        val editor = prefs.edit()
+            .putBoolean("sound_dsp_bypass", true)
+            .putBoolean("sound_bass_depth_enabled", false).putInt("sound_bass_depth_db", 0)
+            .putBoolean("sound_bass_punch_enabled", false).putInt("sound_bass_punch_db", 0)
+            .putBoolean("sound_harmonic_bass_enabled", false).putInt("sound_harmonic_bass", 0)
+            .putBoolean("sound_dynamic_punch_enabled", false).putInt("sound_dynamic_punch", 35)
+            .putBoolean("sound_clarity_enabled", false).putInt("sound_clarity_db", 0)
+            .putBoolean("sound_tone_enabled", false).putInt("sound_tone_amount", 0)
+            .putBoolean("sound_stereo_width_enabled", false).putInt("sound_stereo_width", 100)
+            .putBoolean("sound_balance_enabled", false).putInt("sound_balance", 0)
+            .putBoolean("sound_preamp_enabled", false).putInt("sound_preamp_db", 0)
+            .putInt("eq_bass", 0).putInt("eq_treble", 0).putInt("eq_preamp", 0)
+        for (i in 0 until 12) editor.putInt("eq_band_$i", prefs.getInt("eq_band_$i", 0))
+        editor.apply()
+    }
 
     private fun initializeSoundOutputProfiles(prefs: android.content.SharedPreferences, activeProfile: String) {
         val initialized = prefs.getBoolean("sound_profiles_initialized_v1", false)
