@@ -6,6 +6,7 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
@@ -25,6 +26,8 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     private var y1 = Array(12) { FloatArray(2) }; private var y2 = Array(12) { FloatArray(2) }
     data class Coeff(val b0:Float=1f,val b1:Float=0f,val b2:Float=0f,val a1:Float=0f,val a2:Float=0f)
     @Volatile var onLevel: ((Float, Float) -> Unit)? = null
+    @Volatile var onClipping: (() -> Unit)? = null
+    private var clippingFrames = 0
 
     fun setBandGainDb(i:Int,v:Float) { if(i !in 0..11)return; val a=gains.copyOf(); a[i]=v.coerceIn(-12f,12f); gains=a; rebuild() }
     fun setBassBoostDb(v:Float) { bassDb=v.coerceIn(0f,12f); rebuild() }
@@ -32,9 +35,9 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     fun setPreampDb(v:Float) { preampDb=v.coerceIn(-6f,6f) }
     override fun onConfigure(f:AudioProcessor.AudioFormat):AudioProcessor.AudioFormat {
         if(f.encoding!=C.ENCODING_PCM_16BIT) throw AudioProcessor.UnhandledAudioFormatException(f)
-        rate=f.sampleRate.coerceAtLeast(8000); channels=f.channelCount.coerceIn(1,8); resetState(); rebuild(); return f
+        rate=f.sampleRate.coerceAtLeast(8000); channels=f.channelCount.coerceIn(1,8); resetState(); clippingFrames = 0; rebuild(); return f
     }
-    override fun onFlush() { resetState(); rebuild() }
+    override fun onFlush() { resetState(); clippingFrames = 0; rebuild() }
     private fun resetState() {
         x1=Array(12){FloatArray(channels)}; x2=Array(12){FloatArray(channels)}
         y1=Array(12){FloatArray(channels)}; y2=Array(12){FloatArray(channels)}
@@ -58,6 +61,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val cfs=coeffs; val pre=10.0.pow(preampDb/20.0).toFloat()
         var peakLeft = 0f
         var peakRight = 0f
+        var clipped = false
         while(input.remaining()>=2*channels) for(ch in 0 until channels) {
             var sample=input.short/32768f*pre
             for(b in 0 until 12) {
@@ -65,6 +69,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
                 val y=c.b0*sample+c.b1*x1[b][ch]+c.b2*x2[b][ch]-c.a1*y1[b][ch]-c.a2*y2[b][ch]
                 x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
             }
+            if (abs(sample) >= 1f) clipped = true
             val bounded = sample.coerceIn(-1f,0.9999695f)
             if (ch == 0) peakLeft = maxOf(peakLeft, kotlin.math.abs(bounded))
             else if (ch == 1) peakRight = maxOf(peakRight, kotlin.math.abs(bounded))
@@ -73,5 +78,11 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         input.position(input.limit()); out.flip()
         if (channels == 1) peakRight = peakLeft
         onLevel?.invoke(peakLeft, peakRight)
+        if (clipped) {
+            clippingFrames++
+            if (clippingFrames == 1 || clippingFrames % 20 == 0) onClipping?.invoke()
+        } else {
+            clippingFrames = 0
+        }
     }
 }
