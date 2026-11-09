@@ -47,6 +47,21 @@ class MainActivity : Activity() {
     private var clippingStatusLabel: TextView? = null
     private var eqClippingActive = false
     private var soundEngineClippingActive = false
+
+    private var soundOutputProfile = "speaker"
+    private val soundProfileRefreshers = mutableListOf<() -> Unit>()
+    private val soundProfileKeys = listOf(
+        "sound_dsp_bypass",
+        "sound_bass_depth_enabled", "sound_bass_depth_db",
+        "sound_bass_punch_enabled", "sound_bass_punch_db",
+        "sound_harmonic_bass_enabled", "sound_harmonic_bass",
+        "sound_dynamic_punch_enabled", "sound_dynamic_punch",
+        "sound_clarity_enabled", "sound_clarity_db",
+        "sound_tone_enabled", "sound_tone_amount",
+        "sound_stereo_width_enabled", "sound_stereo_width",
+        "sound_balance_enabled", "sound_balance",
+        "sound_preamp_enabled", "sound_preamp_db"
+    )
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
@@ -122,8 +137,9 @@ class MainActivity : Activity() {
             for (i in 0 until 12) safeEq.putInt("eq_band_${i}", 0)
             safeEq.putBoolean("eq_safe_neutral_reset_v1", true).apply()
         }
-        loadAuraSoundEngineSettings(prefs)
         vuProfile = detectVuOutputProfile()
+        initializeSoundOutputProfiles(prefs, vuProfile)
+        loadAuraSoundEngineSettings(prefs)
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -131,8 +147,8 @@ class MainActivity : Activity() {
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioDeviceCallback = object : android.media.AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
-            override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
+            override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile(); refreshSoundOutputProfile() }
+            override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile(); refreshSoundOutputProfile() }
         }
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
     }
@@ -263,6 +279,63 @@ class MainActivity : Activity() {
         albumLabel.text = savedAlbum
     }
 
+
+
+    private fun initializeSoundOutputProfiles(prefs: android.content.SharedPreferences, activeProfile: String) {
+        val initialized = prefs.getBoolean("sound_profiles_initialized_v1", false)
+        if (!initialized) {
+            // Preserve the user's existing settings and use them as the starting point for both outputs.
+            saveSoundProfile(prefs, "speaker")
+            saveSoundProfile(prefs, "bluetooth")
+            prefs.edit().putBoolean("sound_profiles_initialized_v1", true).apply()
+        }
+        soundOutputProfile = if (activeProfile == "bluetooth") "bluetooth" else "speaker"
+        loadSoundProfile(prefs, soundOutputProfile)
+    }
+
+    private fun saveSoundProfile(prefs: android.content.SharedPreferences, profile: String) {
+        val prefix = "sound_profile_${profile}_"
+        val editor = prefs.edit()
+        val all = prefs.all
+        soundProfileKeys.forEach { key ->
+            when (val value = all[key]) {
+                is Boolean -> editor.putBoolean(prefix + key, value)
+                is Int -> editor.putInt(prefix + key, value)
+                is Long -> editor.putLong(prefix + key, value)
+                is Float -> editor.putFloat(prefix + key, value)
+                is String -> editor.putString(prefix + key, value)
+            }
+        }
+        editor.apply()
+    }
+
+    private fun loadSoundProfile(prefs: android.content.SharedPreferences, profile: String) {
+        val prefix = "sound_profile_${profile}_"
+        val editor = prefs.edit()
+        soundProfileKeys.forEach { key ->
+            val storedKey = prefix + key
+            if (!prefs.contains(storedKey)) return@forEach
+            when (val value = prefs.all[storedKey]) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+            }
+        }
+        editor.apply()
+        loadAuraSoundEngineSettings(prefs)
+        soundProfileRefreshers.forEach { it() }
+    }
+
+    private fun refreshSoundOutputProfile() {
+        val detected = if (detectVuOutputProfile() == "bluetooth") "bluetooth" else "speaker"
+        if (detected == soundOutputProfile) return
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        saveSoundProfile(prefs, soundOutputProfile)
+        soundOutputProfile = detected
+        loadSoundProfile(prefs, detected)
+    }
 
     private fun loadAuraSoundEngineSettings(prefs: android.content.SharedPreferences) {
         // Neutral and disabled defaults preserve the original AURA EQ sound.
@@ -664,6 +737,13 @@ class MainActivity : Activity() {
         soundPage.addView(label("BEÁLLÍTÁSOK  /  HANG", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(3)) })
         soundPage.addView(label("AURA SOUND ENGINE", 21f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); setPadding(dp(2), 0, 0, dp(5)) })
         soundPage.addView(label("Az eredeti AURA EQ változatlan marad. Az új modulok külön aktiválhatók.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, 0, dp(12)) })
+        soundPage.addView(label("AUTOMATIKUS KIMENETI PROFIL", 10f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), 0, 0, dp(4)) })
+        val soundProfileStatus = label("", 11f, Color.rgb(119, 224, 218)).apply { setPadding(dp(2), 0, 0, dp(12)) }
+        fun refreshSoundProfileStatus() {
+            soundProfileStatus.text = if (soundOutputProfile == "bluetooth") "AKTÍV: BLUETOOTH HANGPROFIL" else "AKTÍV: TELEFONHANGSZÓRÓ HANGPROFIL"
+        }
+        refreshSoundProfileStatus()
+        soundPage.addView(soundProfileStatus)
         val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val bypassRow = settingRow("DSP BYPASS", "Az új DSP-modulok kikapcsolása; az EQ aktív marad")
         val bypassSwitch = Switch(this).apply {
@@ -672,9 +752,29 @@ class MainActivity : Activity() {
 
         }
         bypassRow.addView(bypassSwitch)
+        soundProfileRefreshers.add {
+            bypassSwitch.setOnCheckedChangeListener(null)
+            bypassSwitch.isChecked = soundPrefs.getBoolean("sound_dsp_bypass", true)
+            bypassSwitch.setOnCheckedChangeListener { _, checked ->
+                soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
+                soundControlViews.forEach { it.isEnabled = !checked }
+                val active = !checked
+                soundEngineProcessor.setBassDepthEnabled(active && soundPrefs.getBoolean("sound_bass_depth_enabled", false))
+                soundEngineProcessor.setBassPunchEnabled(active && soundPrefs.getBoolean("sound_bass_punch_enabled", false))
+                soundEngineProcessor.setHarmonicBassEnabled(active && soundPrefs.getBoolean("sound_harmonic_bass_enabled", false))
+                soundEngineProcessor.setClarityEnabled(active && soundPrefs.getBoolean("sound_clarity_enabled", false))
+                soundEngineProcessor.setToneEnabled(active && soundPrefs.getBoolean("sound_tone_enabled", false))
+                soundEngineProcessor.setStereoWidthEnabled(active && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
+                soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
+                soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
+                soundEngineProcessor.setDynamicPunchEnabled(active && soundPrefs.getBoolean("sound_dynamic_punch_enabled", false))
+            }
+            soundControlViews.forEach { it.isEnabled = !bypassSwitch.isChecked }
+        }
         soundPage.addView(bypassRow)
         soundPage.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
         val soundControlViews = mutableListOf<View>()
+        soundProfileRefreshers.clear()
         fun addSoundSlider(title: String, subtitle: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int, enabledKey: String, enabledSetter: (Boolean) -> Unit, valueSetter: (Float) -> Unit, scale: Float = 100f, suffix: String = "") {
             val row = settingRow(title, subtitle)
             val toggle = Switch(this).apply {
@@ -688,6 +788,15 @@ class MainActivity : Activity() {
             }
             row.addView(toggle)
             soundControlViews.add(toggle)
+            soundProfileRefreshers.add {
+                toggle.setOnCheckedChangeListener(null)
+                toggle.isChecked = soundPrefs.getBoolean(enabledKey, false)
+                toggle.setOnCheckedChangeListener { _, checked ->
+                    soundPrefs.edit().putBoolean(enabledKey, checked).apply()
+                    enabledSetter(checked && !bypassSwitch.isChecked)
+                }
+                toggle.isEnabled = !bypassSwitch.isChecked
+            }
             soundPage.addView(row)
             val valueLabel = label("", 10f, Color.rgb(255, 207, 112)).apply { gravity = Gravity.END }
             val seek = SeekBar(this).apply {
@@ -714,6 +823,12 @@ class MainActivity : Activity() {
             soundPage.addView(valueLabel)
             soundPage.addView(seek, LinearLayout.LayoutParams(-1, dp(34)))
             soundControlViews.add(seek)
+            soundProfileRefreshers.add {
+                val restored = soundPrefs.getInt(prefKey, defaultValue).coerceIn(minValue, maxValue)
+                seek.progress = restored - minValue
+                valueLabel.text = if (suffix == " dB") String.format(java.util.Locale.US, "%.1f dB", restored / scale) else if (suffix == "%") "$restored%" else restored.toString()
+                seek.isEnabled = !bypassSwitch.isChecked
+            }
         }
         addSoundSlider("BASSZUSMÉLYSÉG", "Alsó frekvenciák finom emelése", "sound_bass_depth_db", 0, 600, 0, "sound_bass_depth_enabled", { soundEngineProcessor.setBassDepthEnabled(it) }, { soundEngineProcessor.setBassDepthDb(it) }, 100f, " dB")
         addSoundSlider("BASSZUSÜTÉS", "Dobok és basszusok ütősebb tartománya", "sound_bass_punch_db", 0, 600, 0, "sound_bass_punch_enabled", { soundEngineProcessor.setBassPunchEnabled(it) }, { soundEngineProcessor.setBassPunchDb(it) }, 100f, " dB")
@@ -766,7 +881,9 @@ class MainActivity : Activity() {
             soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
             soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
             soundEngineProcessor.setDynamicPunchEnabled(active && soundPrefs.getBoolean("sound_dynamic_punch_enabled", false))
+            refreshSoundProfileStatus()
         }
+        soundProfileRefreshers.add { refreshSoundProfileStatus() }
         soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         settingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
         val playbackPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
