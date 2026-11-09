@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private var player: ExoPlayer? = null
     private val eqProcessor = AurixEqualizerAudioProcessor()
     private val soundEngineProcessor = AuraSoundEngineAudioProcessor()
+    private var clippingStatusLabel: TextView? = null
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
@@ -597,6 +598,20 @@ class MainActivity : Activity() {
         addSoundSlider("SZTEREÓ SZÉLESSÉG", "100% = eredeti sztereó tér", "sound_stereo_width", 0, 150, 100, "sound_stereo_width_enabled", { soundEngineProcessor.setStereoWidthEnabled(it) }, { soundEngineProcessor.setStereoWidth(it) }, 100f, "%")
         addSoundSlider("BAL / JOBB BALANSZ", "Középállás = egyenlő csatornaszint", "sound_balance", -100, 100, 0, "sound_balance_enabled", { soundEngineProcessor.setBalanceEnabled(it) }, { soundEngineProcessor.setBalance(it) }, 100f, "%")
         soundPage.addView(sectionTitle("HANGERŐ ÉS JELFIGYELÉS"))
+        clippingStatusLabel = label("JELSZINT: RENDBEN — nincs digitális túlvezérlés", 10f, Color.rgb(120, 205, 145)).apply {
+            setPadding(dp(10), dp(9), dp(10), dp(9))
+            background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
+        }
+        soundPage.addView(clippingStatusLabel)
+        soundEngineProcessor.onClipping = {
+            handler.post {
+                clippingStatusLabel?.apply {
+                    text = "FIGYELEM: DIGITÁLIS CLIPPING ÉSZLELVE — csökkentsd az EQ vagy az előerősítés szintjét"
+                    setTextColor(Color.rgb(255, 130, 105))
+                    background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(55, 28, 27)); setStroke(dp(1), Color.rgb(150, 65, 55)) }
+                }
+            }
+        }
         addSoundSlider("ELŐERŐSÍTÉS", "Kimeneti szint korrekciója", "sound_preamp_db", -1200, 600, 0, "sound_preamp_enabled", { soundEngineProcessor.setPreampEnabled(it) }, { soundEngineProcessor.setPreampDb(it) }, 100f, " dB")
         bypassSwitch.setOnCheckedChangeListener { _, checked ->
             soundPrefs.edit().putBoolean("sound_dsp_bypass", checked).apply()
@@ -1541,6 +1556,11 @@ class MainActivity : Activity() {
         startTrack(queue[currentIndex])
     }
     private fun startTrack(uri: Uri) {
+        clippingStatusLabel?.apply {
+            text = "JELSZINT: RENDBEN — nincs digitális túlvezérlés"
+            setTextColor(Color.rgb(120, 205, 145))
+            background = GradientDrawable().apply { cornerRadius = dp(9).toFloat(); setColor(Color.rgb(22, 43, 35)); setStroke(dp(1), Color.rgb(48, 105, 75)) }
+        }
         openPlayerPage?.invoke()
         renderQueue()
         releaseAudio()
