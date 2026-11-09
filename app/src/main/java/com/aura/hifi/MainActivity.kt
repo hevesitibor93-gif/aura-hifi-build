@@ -2093,7 +2093,8 @@ class MainActivity : Activity() {
                 setOnClickListener { showPlaylists() }
             })
             val uris = playlistUris(playlistName)
-            val songs = uris.mapNotNull { librarySongByUri[it] }
+            val playlistScope = "playlist:${playlistName}"
+            val songs = sortLibrarySongs(uris.mapNotNull { librarySongByUri[it] }, playlistScope, true)
             libraryContainer.addView(label(playlistName.uppercase(), 16f, Color.WHITE).apply {
                 typeface = Typeface.DEFAULT_BOLD
                 setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -2101,6 +2102,7 @@ class MainActivity : Activity() {
             libraryContainer.addView(label("${songs.size} dal", 10f, Color.rgb(165, 172, 190)).apply {
                 setPadding(dp(8), 0, dp(8), dp(10))
             })
+            addListOptionsHeader("LISTA RENDEZÉSE ÉS NÉZETE", playlistScope, { showPlaylistDetail(playlistName) }, true)
             libraryContainer.addView(button("▶  TELJES LISTA LEJÁTSZÁSA", Color.rgb(91, 67, 157), Color.WHITE) {
                 if (songs.isEmpty()) { toast("Ez a lista jelenleg üres."); return@button }
                 queue.clear()
@@ -2154,24 +2156,27 @@ class MainActivity : Activity() {
                         updateNextTrack()
                     }
                 }, LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(button("↑", Color.rgb(35, 41, 53), Color.WHITE) {
-                    val updated = playlistUris(playlistName)
-                    if (index > 0 && index < updated.size) {
-                        val item = updated.removeAt(index)
-                        updated.add(index - 1, item)
-                        savePlaylist(playlistName, updated)
-                        showPlaylistDetail(playlistName)
-                    }
-                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
-                row.addView(button("↓", Color.rgb(35, 41, 53), Color.WHITE) {
-                    val updated = playlistUris(playlistName)
-                    if (index >= 0 && index < updated.lastIndex) {
-                        val item = updated.removeAt(index)
-                        updated.add(index + 1, item)
-                        savePlaylist(playlistName, updated)
-                        showPlaylistDetail(playlistName)
-                    }
-                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
+                if (listSortMode(playlistScope, true) == "manual") {
+                    val originalIndex = uris.indexOf(song.uri.toString())
+                    row.addView(button("↑", Color.rgb(35, 41, 53), Color.WHITE) {
+                        val updated = playlistUris(playlistName)
+                        if (originalIndex > 0 && originalIndex < updated.size) {
+                            val item = updated.removeAt(originalIndex)
+                            updated.add(originalIndex - 1, item)
+                            savePlaylist(playlistName, updated)
+                            showPlaylistDetail(playlistName)
+                        }
+                    }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
+                    row.addView(button("↓", Color.rgb(35, 41, 53), Color.WHITE) {
+                        val updated = playlistUris(playlistName)
+                        if (originalIndex >= 0 && originalIndex < updated.lastIndex) {
+                            val item = updated.removeAt(originalIndex)
+                            updated.add(originalIndex + 1, item)
+                            savePlaylist(playlistName, updated)
+                            showPlaylistDetail(playlistName)
+                        }
+                    }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(3) })
+                }
                 row.addView(button("×", Color.rgb(83, 39, 43), Color.WHITE) {
                     val updated = playlistUris(playlistName)
                     if (index in updated.indices) {
