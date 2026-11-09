@@ -124,12 +124,98 @@ class MainActivity : Activity() {
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
+        restorePlaybackState()
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioDeviceCallback = object : android.media.AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
             override fun onAudioDevicesRemoved(removedDevices: Array<android.media.AudioDeviceInfo>) { refreshVuOutputProfile() }
         }
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
+    }
+
+
+    /**
+     * Reconnects the screen to playback that may have continued in AuraPlaybackService
+     * while the Activity was closed or recreated.
+     */
+    private fun restorePlaybackState() {
+        val snapshot = AuraPlaybackService.getQueueSnapshot()
+        queue.clear()
+        queue.addAll(snapshot.uris)
+        currentIndex = snapshot.index.coerceIn(0, (queue.size - 1).coerceAtLeast(0))
+        repeatMode = snapshot.repeatMode
+        shuffleMode = snapshot.shuffleMode
+
+        val exo = player ?: return
+        val item = exo.currentMediaItem
+        val uri = item?.localConfiguration?.uri
+        if (uri != null) {
+            selectedUri = uri
+            readMetadata(uri)
+            val metadata = item.mediaMetadata
+            if (trackLabel.text.isNullOrBlank()) trackLabel.text = metadata.title ?: "Ismeretlen cím"
+            if (metadataLabel.text.isNullOrBlank()) metadataLabel.text = metadata.artist ?: "Ismeretlen előadó"
+            if (albumLabel.text.isNullOrBlank()) albumLabel.text = metadata.albumTitle ?: "Ismeretlen album"
+            val queuePosition = queue.indexOf(uri)
+            if (queuePosition >= 0) currentIndex = queuePosition
+            updateNextTrack()
+            renderQueue()
+
+            // The queue is now restored, so Activity controls can safely handle
+            // Bluetooth next/previous requests while this screen is alive.
+            if (queue.isNotEmpty()) {
+                AuraPlaybackService.onPreviousRequested = { playPrevious() }
+                AuraPlaybackService.onNextRequested = { playNext() }
+            }
+        }
+
+        playbackListener?.let { exo.removeListener(it) }
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) updateProgress()
+                if (playbackState == Player.STATE_ENDED) {
+                    setVuActive(false)
+                    playButton.text = "▶"
+                }
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                setVuActive(isPlaying)
+                playButton.text = if (isPlaying) "Ⅱ" else "▶"
+                vinylView.invalidate()
+                if (isPlaying) {
+                    handler.removeCallbacks(progressTask)
+                    handler.post(progressTask)
+                } else {
+                    handler.removeCallbacks(progressTask)
+                    updateProgress()
+                }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val currentUri = mediaItem?.localConfiguration?.uri ?: return
+                selectedUri = currentUri
+                val index = queue.indexOf(currentUri)
+                if (index >= 0) currentIndex = index
+                readMetadata(currentUri)
+                updateNextTrack()
+                renderQueue()
+                updateProgress()
+            }
+        }
+        playbackListener = listener
+        exo.addListener(listener)
+
+        val isPlaying = exo.isPlaying
+        setVuActive(isPlaying)
+        playButton.text = if (isPlaying) "Ⅱ" else "▶"
+        vinylView.invalidate()
+        if (isPlaying) {
+            handler.removeCallbacks(progressTask)
+            handler.post(progressTask)
+        } else {
+            updateProgress()
+        }
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
