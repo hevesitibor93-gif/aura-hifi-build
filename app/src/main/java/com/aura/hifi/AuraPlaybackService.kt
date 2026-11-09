@@ -86,16 +86,19 @@ class AuraPlaybackService : MediaSessionService() {
                 val index = queueUris.indexOf(uri)
                 if (index >= 0) queueIndex = index
                 savePlaybackState()
+                AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 savePlaybackState()
+                AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 saveHandler.removeCallbacks(savePositionTask)
                 if (isPlaying) saveHandler.postDelayed(savePositionTask, 5000L)
                 savePlaybackState()
+                AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
             }
 
             override fun onPositionDiscontinuity(
@@ -287,6 +290,26 @@ class AuraPlaybackService : MediaSessionService() {
 
         fun getQueueSnapshot(): QueueSnapshot =
             instance?.snapshotQueue() ?: QueueSnapshot(emptyList(), 0, 0, 0)
+
+        fun togglePlaybackFromWidget() {
+            val active = player ?: return
+            if (active.isPlaying) active.pause() else active.play()
+            instance?.let { AuraMiniWidgetProvider.updateAll(it) }
+        }
+
+        fun previousFromWidget() {
+            val service = instance ?: return
+            val callback = onPreviousRequested
+            if (callback != null) callback() else service.skipToPreviousFromService()
+            AuraMiniWidgetProvider.updateAll(service)
+        }
+
+        fun nextFromWidget() {
+            val service = instance ?: return
+            val callback = onNextRequested
+            if (callback != null) callback() else service.skipToNextFromService()
+            AuraMiniWidgetProvider.updateAll(service)
+        }
 
         @Volatile
         var player: ExoPlayer? = null
