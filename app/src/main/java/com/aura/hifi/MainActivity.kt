@@ -147,6 +147,11 @@ class MainActivity : Activity() {
         shuffleMode = snapshot.shuffleMode
 
         val exo = player ?: return
+        // Respect the user's startup preference even when the playback service
+        // was already alive in the background before the Activity was opened.
+        val resumeOnAppStart = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            .getBoolean("resume_on_app_start", true)
+        if (!resumeOnAppStart) exo.pause()
         val item = exo.currentMediaItem
         val uri = item?.localConfiguration?.uri
         if (uri != null) {
@@ -719,6 +724,30 @@ class MainActivity : Activity() {
             soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
         }
         soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
+        settingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
+        val playbackPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val resumeRow = settingRow("INDULÁSKOR FOLYTATÁS", "Az előző lejátszás folytatása az alkalmazás megnyitásakor")
+        val resumeSwitch = Switch(this).apply {
+            text = ""
+            isChecked = playbackPrefs.getBoolean("resume_on_app_start", true)
+            setOnCheckedChangeListener { _, checked ->
+                playbackPrefs.edit().putBoolean("resume_on_app_start", checked).apply()
+            }
+        }
+        resumeRow.addView(resumeSwitch)
+        settingsPage.addView(resumeRow)
+
+        val bluetoothAutoPlayRow = settingRow("BLUETOOTH AUTO-INDÍTÁS", "Lejátszás indítása Bluetooth-füles, hangszóró vagy autórádió csatlakozásakor")
+        val bluetoothAutoPlaySwitch = Switch(this).apply {
+            text = ""
+            isChecked = playbackPrefs.getBoolean("auto_play_on_bluetooth_connect", false)
+            setOnCheckedChangeListener { _, checked ->
+                playbackPrefs.edit().putBoolean("auto_play_on_bluetooth_connect", checked).apply()
+            }
+        }
+        bluetoothAutoPlayRow.addView(bluetoothAutoPlaySwitch)
+        settingsPage.addView(bluetoothAutoPlayRow)
+
         settingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
         val rotationSwitch = Switch(this).apply {
