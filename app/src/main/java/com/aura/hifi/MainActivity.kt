@@ -248,6 +248,7 @@ class MainActivity : Activity() {
         soundEngineProcessor.setStereoWidthEnabled(dspActive && prefs.getBoolean("sound_stereo_width_enabled", false))
         soundEngineProcessor.setBalanceEnabled(dspActive && prefs.getBoolean("sound_balance_enabled", false))
         soundEngineProcessor.setPreampEnabled(dspActive && prefs.getBoolean("sound_preamp_enabled", false))
+        soundEngineProcessor.setDynamicPunchEnabled(dspActive && prefs.getBoolean("sound_dynamic_punch_enabled", false))
         soundEngineProcessor.setBassDepthDb(prefs.getInt("sound_bass_depth_db", 0) / 100f)
         soundEngineProcessor.setBassPunchDb(prefs.getInt("sound_bass_punch_db", 0) / 100f)
         soundEngineProcessor.setHarmonicBassAmount(prefs.getInt("sound_harmonic_bass", 0) / 100f)
@@ -256,6 +257,7 @@ class MainActivity : Activity() {
         soundEngineProcessor.setStereoWidth(prefs.getInt("sound_stereo_width", 100) / 100f)
         soundEngineProcessor.setBalance(prefs.getInt("sound_balance", 0) / 100f)
         soundEngineProcessor.setPreampDb(prefs.getInt("sound_preamp_db", 0) / 100f)
+        soundEngineProcessor.setDynamicPunchAmount(prefs.getInt("sound_dynamic_punch", 35) / 100f)
     }
 
     private fun detectVuOutputProfile(): String {
@@ -689,6 +691,8 @@ class MainActivity : Activity() {
         addSoundSlider("BASSZUSMÉLYSÉG", "Alsó frekvenciák finom emelése", "sound_bass_depth_db", 0, 600, 0, "sound_bass_depth_enabled", { soundEngineProcessor.setBassDepthEnabled(it) }, { soundEngineProcessor.setBassDepthDb(it) }, 100f, " dB")
         addSoundSlider("BASSZUSÜTÉS", "Dobok és basszusok ütősebb tartománya", "sound_bass_punch_db", 0, 600, 0, "sound_bass_punch_enabled", { soundEngineProcessor.setBassPunchEnabled(it) }, { soundEngineProcessor.setBassPunchDb(it) }, 100f, " dB")
         addSoundSlider("HARMONIKUS BASSZUS", "Érzékelt mélyhangok kiegészítése", "sound_harmonic_bass", 0, 100, 0, "sound_harmonic_bass_enabled", { soundEngineProcessor.setHarmonicBassEnabled(it) }, { soundEngineProcessor.setHarmonicBassAmount(it) }, 100f, "%")
+        soundPage.addView(sectionTitle("DINAMIKA ÉS ÜTÉS"))
+        addSoundSlider("DYNAMIC PUNCH", "A dobok és tranziensek támadását emeli — kompresszor és limiter nélkül; legfeljebb +6 dB tranzienskiemelés", "sound_dynamic_punch", 0, 100, 35, "sound_dynamic_punch_enabled", { soundEngineProcessor.setDynamicPunchEnabled(it) }, { soundEngineProcessor.setDynamicPunchAmount(it) }, 100f, "%")
         soundPage.addView(sectionTitle("MAGASAK ÉS HANGSZÍN"))
         addSoundSlider("MAGAS TISZTASÁG", "Részletek és felső frekvenciák", "sound_clarity_db", 0, 600, 0, "sound_clarity_enabled", { soundEngineProcessor.setClarityEnabled(it) }, { soundEngineProcessor.setClarityDb(it) }, 100f, " dB")
         addSoundSlider("HANGSZÍN", "Melegebb ↔ világosabb karakter", "sound_tone_amount", -100, 100, 0, "sound_tone_enabled", { soundEngineProcessor.setToneEnabled(it) }, { soundEngineProcessor.setToneAmount(it) }, 100f, "%")
@@ -723,6 +727,7 @@ class MainActivity : Activity() {
             soundEngineProcessor.setStereoWidthEnabled(active && soundPrefs.getBoolean("sound_stereo_width_enabled", false))
             soundEngineProcessor.setBalanceEnabled(active && soundPrefs.getBoolean("sound_balance_enabled", false))
             soundEngineProcessor.setPreampEnabled(active && soundPrefs.getBoolean("sound_preamp_enabled", false))
+            soundEngineProcessor.setDynamicPunchEnabled(active && soundPrefs.getBoolean("sound_dynamic_punch_enabled", false))
         }
         soundPage.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         settingsPage.addView(sectionTitle("AUTOMATIKUS LEJÁTSZÁS"))
