@@ -1,6 +1,10 @@
 package com.aura.hifi
 
 import android.content.Context
+import android.net.Uri
+import android.media.MediaMetadataRetriever
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -15,9 +19,14 @@ import androidx.media3.session.MediaSessionService
 @androidx.media3.common.util.UnstableApi
 class AuraPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private var queueUris: List<Uri> = emptyList()
+    private var queueIndex = 0
+    private var queueRepeatMode = 0
+    private var queueShuffleMode = 0
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         val renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,
@@ -43,11 +52,13 @@ class AuraPlaybackService : MediaSessionService() {
             }
 
             override fun seekToPreviousMediaItem() {
-                onPreviousRequested?.invoke() ?: super.seekToPreviousMediaItem()
+                val callback = onPreviousRequested
+                if (callback != null) callback() else skipToPreviousFromService()
             }
 
             override fun seekToNextMediaItem() {
-                onNextRequested?.invoke() ?: super.seekToNextMediaItem()
+                val callback = onNextRequested
+                if (callback != null) callback() else skipToNextFromService()
             }
         }
 
@@ -58,7 +69,51 @@ class AuraPlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
+    private fun skipToPreviousFromService() {
+        if (queueUris.isEmpty()) return
+        playQueueIndex((queueIndex - 1).coerceAtLeast(0))
+    }
+
+    private fun skipToNextFromService() {
+        if (queueUris.isEmpty()) return
+        when {
+            queueIndex < queueUris.lastIndex -> playQueueIndex(queueIndex + 1)
+            queueRepeatMode == 2 || queueShuffleMode != 0 -> playQueueIndex(0)
+        }
+    }
+
+    private fun playQueueIndex(index: Int) {
+        val exo = player ?: return
+        val uri = queueUris.getOrNull(index) ?: return
+        queueIndex = index
+        val retriever = MediaMetadataRetriever()
+        val metadata = try {
+            retriever.setDataSource(this, uri)
+            MediaMetadata.Builder()
+                .setTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                    ?: uri.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "Ismeretlen cím")
+                .setArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó")
+                .setAlbumTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album")
+                .build()
+        } catch (_: Exception) {
+            MediaMetadata.Builder().setTitle(uri.lastPathSegment ?: "Ismeretlen cím").build()
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+        exo.setMediaItem(MediaItem.Builder().setUri(uri).setMediaMetadata(metadata).build())
+        exo.prepare()
+        exo.play()
+    }
+
+    private fun updateQueue(items: List<Uri>, index: Int, repeatMode: Int, shuffleMode: Int) {
+        queueUris = items.toList()
+        queueIndex = index.coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
+        queueRepeatMode = repeatMode
+        queueShuffleMode = shuffleMode
+    }
+
     override fun onDestroy() {
+        instance = null
         mediaSession?.release()
         mediaSession = null
         player?.release()
@@ -67,6 +122,13 @@ class AuraPlaybackService : MediaSessionService() {
     }
 
     companion object {
+        @Volatile
+        private var instance: AuraPlaybackService? = null
+
+        fun syncQueue(items: List<Uri>, index: Int, repeatMode: Int, shuffleMode: Int) {
+            instance?.updateQueue(items, index, repeatMode, shuffleMode)
+        }
+
         @Volatile
         var player: ExoPlayer? = null
             private set
