@@ -38,9 +38,9 @@ class AuraMiniWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.aura_mini_widget)
             val active = AuraPlaybackService.player
             val metadata = active?.currentMediaMetadata
-            views.setTextViewText("widget_title", metadata?.title?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi")
-            views.setTextViewText("widget_artist", metadata?.artist?.toString()?.takeIf { it.isNotBlank() } ?: "Válassz zenét")
-            views.setTextViewText("widget_play", if (active?.isPlaying == true) "Ⅱ" else "▶")
+            views.setTextViewText(R.id.widget_title, metadata?.title?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi")
+            views.setTextViewText(R.id.widget_artist, metadata?.artist?.toString()?.takeIf { it.isNotBlank() } ?: "Válassz zenét")
+            views.setTextViewText(R.id.widget_play, if (active?.isPlaying == true) "Ⅱ" else "▶")
 
             val openIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
