@@ -97,6 +97,7 @@ class MainActivity : Activity() {
     private var currentIndex = 0
     private var openPlayerPage: (() -> Unit)? = null
     private var openVuSettingsPage: (() -> Unit)? = null
+    private var openSoundEnginePage: (() -> Unit)? = null
     private var shuffleMode = 0
     private var repeatMode = 0
     private var shuffleOriginalQueue: List<Uri>? = null
@@ -1040,6 +1041,7 @@ class MainActivity : Activity() {
         vuSettingsBackButton.setOnClickListener { showPage(3) }
         openPlayerPage = { showPage(0, false) }
         openVuSettingsPage = { showPage(4, false) }
+        openSoundEnginePage = { showPage(5, false) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
@@ -1791,6 +1793,20 @@ class MainActivity : Activity() {
         heading.addView(label("EQUALIZER", 19f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .06f })
         heading.addView(label("Prémium hangzás, egyszerűen", 10f, Color.rgb(157, 160, 168)))
         top.addView(heading, LinearLayout.LayoutParams(0, -2, 1f))
+        val soundEngineQuickButton = label("DSP  ⚙", 10f, Color.rgb(255, 207, 112)).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(9).toFloat()
+                setColor(Color.rgb(48, 39, 25))
+                setStroke(dp(1), Color.rgb(145, 105, 48))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openSoundEnginePage?.invoke() }
+        }
+        top.addView(soundEngineQuickButton, LinearLayout.LayoutParams(-2, dp(34)).apply { marginEnd = dp(9) })
         top.addView(label("12 BAND  •  ±12 dB", 9f, gold).apply { typeface = Typeface.DEFAULT_BOLD })
         eqContainer.addView(top)
 
