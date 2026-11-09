@@ -132,8 +132,9 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         val lowPassAlpha = (1.0 - kotlin.math.exp(-2.0 * PI * 150.0 / sampleRate)).toFloat()
         val dcAlpha = (1.0 - kotlin.math.exp(-2.0 * PI * 8.0 / sampleRate)).toFloat()
 
+        // Reuse one frame buffer instead of allocating a new array for every audio frame.
+        val frame = FloatArray(channelCount)
         while (input.remaining() >= frameBytes) {
-            val frame = FloatArray(channelCount)
             for (ch in 0 until channelCount) {
                 var x = input.short / 32768f
                 if (useDepth) x = depthFilters[ch].process(x)
