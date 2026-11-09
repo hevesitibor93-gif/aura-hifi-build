@@ -533,12 +533,10 @@ class MainActivity : Activity() {
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
         loadMusicLibrary()
-        settingsPage.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
         soundPage.addView(label("BEÁLLÍTÁSOK  /  HANG", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), dp(4), 0, dp(3)) })
         soundPage.addView(label("AURA SOUND ENGINE", 21f, Color.rgb(255, 207, 112)).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); setPadding(dp(2), 0, 0, dp(5)) })
         soundPage.addView(label("Az eredeti AURA EQ változatlan marad. Az új modulok külön aktiválhatók.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, 0, dp(12)) })
         val soundPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
         val bypassRow = settingRow("DSP BYPASS", "Az új DSP-modulok kikapcsolása; az EQ aktív marad")
         val bypassSwitch = Switch(this).apply {
             text = ""
@@ -899,6 +897,9 @@ class MainActivity : Activity() {
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
         }
+        settingsPage.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(12) })
+        soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+
         vuSettingsMenuButton.setOnClickListener { showPage(4) }
         vuSettingsBackButton.setOnClickListener { showPage(3) }
         openPlayerPage = { showPage(0, false) }
