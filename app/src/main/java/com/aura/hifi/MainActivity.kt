@@ -3603,6 +3603,11 @@ class MainActivity : Activity() {
     }
 
     private fun readMetadata(uri: Uri) {
+        // Dalváltáskor az előző szám borítóját azonnal töröljük.
+        // Ha az új fájlban nincs beágyazott kép, az alap háttér marad látható.
+        currentArtworkData = null
+        if (::artworkView.isInitialized) artworkView.setImageDrawable(null)
+
         val r = MediaMetadataRetriever()
         try {
             r.setDataSource(this, uri)
@@ -3613,7 +3618,10 @@ class MainActivity : Activity() {
                 ?: "Ismeretlen cím"
             val cover = r.embeddedPicture
             currentArtworkData = cover
-            if (cover != null) { val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size); if (bitmap != null) artworkView.setImageBitmap(bitmap) }
+            if (cover != null) {
+                val bitmap = android.graphics.BitmapFactory.decodeByteArray(cover, 0, cover.size)
+                if (bitmap != null) artworkView.setImageBitmap(bitmap)
+            }
             val artist = librarySong?.artist?.takeIf { it.isNotBlank() } ?: r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Ismeretlen előadó"
             val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "Ismeretlen album"
             metadataLabel.text = artist
