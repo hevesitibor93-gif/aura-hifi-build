@@ -82,6 +82,7 @@ class MainActivity : Activity() {
     private var landscapeVuRightPanel: LinearLayout? = null
     private var centerAurixVu: VuView? = null
     private var settingsPreviewVu: VuView? = null
+    private var stylePickerPreviewVu: VuView? = null
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
@@ -669,13 +670,13 @@ class MainActivity : Activity() {
     }
 
     private fun setVuActive(value: Boolean) {
-        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value)
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value); stylePickerPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
-        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right)
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
-        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value)
+        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
         val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; "circular", "aurix" -> 72; else -> 54 }
         val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; "circular", "aurix" -> 82; else -> 82 }
         landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
@@ -684,10 +685,10 @@ class MainActivity : Activity() {
         sideVuRight?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuRight?.layoutParams = params }
     }
     private fun setVuBrightness(value: Int) {
-        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value)
+        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value); stylePickerPreviewVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
-        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value); stylePickerPreviewVu?.setAnimationEnabled(value)
     }
 
     private fun applyVuCustomSettings() {
@@ -703,6 +704,7 @@ class MainActivity : Activity() {
         sideVuRight?.let { views.add(it) }
         centerAurixVu?.let { views.add(it) }
         settingsPreviewVu?.let { views.add(it) }
+        stylePickerPreviewVu?.let { views.add(it) }
         views.forEach { it.setCustomAppearance(thickness, spacing, segments, gap, color) }
     }
 
@@ -1843,22 +1845,38 @@ class MainActivity : Activity() {
             setVuStyle("custom"); vuPrefs.edit().putString("vu_style", "custom").apply()
             refreshVuStyleButtons("custom")
         }
-        vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(circularModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(aurixModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
-        vuAppearanceSettingsPage.addView(vuStyleRow)
-        val extraVuStyleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            background = rounded(Color.rgb(13, 16, 22), 14)
-            setPadding(dp(4), dp(3), dp(4), dp(3))
+        val vuStylePreviewScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; clipToPadding = false }
+        val vuStylePreviewStrip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(2), dp(3), dp(8), dp(5)) }
+        val vuStyleOptions = listOf(
+            "car" to ("CLASSIC" to carModeButton), "circular" to ("DUAL CIRCULAR" to circularModeButton),
+            "aurix" to ("AURIX GOLD" to aurixModeButton), "simple" to ("LETISZTULT" to simpleModeButton),
+            "multiband" to ("TÖBBSÁVOS" to multiBandButton), "spectrum" to ("SPECTRUM" to spectrumButton),
+            "line" to ("VONALAS" to lineModeButton), "custom" to ("EGYEDI LED" to customModeButton)
+        )
+        vuStyleOptions.forEach { (styleKey, option) ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                background = rounded(Color.rgb(18, 20, 24), 12); setPadding(dp(5), dp(5), dp(5), dp(5))
+                isClickable = true; isFocusable = true
+                setOnClickListener { option.second.performClick() }
+            }
+            val sample = VuView().apply {
+                setStyle(styleKey); setBrightness(vuPrefs.getInt("vu_brightness", 80))
+                setActive(true); setLevels(0.67f, 0.84f)
+                setOnClickListener { option.second.performClick() }
+            }
+            card.addView(sample, LinearLayout.LayoutParams(dp(104), dp(58)))
+            card.addView(label(option.first, 9f, Color.rgb(235, 203, 145)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD; maxLines = 1 }, LinearLayout.LayoutParams(-1, dp(20)))
+            vuStylePreviewStrip.addView(card, LinearLayout.LayoutParams(dp(116), dp(88)).apply { marginEnd = dp(7) })
         }
-        extraVuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        extraVuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        extraVuStyleRow.addView(lineModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        extraVuStyleRow.addView(customModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
-        vuAppearanceSettingsPage.addView(extraVuStyleRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        vuStylePreviewScroll.addView(vuStylePreviewStrip)
+        vuAppearanceSettingsPage.addView(vuStylePreviewScroll, LinearLayout.LayoutParams(-1, dp(94)))
+        stylePickerPreviewVu = VuView().apply {
+            setStyle(vuPrefs.getString("vu_style", "car") ?: "car")
+            setBrightness(vuPrefs.getInt("vu_brightness", 80)); setActive(true); setLevels(0.62f, 0.78f)
+        }
+        vuAppearanceSettingsPage.addView(label("AKTÍV ELŐNÉZET", 10f, gold).apply { setPadding(dp(4), dp(4), 0, 0) })
+        vuAppearanceSettingsPage.addView(stylePickerPreviewVu, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(3); bottomMargin = dp(5) })
         vuAppearanceSettingsPage.addView(label("A VONALAS egybefüggő, a saját LED mód szabadon méretezhető. A beállítások csak a kijelzést módosítják.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         vuAppearanceSettingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
@@ -4563,24 +4581,22 @@ class MainActivity : Activity() {
         }
 
         private fun drawCircularRing(c: Canvas, cx: Float, cy: Float, radius: Float, level: Float, segments: Int = 40) {
-            val startAngle = 135f
-            val sweep = 270f
+            val startAngle = 132f
+            val sweep = 276f
             val lit = (level.coerceIn(0f, 1f) * segments).toInt().coerceIn(0, segments)
-            val segmentLength = (sweep / segments) * 0.72f
-            val radial = dp(7).toFloat().coerceAtMost(radius * 0.18f)
-            val tangential = (radius * 0.105f).coerceAtLeast(dp(2).toFloat())
+            val tangential = (radius * 0.16f).coerceAtLeast(dp(3).toFloat())
+            val radial = (radius * 0.085f).coerceAtLeast(dp(2).toFloat())
             for (i in 0 until segments) {
                 val angle = startAngle + (i + 0.5f) * sweep / segments
                 val radians = Math.toRadians(angle.toDouble())
                 val x = cx + kotlin.math.cos(radians).toFloat() * radius
                 val y = cy + kotlin.math.sin(radians).toFloat() * radius
                 c.save()
-                c.rotate(angle + 90f, x, y)
+                c.rotate(angle, x, y)
                 p.style = Paint.Style.FILL
                 val color = vuSegmentColor(i.toFloat() / (segments - 1).coerceAtLeast(1))
                 p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(47, 51, 48)
-                val rect = RectF(x - tangential * 0.5f, y - radial * 0.5f, x + tangential * 0.5f, y + radial * 0.5f)
-                c.drawRoundRect(rect, dp(2).toFloat(), dp(2).toFloat(), p)
+                c.drawRoundRect(RectF(x - tangential * 0.5f, y - radial * 0.5f, x + tangential * 0.5f, y + radial * 0.5f), dp(2).toFloat(), dp(2).toFloat(), p)
                 c.restore()
             }
         }
@@ -4603,19 +4619,19 @@ class MainActivity : Activity() {
             p.strokeWidth = dp(1).toFloat()
             p.color = Color.argb(brightness * 2, 183, 145, 76)
             c.drawRoundRect(RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2)), dp(13).toFloat(), dp(13).toFloat(), p)
-            val radius = min(h * 0.37f, w * 0.205f).coerceAtLeast(dp(12).toFloat())
-            val cy = h * 0.50f
-            val leftX = w * 0.27f
-            val rightX = w * 0.73f
-            drawCircularRing(c, leftX, cy, radius, left)
-            drawCircularRing(c, rightX, cy, radius, right)
+            val cx = w * 0.50f
+            val cy = h * 0.49f
+            val outerRadius = min(h * 0.39f, w * 0.27f).coerceAtLeast(dp(13).toFloat())
+            val innerRadius = outerRadius * 0.73f
+            drawCircularRing(c, cx, cy, outerRadius, left, 40)
+            drawCircularRing(c, cx, cy, innerRadius, right, 40)
             p.style = Paint.Style.FILL
             p.textAlign = Paint.Align.CENTER
             p.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            p.textSize = dp(9).toFloat()
+            p.textSize = dp(8).toFloat()
             p.color = Color.rgb(222, 190, 126)
-            c.drawText("L", leftX, h - dp(5).toFloat(), p)
-            c.drawText("R", rightX, h - dp(5).toFloat(), p)
+            c.drawText("L", cx - dp(5).toFloat(), cy + dp(3).toFloat(), p)
+            c.drawText("R", cx + dp(5).toFloat(), cy + dp(3).toFloat(), p)
             p.textAlign = Paint.Align.LEFT
         }
 
