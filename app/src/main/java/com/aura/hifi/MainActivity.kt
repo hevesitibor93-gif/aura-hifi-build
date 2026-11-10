@@ -1846,9 +1846,7 @@ class MainActivity : Activity() {
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(circularModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(aurixModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
-        vuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         vuAppearanceSettingsPage.addView(vuStyleRow)
         val extraVuStyleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1856,7 +1854,9 @@ class MainActivity : Activity() {
             background = rounded(Color.rgb(13, 16, 22), 14)
             setPadding(dp(4), dp(3), dp(4), dp(3))
         }
-        extraVuStyleRow.addView(lineModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
+        extraVuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        extraVuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        extraVuStyleRow.addView(lineModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         extraVuStyleRow.addView(customModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         vuAppearanceSettingsPage.addView(extraVuStyleRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
         vuAppearanceSettingsPage.addView(label("A VONALAS egybefüggő, a saját LED mód szabadon méretezhető. A beállítások csak a kijelzést módosítják.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
