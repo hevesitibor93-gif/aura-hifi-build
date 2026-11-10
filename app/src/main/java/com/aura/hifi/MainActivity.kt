@@ -948,7 +948,8 @@ class MainActivity : Activity() {
             original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
-        songsPage.addView(label("AURIX  •  MUSIC LIBRARY", 11f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.12f; setPadding(dp(4), dp(5), 0, dp(3)) })
+        songsPage.addView(label("AURA  /  HI-FI STUDIO", 10f, if (goldStudioTheme) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(5), 0, dp(2)) })
+        songsPage.addView(label("ZENETÁR", 23f, if (goldStudioTheme) Color.rgb(242, 218, 177) else Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(8)) })
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
@@ -2365,26 +2366,30 @@ class MainActivity : Activity() {
             updateNextTrack()
         }
         if (viewMode == "grid") {
+            val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            val columns = if (landscape) 4 else 2
+            val coverSize = if (landscape) 76 else 104
+            val tileHeight = if (landscape) 142 else 176
             var index = 0
             while (index < ordered.size) {
                 val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
-                for (column in 0..1) {
+                for (column in 0 until columns) {
                     if (index >= ordered.size) {
-                        line.addView(View(this), LinearLayout.LayoutParams(0, dp(176), 1f))
+                        line.addView(View(this), LinearLayout.LayoutParams(0, dp(tileHeight), 1f))
                     } else {
                         val song = ordered[index]
                         val itemIndex = index
                         val tile = LinearLayout(this).apply {
                             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                             background = tileBackground
-                            setPadding(dp(7), dp(10), dp(7), dp(10))
-                            addView(libraryArtworkView(song, 104), LinearLayout.LayoutParams(-1, dp(104)).apply { bottomMargin = dp(7) })
-                            addView(label(song.title, 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
+                            setPadding(dp(6), dp(if (landscape) 6 else 10), dp(6), dp(6))
+                            addView(libraryArtworkView(song, coverSize), LinearLayout.LayoutParams(-1, dp(coverSize)).apply { bottomMargin = dp(6) })
+                            addView(label(song.title, if (landscape) 10f else 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
                             addView(label(song.artist, 9f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
-                        line.addView(tile, LinearLayout.LayoutParams(0, dp(176), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                        line.addView(tile, LinearLayout.LayoutParams(0, dp(tileHeight), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
                         index++
                     }
                 }
