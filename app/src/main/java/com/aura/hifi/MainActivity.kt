@@ -1692,8 +1692,10 @@ class MainActivity : Activity() {
         val simpleModeButton = button("Ⅱ  LETISZTULT", Color.TRANSPARENT, Color.WHITE) {}
         val multiBandButton = button("▥  TÖBBSÁVOS", Color.TRANSPARENT, Color.WHITE) {}
         val spectrumButton = button("▤  SPECTRUM", Color.TRANSPARENT, Color.WHITE) {}
+        val lineModeButton = button("━  VONALAS", Color.TRANSPARENT, Color.WHITE) {}
+        val customModeButton = button("▥  EGYEDI LED", Color.TRANSPARENT, Color.WHITE) {}
         fun refreshVuStyleButtons(style: String) {
-            listOf("car" to carModeButton, "simple" to simpleModeButton, "multiband" to multiBandButton, "spectrum" to spectrumButton).forEach { (key, view) ->
+            listOf("car" to carModeButton, "simple" to simpleModeButton, "multiband" to multiBandButton, "spectrum" to spectrumButton, "line" to lineModeButton, "custom" to customModeButton).forEach { (key, view) ->
                 val selected = style == key
                 view.background = rounded(if (selected) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
                 view.setTextColor(if (selected) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
@@ -1715,12 +1717,29 @@ class MainActivity : Activity() {
             setVuStyle("spectrum"); vuPrefs.edit().putString("vu_style", "spectrum").apply()
             refreshVuStyleButtons("spectrum")
         }
+        lineModeButton.setOnClickListener {
+            setVuStyle("line"); vuPrefs.edit().putString("vu_style", "line").apply()
+            refreshVuStyleButtons("line")
+        }
+        customModeButton.setOnClickListener {
+            setVuStyle("custom"); vuPrefs.edit().putString("vu_style", "custom").apply()
+            refreshVuStyleButtons("custom")
+        }
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         vuAppearanceSettingsPage.addView(vuStyleRow)
-        vuAppearanceSettingsPage.addView(label("Választható kétsoros, többsávos és Spectrum megjelenítések.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        val extraVuStyleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(13, 16, 22), 14)
+            setPadding(dp(4), dp(3), dp(4), dp(3))
+        }
+        extraVuStyleRow.addView(lineModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
+        extraVuStyleRow.addView(customModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+        vuAppearanceSettingsPage.addView(extraVuStyleRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        vuAppearanceSettingsPage.addView(label("A VONALAS egybefüggő, a saját LED mód szabadon méretezhető. A beállítások csak a kijelzést módosítják.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         vuAppearanceSettingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
