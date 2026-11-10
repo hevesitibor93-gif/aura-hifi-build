@@ -46,6 +46,9 @@ class MainActivity : Activity() {
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
     private var playbackRestoreAttempts = 0
+    private var pendingTrackStartUri: Uri? = null
+    private var pendingTrackStartAttempts = 0
+    private var pendingTrackStartRunnable: Runnable? = null
     private var clippingStatusLabel: TextView? = null
     private var eqClippingActive = false
     private var soundEngineClippingActive = false
@@ -1932,21 +1935,64 @@ class MainActivity : Activity() {
     private fun listViewMode(scope: String): String =
         getSharedPreferences("aurix_library", MODE_PRIVATE).getString(listPreferenceKey(scope, "view"), "detailed") ?: "detailed"
 
+    /** Natural sorting: 2 comes before 10, while text is compared using Hungarian collation. */
+    private fun compareNaturalText(first: String, second: String): Int {
+        var a = 0
+        var b = 0
+        val collator = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("hu-HU")).apply {
+            strength = java.text.Collator.SECONDARY
+        }
+        while (a < first.length && b < second.length) {
+            val aIsDigit = first[a] in '0'..'9'
+            val bIsDigit = second[b] in '0'..'9'
+            if (aIsDigit && bIsDigit) {
+                val aStart = a
+                val bStart = b
+                while (a < first.length && first[a] in '0'..'9') a++
+                while (b < second.length && second[b] in '0'..'9') b++
+                val rawA = first.substring(aStart, a)
+                val rawB = second.substring(bStart, b)
+                val numberA = rawA.trimStart('0').ifEmpty { "0" }
+                val numberB = rawB.trimStart('0').ifEmpty { "0" }
+                if (numberA.length != numberB.length) return numberA.length.compareTo(numberB.length)
+                val numericCompare = numberA.compareTo(numberB)
+                if (numericCompare != 0) return numericCompare
+                if (rawA.length != rawB.length) return rawA.length.compareTo(rawB.length)
+            } else {
+                val aStart = a
+                val bStart = b
+                while (a < first.length && first[a] !in '0'..'9') a++
+                while (b < second.length && second[b] !in '0'..'9') b++
+                val textCompare = collator.compare(first.substring(aStart, a), second.substring(bStart, b))
+                if (textCompare != 0) return textCompare
+            }
+        }
+        return (first.length - a).compareTo(second.length - b)
+    }
+
     private fun sortLibrarySongs(songs: List<LibrarySong>, scope: String, allowManual: Boolean = false): List<LibrarySong> {
         val mode = listSortMode(scope, allowManual)
+        val titleAscending = Comparator<LibrarySong> { left, right -> compareNaturalText(left.title, right.title) }
+        val artistAscending = Comparator<LibrarySong> { left, right -> compareNaturalText(left.artist, right.artist) }
+        val albumAscending = Comparator<LibrarySong> { left, right -> compareNaturalText(left.album, right.album) }
+        val fileAscending = Comparator<LibrarySong> { left, right ->
+            val leftName = java.io.File(left.uri.lastPathSegment ?: left.title).name
+            val rightName = java.io.File(right.uri.lastPathSegment ?: right.title).name
+            compareNaturalText(leftName, rightName)
+        }
         return when (mode) {
-            "title_desc" -> songs.sortedByDescending { it.title.lowercase() }
-            "artist_asc" -> songs.sortedBy { it.artist.lowercase() }
-            "artist_desc" -> songs.sortedByDescending { it.artist.lowercase() }
-            "album_asc" -> songs.sortedBy { it.album.lowercase() }
-            "album_desc" -> songs.sortedByDescending { it.album.lowercase() }
+            "title_desc" -> songs.sortedWith(titleAscending.reversed())
+            "artist_asc" -> songs.sortedWith(artistAscending)
+            "artist_desc" -> songs.sortedWith(artistAscending.reversed())
+            "album_asc" -> songs.sortedWith(albumAscending)
+            "album_desc" -> songs.sortedWith(albumAscending.reversed())
             "added_new" -> songs.sortedByDescending { it.dateAdded }
             "added_old" -> songs.sortedBy { it.dateAdded }
-            "file_asc" -> songs.sortedBy { java.io.File(it.uri.lastPathSegment ?: it.title).name.lowercase() }
-            "file_desc" -> songs.sortedByDescending { java.io.File(it.uri.lastPathSegment ?: it.title).name.lowercase() }
-            "manual" -> if (allowManual) songs else songs.sortedBy { it.title.lowercase() }
-            else -> songs.sortedBy { it.title.lowercase() }
-        }.let { if (mode == "added_old") it else if (mode == "added_new") it else it }
+            "file_asc" -> songs.sortedWith(fileAscending)
+            "file_desc" -> songs.sortedWith(fileAscending.reversed())
+            "manual" -> if (allowManual) songs else songs.sortedWith(titleAscending)
+            else -> songs.sortedWith(titleAscending)
+        }
     }
 
     private fun addListOptionsHeader(title: String, scope: String, refresh: () -> Unit, allowManual: Boolean = false) {
@@ -2776,6 +2822,46 @@ class MainActivity : Activity() {
     }
 
     private fun startTrack(uri: Uri) {
+        val activePlayer = player
+        if (activePlayer == null) {
+            // Service creation is asynchronous; queue the requested track instead of failing immediately.
+            pendingTrackStartUri = uri
+            pendingTrackStartAttempts = 0
+            pendingTrackStartRunnable?.let { handler.removeCallbacks(it) }
+            try { startService(Intent(this, AuraPlaybackService::class.java)) } catch (_: Exception) {}
+            val retry = object : Runnable {
+                override fun run() {
+                    val requestedUri = pendingTrackStartUri ?: return
+                    val readyPlayer = player
+                    if (readyPlayer != null) {
+                        pendingTrackStartUri = null
+                        pendingTrackStartRunnable = null
+                        pendingTrackStartAttempts = 0
+                        startTrack(requestedUri)
+                        return
+                    }
+                    pendingTrackStartAttempts++
+                    if (pendingTrackStartAttempts % 10 == 0) {
+                        try { startService(Intent(this@MainActivity, AuraPlaybackService::class.java)) } catch (_: Exception) {}
+                    }
+                    if (pendingTrackStartAttempts < 40) {
+                        handler.postDelayed(this, 150L)
+                    } else {
+                        pendingTrackStartUri = null
+                        pendingTrackStartRunnable = null
+                        pendingTrackStartAttempts = 0
+                        toast("A háttérlejátszó nem indult el. Próbáld újra az alkalmazás megnyitása után.")
+                    }
+                }
+            }
+            pendingTrackStartRunnable = retry
+            toast("AURA lejátszó indítása…")
+            handler.postDelayed(retry, 150L)
+            return
+        }
+        pendingTrackStartUri = null
+        pendingTrackStartRunnable = null
+        pendingTrackStartAttempts = 0
         eqClippingActive = false
         soundEngineClippingActive = false
         clippingStatusLabel?.apply {
@@ -2805,7 +2891,7 @@ class MainActivity : Activity() {
             AuraPlaybackService.onPreviousRequested = { playPrevious() }
             AuraPlaybackService.onNextRequested = { playNext() }
             AuraPlaybackService.syncQueue(queue.toList(), currentIndex, repeatMode, shuffleMode)
-            val exo = player ?: throw IllegalStateException("A háttérlejátszó még nem indult el.")
+            val exo = activePlayer
             playbackListener?.let { exo.removeListener(it) }
             val listener = object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -2936,7 +3022,26 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setPadding(dp(2), dp(10), 0, dp(5))
         })
-        val bandScroll = HorizontalScrollView(this).apply {
+        val bandScroll = object : HorizontalScrollView(this) {
+            private var gestureDownX = 0f
+            private var gestureDownY = 0f
+            override fun onInterceptTouchEvent(event: android.view.MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        gestureDownX = event.x
+                        gestureDownY = event.y
+                    }
+                    android.view.MotionEvent.ACTION_MOVE -> {
+                        val dx = kotlin.math.abs(event.x - gestureDownX)
+                        val dy = kotlin.math.abs(event.y - gestureDownY)
+                        val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+                        // Intercept a clear horizontal swipe before the EQ band control can adjust its value.
+                        if (dx > slop && dx > dy * 1.15f) return true
+                    }
+                }
+                return super.onInterceptTouchEvent(event)
+            }
+        }.apply {
             isHorizontalScrollBarEnabled = true
             overScrollMode = View.OVER_SCROLL_NEVER
             setPadding(0, dp(3), 0, dp(5))
