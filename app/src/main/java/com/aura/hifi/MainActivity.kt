@@ -106,7 +106,7 @@ class MainActivity : Activity() {
     private var vuProfileControls: (() -> Unit)? = null
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private val queue = mutableListOf<Uri>()
-    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long)
+    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long, val fileName: String)
     private val librarySongs = mutableListOf<LibrarySong>()
     private val libraryExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var libraryLoadGeneration = 0
@@ -1835,7 +1835,8 @@ class MainActivity : Activity() {
                 MediaStore.Audio.Media.ARTIST,
                 MediaStore.Audio.Media.DATE_ADDED,
                 MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.DATA
+                MediaStore.Audio.Media.DATA,
+                MediaStore.MediaColumns.DISPLAY_NAME
             )
             val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
             try {
@@ -1847,16 +1848,19 @@ class MainActivity : Activity() {
                     val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                     val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
                     val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                    val displayNameCol = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
                     while (cursor.moveToNext()) {
                         val id = cursor.getLong(idCol)
                         val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
                         val artist = cursor.getString(artistCol) ?: "Ismeretlen előadó"
                         val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Ismeretlen album" else "Ismeretlen album"
                         val fullPath = if (pathCol >= 0) cursor.getString(pathCol) else null
+                        val fileName = (if (displayNameCol >= 0) cursor.getString(displayNameCol) else null)
+                            ?.takeIf { it.isNotBlank() } ?: fullPath?.let { java.io.File(it).name } ?: title
                         val folder = fullPath?.let { java.io.File(it).parentFile?.absolutePath }
                             ?.takeIf { it.isNotBlank() } ?: "Ismeretlen mappa"
                         val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id),
-                            title, artist, album, folder, cursor.getLong(dateCol))
+                            title, artist, album, folder, cursor.getLong(dateCol), fileName)
                         loadedSongs.add(song)
                         loadedSongByUri[song.uri.toString()] = song
                     }
@@ -1976,9 +1980,7 @@ class MainActivity : Activity() {
         val artistAscending = Comparator<LibrarySong> { left, right -> compareNaturalText(left.artist, right.artist) }
         val albumAscending = Comparator<LibrarySong> { left, right -> compareNaturalText(left.album, right.album) }
         val fileAscending = Comparator<LibrarySong> { left, right ->
-            val leftName = java.io.File(left.uri.lastPathSegment ?: left.title).name
-            val rightName = java.io.File(right.uri.lastPathSegment ?: right.title).name
-            compareNaturalText(leftName, rightName)
+            compareNaturalText(left.fileName, right.fileName)
         }
         return when (mode) {
             "title_desc" -> songs.sortedWith(titleAscending.reversed())
@@ -3241,8 +3243,17 @@ class MainActivity : Activity() {
 
         private var downX = 0f
         private var downY = 0f
+        private var lastTouchX = 0f
         private var touchDirectionChosen = false
         private var horizontalGesture = false
+        private fun findBandScroll(): HorizontalScrollView? {
+            var current = parent
+            while (current != null) {
+                if (current is HorizontalScrollView) return current
+                current = current.parent
+            }
+            return null
+        }
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
             val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
             when (event.actionMasked) {
@@ -3252,11 +3263,16 @@ class MainActivity : Activity() {
                     horizontalGesture = false
                     downX = event.x
                     downY = event.y
+                    lastTouchX = event.x
                     parent?.requestDisallowInterceptTouchEvent(false)
                     return true
                 }
                 android.view.MotionEvent.ACTION_MOVE -> {
-                    if (horizontalGesture) return false
+                    if (horizontalGesture) {
+                        findBandScroll()?.scrollBy((lastTouchX - event.x).toInt(), 0)
+                        lastTouchX = event.x
+                        return true
+                    }
                     if (!dragging) return false
                     val dx = kotlin.math.abs(event.x - downX)
                     val dy = kotlin.math.abs(event.y - downY)
@@ -3266,8 +3282,10 @@ class MainActivity : Activity() {
                             // A vízszintes mozdulatot átengedjük a HorizontalScrollView-nak.
                             horizontalGesture = true
                             dragging = false
-                            parent?.requestDisallowInterceptTouchEvent(false)
-                            return false
+                            lastTouchX = event.x
+                            // The band control owns this horizontal gesture and scrolls its parent directly.
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                            return true
                         } else {
                             // A függőleges húzás maradjon az EQ sáv vezérlésénél.
                             parent?.requestDisallowInterceptTouchEvent(true)
@@ -3280,7 +3298,8 @@ class MainActivity : Activity() {
                     if (horizontalGesture) {
                         dragging = false
                         parent?.requestDisallowInterceptTouchEvent(false)
-                        return false
+                        performClick()
+                        return true
                     }
                     if (dragging) updateFromY(event.y)
                     dragging = false
