@@ -1057,6 +1057,7 @@ class MainActivity : Activity() {
                 playerPage.addView(meterPanel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
 
                 val transportPanel = goldPanel()
+                controlStack.removeAllViews()
                 transportPanel.addView(label("PLAYBACK CONTROL", 8f, Color.rgb(181, 146, 88)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f })
                 seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(4) }
                 transportPanel.addView(seekBar)
