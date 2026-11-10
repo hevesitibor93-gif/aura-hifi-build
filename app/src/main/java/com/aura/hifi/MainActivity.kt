@@ -974,7 +974,8 @@ class MainActivity : Activity() {
                 addView(label(icon, if (landscapeLibrary) 18f else 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
                 addView(label(title, if (landscapeLibrary) 10f else 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
                 addView(label(subtitle, if (landscapeLibrary) 8f else 9f, if (goldStudioTheme) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
-                setOnClickListener { action() }
+                setOnClickListener { performAuraHaptic(this); action() }
+                applyPremiumPressEffect(this)
             }
         }
         categoryRow.addView(categoryCard("♫", "Összes dal", "Teljes lista") { libraryMode = "all"; librarySearch.setText(""); renderLibrary() }, LinearLayout.LayoutParams(0, dp(100), 1f).apply { marginEnd = dp(5) })
@@ -3976,24 +3977,26 @@ class MainActivity : Activity() {
 
         private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
             if (style == "multiband" || style == "spectrum") { drawVerticalMultiBand(c, w, h); return }
+            val simpleStyle = style == "simple"
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w-dp(2).toFloat(), h-dp(2).toFloat())
+            val radius = dp(if (simpleStyle) 9 else 5).toFloat()
             p.style = Paint.Style.FILL
-            p.color = Color.rgb(8, 10, 14)
-            c.drawRoundRect(outer, dp(5).toFloat(), dp(5).toFloat(), p)
+            p.color = if (simpleStyle) Color.rgb(15, 20, 24) else Color.rgb(8, 10, 14)
+            c.drawRoundRect(outer, radius, radius, p)
             p.style = Paint.Style.STROKE
             p.strokeWidth = dp(1).toFloat()
-            p.color = Color.argb(brightness * 2, 238, 177, 67)
-            c.drawRoundRect(outer, dp(5).toFloat(), dp(5).toFloat(), p)
+            p.color = if (simpleStyle) Color.argb(brightness * 2, 150, 170, 158) else Color.argb(brightness * 2, 238, 177, 67)
+            c.drawRoundRect(outer, radius, radius, p)
             p.style = Paint.Style.FILL
-            val count = 12
-            val gap = dp(2).toFloat()
+            val count = if (simpleStyle) 10 else 12
+            val gap = dp(if (simpleStyle) 1 else 2).toFloat()
             val top = dp(5).toFloat()
             val bottom = h - dp(5).toFloat()
             val segH = (bottom-top-gap*(count-1))/count
             val lit = ((left + right) * 0.5f * count).toInt()
             for (i in 0 until count) {
                 val y = bottom - (i+1)*segH - i*gap
-                val base = when {
+                val base = if (simpleStyle) Color.rgb(225, 190, 126) else when {
                     i >= 20 -> Color.rgb(255, 35, 24)
                     i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
                     i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
