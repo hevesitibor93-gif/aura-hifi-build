@@ -2218,17 +2218,14 @@ class MainActivity : Activity() {
         artworkExecutor.execute {
             val bitmap = try {
                 val artUri = Uri.parse("content://media/external/audio/albumart/${song.albumId}")
-                contentResolver.openInputStream(artUri)?.use { stream ->
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    stream.mark(64 * 1024)
-                    BitmapFactory.decodeStream(stream, null, bounds)
-                    stream.reset()
-                    val target = (dp(sizeDp) * 2).coerceAtLeast(96)
-                    var sample = 1
-                    while (bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) sample *= 2
-                    val options = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.RGB_565 }
-                    BitmapFactory.decodeStream(stream, null, options)
-                }
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                contentResolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                val target = (dp(sizeDp) * 2).coerceAtLeast(96)
+                var sample = 1
+                while (bounds.outWidth > 0 && bounds.outHeight > 0 &&
+                    bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) sample *= 2
+                val options = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.RGB_565 }
+                contentResolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, options) }
             } catch (_: Exception) { null }
             if (bitmap != null) {
                 artworkCache.put(song.albumId, bitmap)
@@ -2256,7 +2253,7 @@ class MainActivity : Activity() {
                 val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
                 for (column in 0..1) {
                     if (index >= ordered.size) {
-                        line.addView(View(this), LinearLayout.LayoutParams(0, dp(110), 1f))
+                        line.addView(View(this), LinearLayout.LayoutParams(0, dp(176), 1f))
                     } else {
                         val song = ordered[index]
                         val itemIndex = index
@@ -2270,7 +2267,7 @@ class MainActivity : Activity() {
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
-                        line.addView(tile, LinearLayout.LayoutParams(0, dp(112), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                        line.addView(tile, LinearLayout.LayoutParams(0, dp(176), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
                         index++
                     }
                 }
