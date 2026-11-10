@@ -952,7 +952,9 @@ class MainActivity : Activity() {
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
-            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(126, 113, 221)) }
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                if (goldStudioTheme) intArrayOf(Color.rgb(35, 32, 27), Color.rgb(17, 20, 25)) else intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))
+            ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(139, 111, 68) else Color.rgb(126, 113, 221)) }
             setPadding(dp(18), dp(4), dp(18), dp(4))
         }
         songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(14) })
@@ -1004,8 +1006,13 @@ class MainActivity : Activity() {
         sortRow.addView(sortSpinner, LinearLayout.LayoutParams(0, dp(42), 1f))
         val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
         recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
-        recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
-        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }; setPadding(dp(9), dp(6), dp(9), dp(6)) }
+        recentHeader.addView(button("↻ Frissítés", if (goldStudioTheme) Color.rgb(91, 67, 31) else Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
+        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                if (goldStudioTheme) intArrayOf(Color.rgb(28, 27, 25), Color.rgb(13, 16, 21)) else intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))
+            ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(112, 91, 61) else Color.rgb(93, 102, 183)) }
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+        }
         libraryContainer.visibility = View.GONE
         // A kategóriakártyák mindig a lista előtt legyenek a nézetfa sorrendjében.
         songsPage.addView(categoryGroup)
@@ -2333,6 +2340,11 @@ class MainActivity : Activity() {
     private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
         val ordered = sortLibrarySongs(songs, scope, allowManual)
         val viewMode = listViewMode(scope)
+        val goldStudioTheme = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("aura_theme", "gold_studio") == "gold_studio"
+        val tileBackground = if (goldStudioTheme) GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(39, 35, 29), Color.rgb(19, 21, 25))).apply {
+            cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(112, 91, 61))
+        } else rounded(Color.rgb(27, 32, 48), 12)
         fun playFrom(index: Int, song: LibrarySong) {
             queue.clear()
             queue.addAll(ordered.map { it.uri })
@@ -2352,11 +2364,11 @@ class MainActivity : Activity() {
                         val itemIndex = index
                         val tile = LinearLayout(this).apply {
                             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                            background = rounded(Color.rgb(27, 32, 48), 12)
+                            background = tileBackground
                             setPadding(dp(7), dp(10), dp(7), dp(10))
                             addView(libraryArtworkView(song, 104), LinearLayout.LayoutParams(-1, dp(104)).apply { bottomMargin = dp(7) })
                             addView(label(song.title, 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
-                            addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                            addView(label(song.artist, 9f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
@@ -2383,13 +2395,13 @@ class MainActivity : Activity() {
                 } else {
                     LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                        background = rounded(Color.rgb(27, 32, 48), 10)
+                        background = tileBackground
                         setPadding(dp(8), dp(8), dp(8), dp(8))
                         addView(libraryArtworkView(song, 48), LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(10) })
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
                         details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.artist, 10f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.album, 9f, if (goldStudioTheme) Color.rgb(145, 139, 126) else Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         addView(details, LinearLayout.LayoutParams(0, -2, 1f))
                         setOnClickListener { playFrom(index, song) }
                     }
