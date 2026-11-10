@@ -676,8 +676,8 @@ class MainActivity : Activity() {
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value)
-        val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; else -> 54 }
-        val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; else -> 82 }
+        val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; "circular", "aurix" -> 72; else -> 54 }
+        val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; "circular", "aurix" -> 82; else -> 82 }
         landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
         landscapeVuRightPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuRightPanel?.layoutParams = params }
         sideVuLeft?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuLeft?.layoutParams = params }
@@ -868,7 +868,7 @@ class MainActivity : Activity() {
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
             val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
-            val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; else -> 54 }
+            val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; "circular", "aurix" -> 72; else -> 54 }
             val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
             val leftPanel = makeSidePanel(false)
             val rightPanel = makeSidePanel(true)
@@ -1797,13 +1797,15 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         val carModeButton = button("◉  KLASSZIKUS", Color.TRANSPARENT, Color.WHITE) {}
+        val circularModeButton = button("◎  KÖR VU", Color.TRANSPARENT, Color.WHITE) {}
+        val aurixModeButton = button("✦  AURIX GOLD", Color.TRANSPARENT, Color.WHITE) {}
         val simpleModeButton = button("Ⅱ  LETISZTULT", Color.TRANSPARENT, Color.WHITE) {}
         val multiBandButton = button("▥  TÖBBSÁVOS", Color.TRANSPARENT, Color.WHITE) {}
         val spectrumButton = button("▤  SPECTRUM", Color.TRANSPARENT, Color.WHITE) {}
         val lineModeButton = button("━  VONALAS", Color.TRANSPARENT, Color.WHITE) {}
         val customModeButton = button("▥  EGYEDI LED", Color.TRANSPARENT, Color.WHITE) {}
         fun refreshVuStyleButtons(style: String) {
-            listOf("car" to carModeButton, "simple" to simpleModeButton, "multiband" to multiBandButton, "spectrum" to spectrumButton, "line" to lineModeButton, "custom" to customModeButton).forEach { (key, view) ->
+            listOf("car" to carModeButton, "circular" to circularModeButton, "aurix" to aurixModeButton, "simple" to simpleModeButton, "multiband" to multiBandButton, "spectrum" to spectrumButton, "line" to lineModeButton, "custom" to customModeButton).forEach { (key, view) ->
                 val selected = style == key
                 view.background = rounded(if (selected) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
                 view.setTextColor(if (selected) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
@@ -1812,6 +1814,14 @@ class MainActivity : Activity() {
         carModeButton.setOnClickListener {
             setVuStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
             refreshVuStyleButtons("car")
+        }
+        circularModeButton.setOnClickListener {
+            setVuStyle("circular"); vuPrefs.edit().putString("vu_style", "circular").apply()
+            refreshVuStyleButtons("circular")
+        }
+        aurixModeButton.setOnClickListener {
+            setVuStyle("aurix"); vuPrefs.edit().putString("vu_style", "aurix").apply()
+            refreshVuStyleButtons("aurix")
         }
         simpleModeButton.setOnClickListener {
             setVuStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
@@ -1834,6 +1844,8 @@ class MainActivity : Activity() {
             refreshVuStyleButtons("custom")
         }
         vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        vuStyleRow.addView(circularModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        vuStyleRow.addView(aurixModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
         vuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f))
@@ -4319,7 +4331,7 @@ class MainActivity : Activity() {
         private var customSegmentGapDp = 1
         private var customColorPreset = 0
 
-        fun setStyle(value: String) { style = if (value in listOf("simple", "multiband", "spectrum", "line", "custom")) value else "car"; invalidate() }
+        fun setStyle(value: String) { style = if (value in listOf("simple", "multiband", "spectrum", "line", "custom", "circular", "aurix")) value else "car"; invalidate() }
         fun setCustomAppearance(thickness: Int, spacing: Int, segments: Int, segmentGap: Int, colorPreset: Int) {
             customThicknessDp = thickness.coerceIn(2, 14)
             customSpacingDp = spacing.coerceIn(8, 34)
@@ -4336,7 +4348,12 @@ class MainActivity : Activity() {
             if (!active) return
             val w = width.toFloat()
             val h = height.toFloat()
-            if (verticalSingle) { drawVerticalSingle(c, w, h); return }
+            if (verticalSingle) {
+                if (style == "circular" || style == "aurix") { drawCircularSingle(c, w, h, (left + right) * 0.5f); return }
+                drawVerticalSingle(c, w, h); return
+            }
+            if (style == "circular") { drawCircularDual(c, w, h); return }
+            if (style == "aurix") { drawAurixPremium(c, w, h); return }
             if (style == "line" || style == "custom") { drawCustomHorizontal(c, w, h, style == "line"); return }
             if (style == "multiband" || style == "spectrum") { drawMultiBand(c, w, h); return }
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
@@ -4533,6 +4550,119 @@ class MainActivity : Activity() {
                 }
             }
             p.shader = null
+        }
+
+
+        private fun vuSegmentColor(position: Float): Int {
+            return when {
+                position < 0.48f -> blendVuColor(Color.rgb(0, 220, 38), Color.rgb(185, 235, 0), position / 0.48f)
+                position < 0.70f -> blendVuColor(Color.rgb(185, 235, 0), Color.rgb(255, 220, 0), (position - 0.48f) / 0.22f)
+                position < 0.86f -> blendVuColor(Color.rgb(255, 220, 0), Color.rgb(255, 133, 0), (position - 0.70f) / 0.16f)
+                else -> blendVuColor(Color.rgb(255, 133, 0), Color.rgb(255, 30, 18), (position - 0.86f) / 0.14f)
+            }
+        }
+
+        private fun drawCircularRing(c: Canvas, cx: Float, cy: Float, radius: Float, level: Float, segments: Int = 40) {
+            val startAngle = 135f
+            val sweep = 270f
+            val lit = (level.coerceIn(0f, 1f) * segments).toInt().coerceIn(0, segments)
+            val segmentLength = (sweep / segments) * 0.72f
+            val radial = dp(7).toFloat().coerceAtMost(radius * 0.18f)
+            val tangential = (radius * 0.105f).coerceAtLeast(dp(2).toFloat())
+            for (i in 0 until segments) {
+                val angle = startAngle + (i + 0.5f) * sweep / segments
+                val radians = Math.toRadians(angle.toDouble())
+                val x = cx + kotlin.math.cos(radians).toFloat() * radius
+                val y = cy + kotlin.math.sin(radians).toFloat() * radius
+                c.save()
+                c.rotate(angle + 90f, x, y)
+                p.style = Paint.Style.FILL
+                val color = vuSegmentColor(i.toFloat() / (segments - 1).coerceAtLeast(1))
+                p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(47, 51, 48)
+                val rect = RectF(x - tangential * 0.5f, y - radial * 0.5f, x + tangential * 0.5f, y + radial * 0.5f)
+                c.drawRoundRect(rect, dp(1.5f).toFloat(), dp(1.5f).toFloat(), p)
+                c.restore()
+            }
+        }
+
+        private fun drawCircularSingle(c: Canvas, w: Float, h: Float, level: Float) {
+            p.shader = null
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(13, 16, 18)
+            c.drawRoundRect(RectF(1f, 1f, w - 1f, h - 1f), dp(9).toFloat(), dp(9).toFloat(), p)
+            val radius = min(w, h) * 0.34f
+            drawCircularRing(c, w / 2f, h / 2f, radius, level, 32)
+        }
+
+        private fun drawCircularDual(c: Canvas, w: Float, h: Float) {
+            p.shader = null
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(10, 13, 16)
+            c.drawRoundRect(RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2)), dp(13).toFloat(), dp(13).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 183, 145, 76)
+            c.drawRoundRect(RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2)), dp(13).toFloat(), dp(13).toFloat(), p)
+            val radius = min(h * 0.37f, w * 0.205f).coerceAtLeast(dp(12).toFloat())
+            val cy = h * 0.50f
+            val leftX = w * 0.27f
+            val rightX = w * 0.73f
+            drawCircularRing(c, leftX, cy, radius, left)
+            drawCircularRing(c, rightX, cy, radius, right)
+            p.style = Paint.Style.FILL
+            p.textAlign = Paint.Align.CENTER
+            p.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            p.textSize = dp(9).toFloat()
+            p.color = Color.rgb(222, 190, 126)
+            c.drawText("L", leftX, h - dp(5).toFloat(), p)
+            c.drawText("R", rightX, h - dp(5).toFloat(), p)
+            p.textAlign = Paint.Align.LEFT
+        }
+
+        private fun drawAurixPremium(c: Canvas, w: Float, h: Float) {
+            val frame = RectF(dp(3).toFloat(), dp(4).toFloat(), w - dp(3).toFloat(), h - dp(4).toFloat())
+            p.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.rgb(4, 4, 5), Color.rgb(30, 22, 12), Color.rgb(3, 3, 4)), null, android.graphics.Shader.TileMode.CLAMP)
+            p.style = Paint.Style.FILL
+            c.drawRoundRect(frame, dp(18).toFloat(), dp(18).toFloat(), p)
+            p.shader = null
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(3).toFloat()
+            p.color = Color.argb(brightness * 255 / 100, 255, 202, 105)
+            c.drawRoundRect(frame, dp(18).toFloat(), dp(18).toFloat(), p)
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.rgb(117, 77, 28)
+            c.drawRoundRect(RectF(dp(8).toFloat(), dp(8).toFloat(), w - dp(8).toFloat(), h - dp(8).toFloat()), dp(14).toFloat(), dp(14).toFloat(), p)
+            val centerW = w * 0.19f
+            val sideW = (w - centerW - dp(42).toFloat()) / 2f
+            val xPad = dp(14).toFloat()
+            val barH = max(dp(5).toFloat(), h * 0.17f)
+            drawAurixBar(c, xPad, h * 0.32f, sideW, barH, left)
+            drawAurixBar(c, w - xPad - sideW, h * 0.32f, sideW, barH, right)
+            p.style = Paint.Style.FILL
+            p.textAlign = Paint.Align.CENTER
+            p.typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+            p.textSize = h * 0.30f
+            p.color = Color.rgb(255, 220, 155)
+            c.drawText("VU", w / 2f, h * 0.56f, p)
+            p.textSize = h * 0.12f
+            p.typeface = Typeface.DEFAULT_BOLD
+            p.color = Color.rgb(229, 181, 103)
+            c.drawText("AURIX", w / 2f, h * 0.76f, p)
+            p.textAlign = Paint.Align.LEFT
+        }
+
+        private fun drawAurixBar(c: Canvas, x: Float, y: Float, width: Float, height: Float, level: Float) {
+            val count = 24
+            val gap = dp(1).toFloat()
+            val sw = (width - gap * (count - 1)) / count
+            val lit = (level.coerceIn(0f, 1f) * count).toInt()
+            for (i in 0 until count) {
+                val color = vuSegmentColor(i.toFloat() / (count - 1))
+                p.style = Paint.Style.FILL
+                p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(43, 37, 28)
+                val sx = x + i * (sw + gap)
+                c.drawRoundRect(RectF(sx, y, sx + sw, y + height), dp(1.5f).toFloat(), dp(1.5f).toFloat(), p)
+            }
         }
 
         private fun drawMultiBand(c: Canvas, w: Float, h: Float) {
