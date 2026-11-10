@@ -498,13 +498,28 @@ class MainActivity : Activity() {
     }
 
     private fun showOutputDeviceChooser() {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val outputs = (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
             .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
             .filter { isExternalAudioOutput(it) }
-        val labels = mutableListOf("Alapértelmezett / telefonhangszóró")
-        labels.addAll(outputs.map { audioDeviceDisplayName(it) })
+        val entries = mutableListOf<Pair<String, String>>()
+        entries.add("Alapértelmezett / telefonhangszóró" to "default")
+        outputs.forEach { device ->
+            entries.add(audioDeviceDisplayName(device) to audioDeviceProfileKey(device))
+        }
+        val labels = entries.map { (name, profile) ->
+            val active = profile == soundOutputProfile
+            val saved = profile != "default" && isSoundProfileSaved(prefs, profile)
+            buildString {
+                append(if (active) "✓  " else "   ")
+                append(name)
+                append(if (saved) "  •  SAJÁT PROFIL" else "  •  ALAP PROFIL")
+            }
+        }
+        val subtitle = "Válaszd ki a kimenetet. A saját profil csak akkor aktív, ha külön elmented."
         android.app.AlertDialog.Builder(this)
             .setTitle("KIMENETI ESZKÖZ PROFILJA")
+            .setMessage(subtitle)
             .setItems(labels.toTypedArray()) { _, which ->
                 if (which == 0) {
                     preferredOutputDeviceId = null
