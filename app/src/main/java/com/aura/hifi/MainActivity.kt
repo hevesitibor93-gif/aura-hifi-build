@@ -3016,13 +3016,15 @@ class MainActivity : Activity() {
             .filter { it.startsWith(prefix) }
             .map { it.removePrefix(prefix).substringBefore(java.io.File.separator) }
             .filter { it.isNotBlank() }.distinct().sortedBy { it.lowercase() }
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val folderStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
 
         children.forEach { name ->
             val child = java.io.File(path, name).absolutePath
             val count = librarySongs.count { it.folder == child || it.folder.startsWith(child + java.io.File.separator) }
             val selected = selectedFolderPaths.contains(child)
-            libraryContainer.addView(label((if (selected) "☑  " else "📁  ") + name + "   •   " + count + " dal  ›", 13f, if (selected) gold else Color.WHITE).apply {
-                setPadding(dp(10), dp(13), dp(8), dp(13))
+            val folderEntry = label((if (selected) "☑  " else "📁  ") + name + "   •   " + count + " dal  ›", 13f, if (selected) gold else Color.WHITE).apply {
+                setPadding(dp(10), dp(if (landscape) 8 else 13), dp(8), dp(if (landscape) 8 else 13))
                 setOnClickListener {
                     if (selectedFolderPaths.isNotEmpty()) {
                         if (selected) selectedFolderPaths.remove(child) else selectedFolderPaths.add(child)
@@ -3034,7 +3036,13 @@ class MainActivity : Activity() {
                     renderFolderBrowser(path, isRoot)
                     true
                 }
-            })
+            }
+            if (landscape) folderStrip?.addView(folderEntry, LinearLayout.LayoutParams(dp(220), dp(64)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+            else libraryContainer.addView(folderEntry)
+        }
+        if (landscape && folderStrip != null && folderStrip.childCount > 0) {
+            val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(folderStrip, ViewGroup.LayoutParams(-2, -1)) }
+            libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(72)))
         }
 
         val songs = librarySongs.filter { it.folder == path }
