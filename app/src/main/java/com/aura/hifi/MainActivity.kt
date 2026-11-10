@@ -740,6 +740,35 @@ class MainActivity : Activity() {
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val goldStudioTheme = themePrefs.getString("aura_theme", "gold_studio") == "gold_studio"
+        val goldHeaderPageActions = mutableListOf<Pair<View, Int>>()
+        val goldHeaderOverflowActions = mutableListOf<View>()
+        fun goldHeaderAction(title: String): TextView = TextView(this).apply {
+            text = title
+            textSize = 9f
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(231, 204, 157))
+            setPadding(dp(8), dp(3), dp(8), dp(3))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(9).toFloat()
+                setColor(Color.rgb(34, 29, 21))
+                setStroke(dp(1), Color.rgb(111, 86, 48))
+            }
+            isClickable = true
+            isFocusable = true
+            applyPremiumPressEffect(this)
+        }
+        fun addGoldHeaderActions(target: LinearLayout) {
+            val eqAction = goldHeaderAction("EQ")
+            val settingsAction = goldHeaderAction("⚙")
+            val moreAction = goldHeaderAction("⋮")
+            goldHeaderPageActions.add(eqAction to 2)
+            goldHeaderPageActions.add(settingsAction to 3)
+            goldHeaderOverflowActions.add(moreAction)
+            target.addView(eqAction, LinearLayout.LayoutParams(dp(35), dp(30)).apply { marginStart = dp(5) })
+            target.addView(settingsAction, LinearLayout.LayoutParams(dp(35), dp(30)).apply { marginStart = dp(5) })
+            target.addView(moreAction, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginStart = dp(5) })
+        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -757,6 +786,7 @@ class MainActivity : Activity() {
         val brand = TextView(this).apply { text = "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
         val hi = TextView(this).apply { text = "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        if (goldStudioTheme) addGoldHeaderActions(header)
         body.addView(header)
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
@@ -1039,8 +1069,7 @@ class MainActivity : Activity() {
                 studioHeader.addView(studioBrand)
                 studioHeader.addView(studioEdition)
                 studioHeader.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-                val status = label("●  HI-FI PLAYBACK", 8f, Color.rgb(198, 166, 112)).apply { typeface = Typeface.DEFAULT_BOLD }
-                studioHeader.addView(status)
+                addGoldHeaderActions(studioHeader)
                 playerPage.addView(studioHeader, LinearLayout.LayoutParams(-1, dp(38)))
 
                 val hero = LinearLayout(this).apply {
@@ -2355,6 +2384,19 @@ class MainActivity : Activity() {
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) Color.rgb(245, 211, 151) else Color.rgb(160, 160, 158)); b.background = rounded(if (selected) Color.rgb(57, 46, 30) else Color.rgb(26, 28, 31), 12) }
+        }
+        goldHeaderPageActions.forEach { (view, page) ->
+            view.setOnClickListener { performAuraHaptic(view); showPage(page) }
+        }
+        goldHeaderOverflowActions.forEach { view ->
+            view.setOnClickListener {
+                performAuraHaptic(view)
+                val popup = PopupMenu(this, view)
+                popup.menu.add("ZENETÁR").setOnMenuItemClickListener { showPage(1); true }
+                popup.menu.add("VU STUDIO").setOnMenuItemClickListener { showPage(4); true }
+                popup.menu.add("SOUND STUDIO").setOnMenuItemClickListener { showPage(5); true }
+                popup.show()
+            }
         }
         settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
