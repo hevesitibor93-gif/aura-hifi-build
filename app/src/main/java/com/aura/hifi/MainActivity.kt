@@ -1748,8 +1748,8 @@ class MainActivity : Activity() {
             setAnimationEnabled(vuPrefs.getBoolean("vu_animation", true))
             setActive(player?.isPlaying == true)
         }
-        previewCard.addView(settingsPreviewVu, LinearLayout.LayoutParams(-1, dp(74)).apply { topMargin = dp(4) })
-        vuSettingsPage.addView(previewCard, LinearLayout.LayoutParams(-1, dp(112)).apply { bottomMargin = dp(12) })
+        previewCard.addView(settingsPreviewVu, LinearLayout.LayoutParams(-1, dp(if (landscape) 48 else 74)).apply { topMargin = dp(4) })
+        vuSettingsPage.addView(previewCard, LinearLayout.LayoutParams(-1, dp(if (landscape) 80 else 112)).apply { bottomMargin = dp(if (landscape) 4 else 12) })
         vuSettingsPage.addView(label("KÜLÖN HANGKIMENETI PROFILOK", 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(8), 0, dp(5)) })
         vuSettingsPage.addView(label("A csatlakoztatott kimenetet automatikusan felismeri. A két profil külön mentődik.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(2), 0, dp(2), dp(8)) })
 
@@ -1919,6 +1919,32 @@ class MainActivity : Activity() {
             toast("Az aktív VU-profil visszaállítva.")
         }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(4); bottomMargin = dp(12) })
 
+        if (landscape && vuSettingsPage.childCount == 17) {
+            val vuItems = (0 until vuSettingsPage.childCount).map { vuSettingsPage.getChildAt(it) }
+            vuSettingsPage.removeAllViews()
+            vuSettingsPage.orientation = LinearLayout.HORIZONTAL
+            val profileDeck = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(3), dp(2), dp(5), dp(2)) }
+            val tuningDeck = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(2), dp(3), dp(2)) }
+            (vuItems[1] as TextView).textSize = 14f
+            profileDeck.addView(vuItems[0], LinearLayout.LayoutParams(-1, dp(14)))
+            profileDeck.addView(vuItems[1], LinearLayout.LayoutParams(-1, dp(22)))
+            profileDeck.addView(vuItems[2], LinearLayout.LayoutParams(-1, dp(32)).apply { bottomMargin = dp(3) })
+            profileDeck.addView(vuItems[5], LinearLayout.LayoutParams(-1, dp(80)).apply { bottomMargin = dp(3) })
+            profileDeck.addView(vuItems[6], LinearLayout.LayoutParams(-1, dp(16)))
+            profileDeck.addView(vuItems[8], LinearLayout.LayoutParams(-1, dp(20)))
+            profileDeck.addView(vuItems[9], LinearLayout.LayoutParams(-1, dp(40)))
+            profileDeck.addView(vuItems[10], LinearLayout.LayoutParams(-1, dp(42)))
+            val primaryTuningRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            primaryTuningRow.addView(vuItems[11], LinearLayout.LayoutParams(0, dp(72), 1f).apply { marginEnd = dp(4) })
+            primaryTuningRow.addView(vuItems[12], LinearLayout.LayoutParams(0, dp(72), 1f).apply { marginStart = dp(4) })
+            tuningDeck.addView(primaryTuningRow, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(4) })
+            tuningDeck.addView(vuItems[13], LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(4) })
+            tuningDeck.addView(vuItems[14], LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(2) })
+            tuningDeck.addView(vuItems[15], LinearLayout.LayoutParams(-1, dp(24)))
+            tuningDeck.addView(vuItems[16], LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(2) })
+            vuSettingsPage.addView(profileDeck, LinearLayout.LayoutParams(0, -1, 0.48f))
+            vuSettingsPage.addView(tuningDeck, LinearLayout.LayoutParams(0, -1, 0.52f))
+        }
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
         setVuStyle(savedVuStyle)
         refreshVuStyleButtons(savedVuStyle)
