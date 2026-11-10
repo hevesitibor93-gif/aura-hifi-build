@@ -864,7 +864,7 @@ class MainActivity : Activity() {
                 }
             }
             leftPanel.addView(label("L", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuLeft = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuLeft = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuLeft?.isClickable = true
             sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
@@ -874,7 +874,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuRight = VuView(true).apply { setStyle("car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuRight = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuRight?.isClickable = true
             sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
@@ -1618,14 +1618,16 @@ class MainActivity : Activity() {
             background = rounded(Color.rgb(13, 16, 22), 14)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
-        val carModeButton = button("◉  AUTÓS", Color.TRANSPARENT, Color.WHITE) {}
+        val carModeButton = button("◉  KLASSZIKUS", Color.TRANSPARENT, Color.WHITE) {}
         val simpleModeButton = button("Ⅱ  LETISZTULT", Color.TRANSPARENT, Color.WHITE) {}
+        val multiBandButton = button("▥  TÖBBSÁVOS", Color.TRANSPARENT, Color.WHITE) {}
+        val spectrumButton = button("▤  SPECTRUM", Color.TRANSPARENT, Color.WHITE) {}
         fun refreshVuStyleButtons(style: String) {
-            val carSelected = style == "car"
-            carModeButton.background = rounded(if (carSelected) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
-            carModeButton.setTextColor(if (carSelected) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
-            simpleModeButton.background = rounded(if (!carSelected) Color.rgb(31, 69, 76) else Color.TRANSPARENT, 10)
-            simpleModeButton.setTextColor(if (!carSelected) Color.rgb(119, 224, 218) else Color.rgb(150, 158, 172))
+            listOf("car" to carModeButton, "simple" to simpleModeButton, "multiband" to multiBandButton, "spectrum" to spectrumButton).forEach { (key, view) ->
+                val selected = style == key
+                view.background = rounded(if (selected) Color.rgb(91, 65, 27) else Color.TRANSPARENT, 10)
+                view.setTextColor(if (selected) Color.rgb(255, 207, 112) else Color.rgb(150, 158, 172))
+            }
         }
         carModeButton.setOnClickListener {
             setVuStyle("car"); vuPrefs.edit().putString("vu_style", "car").apply()
@@ -1635,10 +1637,20 @@ class MainActivity : Activity() {
             setVuStyle("simple"); vuPrefs.edit().putString("vu_style", "simple").apply()
             refreshVuStyleButtons("simple")
         }
-        vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(3) })
-        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f))
+        multiBandButton.setOnClickListener {
+            setVuStyle("multiband"); vuPrefs.edit().putString("vu_style", "multiband").apply()
+            refreshVuStyleButtons("multiband")
+        }
+        spectrumButton.setOnClickListener {
+            setVuStyle("spectrum"); vuPrefs.edit().putString("vu_style", "spectrum").apply()
+            refreshVuStyleButtons("spectrum")
+        }
+        vuStyleRow.addView(carModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        vuStyleRow.addView(simpleModeButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        vuStyleRow.addView(multiBandButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(2) })
+        vuStyleRow.addView(spectrumButton, LinearLayout.LayoutParams(0, dp(38), 1f))
         vuAppearanceSettingsPage.addView(vuStyleRow)
-        vuAppearanceSettingsPage.addView(label("Mindkét mód: 5 sárga + 3 piros LED csatornánként.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
+        vuAppearanceSettingsPage.addView(label("Választható kétsoros, többsávos és Spectrum megjelenítések.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(4), dp(7), 0, dp(4)) })
         vuAppearanceSettingsPage.addView(label("VU-MÉRŐ FÉNYEREJE", 11f, gold).apply { setPadding(dp(4), dp(12), 0, 0) })
         val vuBrightness = SeekBar(this).apply {
             max = 100
@@ -3853,7 +3865,7 @@ class MainActivity : Activity() {
             right = r.coerceIn(0f, 1f)
             invalidate()
         }
-        fun setStyle(value: String) { style = if (value == "simple") "simple" else "car"; invalidate() }
+        fun setStyle(value: String) { style = if (value in listOf("simple", "multiband", "spectrum")) value else "car"; invalidate() }
         fun setBrightness(value: Int) { brightness = value.coerceIn(20, 100); invalidate() }
         fun setAnimationEnabled(value: Boolean) { animationEnabled = value; if (!value) { left = 0f; right = 0f }; invalidate() }
 
@@ -3863,6 +3875,7 @@ class MainActivity : Activity() {
             val w = width.toFloat()
             val h = height.toFloat()
             if (verticalSingle) { drawVerticalSingle(c, w, h); return }
+            if (style == "multiband" || style == "spectrum") { drawMultiBand(c, w, h); return }
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
             p.style = Paint.Style.FILL
@@ -3920,6 +3933,7 @@ class MainActivity : Activity() {
         }
 
         private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
+            if (style == "multiband" || style == "spectrum") { drawVerticalMultiBand(c, w, h); return }
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w-dp(2).toFloat(), h-dp(2).toFloat())
             p.style = Paint.Style.FILL
             p.color = Color.rgb(8, 10, 14)
@@ -3946,6 +3960,79 @@ class MainActivity : Activity() {
                 }
                 p.color = if (i < lit) Color.argb(brightness*255/100, Color.red(base), Color.green(base), Color.blue(base)) else Color.rgb(42, 43, 45)
                 c.drawRoundRect(RectF(dp(6).toFloat(), y, w-dp(6).toFloat(), y+segH), dp(2).toFloat(), dp(2).toFloat(), p)
+            }
+        }
+
+        private fun drawMultiBand(c: Canvas, w: Float, h: Float) {
+            val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
+            p.shader = null
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(8, 10, 14)
+            c.drawRoundRect(outer, dp(9).toFloat(), dp(9).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 190, 145, 75)
+            c.drawRoundRect(outer, dp(9).toFloat(), dp(9).toFloat(), p)
+            p.style = Paint.Style.FILL
+            val count = 16
+            val gap = dp(3).toFloat()
+            val side = dp(9).toFloat()
+            val barW = (w - side * 2 - gap * (count - 1)) / count
+            val top = dp(7).toFloat()
+            val bottom = h - dp(7).toFloat()
+            val segments = 7
+            val segGap = dp(1).toFloat()
+            val segH = (bottom - top - segGap * (segments - 1)) / segments
+            for (i in 0 until count) {
+                val source = if (i < count / 2) left else right
+                val weight = floatArrayOf(.72f, .84f, .92f, 1.0f, .88f, .78f, .94f, .82f)[i % 8]
+                val lit = (source * weight * segments).toInt().coerceIn(0, segments)
+                for (j in 0 until segments) {
+                    val y = bottom - (j + 1) * segH - j * segGap
+                    val activeColor = when {
+                        style == "spectrum" && j >= 5 -> Color.rgb(255, 82, 48)
+                        style == "spectrum" && j >= 3 -> Color.rgb(255, 157, 49)
+                        j >= 6 -> Color.rgb(255, 73, 48)
+                        j >= 4 -> Color.rgb(255, 169, 55)
+                        else -> Color.rgb(246, 196, 91)
+                    }
+                    p.color = if (j < lit) Color.argb(brightness * 255 / 100, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)) else Color.rgb(39, 40, 42)
+                    val x = side + i * (barW + gap)
+                    c.drawRoundRect(RectF(x, y, x + barW, y + segH), dp(1).toFloat(), dp(1).toFloat(), p)
+                }
+            }
+        }
+
+        private fun drawVerticalMultiBand(c: Canvas, w: Float, h: Float) {
+            val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(8, 10, 14)
+            c.drawRoundRect(outer, dp(6).toFloat(), dp(6).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 190, 145, 75)
+            c.drawRoundRect(outer, dp(6).toFloat(), dp(6).toFloat(), p)
+            p.style = Paint.Style.FILL
+            val count = 5
+            val gap = dp(2).toFloat()
+            val side = dp(4).toFloat()
+            val barW = (w - side * 2 - gap * (count - 1)) / count
+            val top = dp(5).toFloat()
+            val bottom = h - dp(5).toFloat()
+            val segments = 14
+            val segGap = dp(1).toFloat()
+            val segH = (bottom - top - segGap * (segments - 1)) / segments
+            for (i in 0 until count) {
+                val source = if (i % 2 == 0) left else right
+                val weight = floatArrayOf(.78f, .92f, 1f, .88f, .74f)[i]
+                val lit = (source * weight * segments).toInt().coerceIn(0, segments)
+                for (j in 0 until segments) {
+                    val y = bottom - (j + 1) * segH - j * segGap
+                    val activeColor = if (style == "spectrum" && j > 10) Color.rgb(255, 72, 48) else if (j > 9) Color.rgb(255, 166, 52) else Color.rgb(246, 196, 91)
+                    p.color = if (j < lit) Color.argb(brightness * 255 / 100, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)) else Color.rgb(39, 40, 42)
+                    val x = side + i * (barW + gap)
+                    c.drawRoundRect(RectF(x, y, x + barW, y + segH), dp(1).toFloat(), dp(1).toFloat(), p)
+                }
             }
         }
 
