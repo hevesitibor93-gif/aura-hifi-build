@@ -683,6 +683,8 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi() {
+        val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val goldStudioTheme = themePrefs.getString("aura_theme", "original") == "gold_studio"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -958,11 +960,14 @@ class MainActivity : Activity() {
         fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.argb(220, 235, 190, 105)) }
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    if (goldStudioTheme) intArrayOf(Color.rgb(91, 66, 31), Color.rgb(48, 39, 27), Color.rgb(17, 20, 25))
+                    else intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
+                ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(194, 151, 82) else Color.argb(220, 235, 190, 105)) }
                 setPadding(dp(5), dp(12), dp(5), dp(12)); isClickable = true; isFocusable = true
                 addView(label(icon, 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
                 addView(label(title, 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                addView(label(subtitle, 9f, Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
+                addView(label(subtitle, 9f, if (goldStudioTheme) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
                 setOnClickListener { action() }
             }
         }
@@ -1586,7 +1591,17 @@ class MainActivity : Activity() {
         }
         rotationRow.addView(rotationSwitch)
         displaySettingsPage.addView(rotationRow)
-        appearanceSettingsPage.addView(sectionTitle("MEGJELENÉS"))
+        appearanceSettingsPage.addView(sectionTitle("TÉMÁK"))
+        appearanceSettingsPage.addView(label("Válassz az AURA két külön megjelenése közül. A választás nem módosítja a hangzást vagy a VU-beállításokat.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(10)) })
+        appearanceSettingsPage.addView(button("◈  AURA ORIGINAL  •  EREDETI", Color.rgb(35, 41, 53), Color.WHITE) {
+            themePrefs.edit().putString("aura_theme", "original").apply()
+            toast("AURA Original kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(button("✦  AURA GOLD STUDIO", Color.rgb(91, 65, 27), Color.rgb(255, 225, 174)) {
+            themePrefs.edit().putString("aura_theme", "gold_studio").apply()
+            toast("AURA Gold Studio kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
+        appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
         val vuPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
@@ -1848,7 +1863,7 @@ class MainActivity : Activity() {
         refreshVuStyleButtons(savedVuStyle)
         setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(Color.rgb(16, 18, 22), 16) }
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(if (goldStudioTheme) Color.rgb(19, 17, 13) else Color.rgb(16, 18, 22), 16); elevation = dp(7).toFloat() }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int, resetLibrary: Boolean = true) {
             activePageIndex = index
@@ -1889,8 +1904,8 @@ class MainActivity : Activity() {
             scrollToCurrentLibraryRow()
         }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
-        root.addView(nav)
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
         showPage(0)
         setContentView(root)
     }
