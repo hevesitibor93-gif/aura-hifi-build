@@ -3315,17 +3315,9 @@ class MainActivity : Activity() {
 
         private var downX = 0f
         private var downY = 0f
-        private var lastTouchX = 0f
         private var touchDirectionChosen = false
         private var horizontalGesture = false
-        private fun findBandScroll(): HorizontalScrollView? {
-            var current = parent
-            while (current != null) {
-                if (current is HorizontalScrollView) return current
-                current = current.parent
-            }
-            return null
-        }
+
         override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
             val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
             when (event.actionMasked) {
@@ -3335,45 +3327,28 @@ class MainActivity : Activity() {
                     horizontalGesture = false
                     downX = event.x
                     downY = event.y
-                    lastTouchX = event.x
-                    parent?.requestDisallowInterceptTouchEvent(false)
+                    // The EQ control owns touches; horizontal navigation is available only on the handle below.
+                    parent?.requestDisallowInterceptTouchEvent(true)
                     return true
                 }
                 android.view.MotionEvent.ACTION_MOVE -> {
-                    if (horizontalGesture) {
-                        findBandScroll()?.scrollBy((lastTouchX - event.x).toInt(), 0)
-                        lastTouchX = event.x
-                        return true
-                    }
-                    if (!dragging) return false
+                    if (!dragging || horizontalGesture) return true
                     val dx = kotlin.math.abs(event.x - downX)
                     val dy = kotlin.math.abs(event.y - downY)
                     if (!touchDirectionChosen && (dx > slop || dy > slop)) {
                         touchDirectionChosen = true
                         if (dx > dy * 1.15f) {
-                            // A vízszintes mozdulatot átengedjük a HorizontalScrollView-nak.
+                            // Ignore horizontal movement on the band itself; do not scroll or change its value.
                             horizontalGesture = true
                             dragging = false
-                            lastTouchX = event.x
-                            // The band control owns this horizontal gesture and scrolls its parent directly.
-                            parent?.requestDisallowInterceptTouchEvent(true)
                             return true
-                        } else {
-                            // A függőleges húzás maradjon az EQ sáv vezérlésénél.
-                            parent?.requestDisallowInterceptTouchEvent(true)
                         }
                     }
                     if (dragging) updateFromY(event.y)
                     return true
                 }
                 android.view.MotionEvent.ACTION_UP -> {
-                    if (horizontalGesture) {
-                        dragging = false
-                        parent?.requestDisallowInterceptTouchEvent(false)
-                        performClick()
-                        return true
-                    }
-                    if (dragging) updateFromY(event.y)
+                    if (dragging && !horizontalGesture) updateFromY(event.y)
                     dragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
                     performClick()
@@ -3388,7 +3363,6 @@ class MainActivity : Activity() {
             }
             return true
         }
-
         override fun performClick(): Boolean { super.performClick(); return true }
     }
     private fun addSlider(parent: LinearLayout, title: String, minV: Int, maxV: Int, initial: Int, onValue: (Int) -> Unit) {
