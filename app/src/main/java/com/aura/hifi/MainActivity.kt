@@ -671,7 +671,7 @@ class MainActivity : Activity() {
     }
 
     private fun setVuActive(value: Boolean) {
-        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value); stylePickerPreviewVu?.setActive(value)
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
@@ -704,7 +704,7 @@ class MainActivity : Activity() {
         vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value); stylePickerPreviewVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
-        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value); stylePickerPreviewVu?.setAnimationEnabled(value)
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
     }
 
     private fun applyVuCustomSettings() {
