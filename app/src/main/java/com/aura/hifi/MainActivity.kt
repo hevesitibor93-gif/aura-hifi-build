@@ -3096,9 +3096,9 @@ class MainActivity : Activity() {
                 val inset = dp(8).toFloat()
                 val centerY = height / 2f
                 val trackRight = (width - inset).coerceAtLeast(inset + 1f)
-                canvas.drawRoundRect(inset, centerY - dp(2), trackRight, centerY + dp(2), dp(2).toFloat(), trackPaint)
+                canvas.drawRoundRect(inset, centerY - dp(2).toFloat(), trackRight, centerY + dp(2).toFloat(), dp(2).toFloat(), dp(2).toFloat(), trackPaint)
                 val (thumbLeft, thumbWidth, _) = metrics()
-                canvas.drawRoundRect(thumbLeft, centerY - dp(4), thumbLeft + thumbWidth, centerY + dp(4), dp(4).toFloat(), thumbPaint)
+                canvas.drawRoundRect(thumbLeft, centerY - dp(4).toFloat(), thumbLeft + thumbWidth, centerY + dp(4).toFloat(), dp(4).toFloat(), dp(4).toFloat(), thumbPaint)
             }
 
             override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
