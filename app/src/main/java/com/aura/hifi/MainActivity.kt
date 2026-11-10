@@ -675,7 +675,7 @@ class MainActivity : Activity() {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
-        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value)
+        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value)
         val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; else -> 54 }
         val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
         landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
@@ -684,10 +684,10 @@ class MainActivity : Activity() {
         sideVuRight?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuRight?.layoutParams = params }
     }
     private fun setVuBrightness(value: Int) {
-        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value)
+        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
-        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value)
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
     }
 
     private fun buildUi() {
