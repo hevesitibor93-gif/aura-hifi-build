@@ -2605,7 +2605,7 @@ class MainActivity : Activity() {
         }
 
         val songs = librarySongs.filter { it.folder == path }
-        val folderScope = "folder:${path}"
+        val folderScope = "folder_songs"
         addListOptionsHeader("DALOK A MAPPÁBAN • ${songs.size}", folderScope, { renderFolderBrowser(path, isRoot) })
         renderSongRows(songs, folderScope)
         if (children.isEmpty() && songs.isEmpty()) libraryContainer.addView(label("Ebben a mappában nincs beolvasott zene.", 12f, Color.rgb(190,194,215)))
