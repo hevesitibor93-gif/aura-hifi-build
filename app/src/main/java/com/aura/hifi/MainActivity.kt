@@ -843,6 +843,9 @@ class MainActivity : Activity() {
                     intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
+            val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
+            val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; else -> 54 }
+            val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
             val leftPanel = makeSidePanel(false)
             val rightPanel = makeSidePanel(true)
             val headUnit = LinearLayout(this).apply {
@@ -867,7 +870,7 @@ class MainActivity : Activity() {
             sideVuLeft = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuLeft?.isClickable = true
             sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
-            leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
+            leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
             leftPanel.addView(neonRoundButton("−", 42, false) { player?.volume = 0.65f },
@@ -877,15 +880,15 @@ class MainActivity : Activity() {
             sideVuRight = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuRight?.isClickable = true
             sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
-            rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(82)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
+            rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
             rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
             rightPanel.addView(neonRoundButton("＋", 42, false) { player?.volume = 1f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
-            playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(54), -1))
+            playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
             playerPage.addView(headUnit, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(7), 0, dp(7), 0) })
-            playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(54), -1))
+            playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
             artFrame.visibility = View.GONE
             artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(174)).apply { setMargins(dp(4), dp(2), dp(4), dp(3)) }
             artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
