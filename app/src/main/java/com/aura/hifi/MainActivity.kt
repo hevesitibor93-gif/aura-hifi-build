@@ -1925,6 +1925,10 @@ class MainActivity : Activity() {
             vuStudioHeader.text = (if (expand) "▾" else "▸") + "  VU STUDIO  •  EGYEDI MÉRETEK"
         }
         vuStudioHeader.text = (if (vuStudioInitiallyExpanded) "▾" else "▸") + "  VU STUDIO  •  EGYEDI MÉRETEK"
+        vuAppearanceSettingsPage.removeViewAt(vuAppearanceSettingsPage.childCount - 1)
+        vuAppearanceSettingsPage.removeViewAt(vuAppearanceSettingsPage.childCount - 1)
+        vuStudioContent.addView(label("ÉLŐ VU ELŐNÉZET  •  AZONNALI VÁLTOZÁS", 10f, gold).apply { setPadding(dp(3), dp(2), 0, dp(4)) })
+        stylePickerPreviewVu?.let { vuStudioContent.addView(it, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(6) }) }
         vuAppearanceSettingsPage.addView(vuStudioContent, LinearLayout.LayoutParams(-1, -2))
         fun customVuSlider(title: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int): SeekBar {
             val card = LinearLayout(this).apply {
