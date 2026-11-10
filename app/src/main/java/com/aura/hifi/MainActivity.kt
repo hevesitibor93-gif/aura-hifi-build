@@ -2879,6 +2879,8 @@ class MainActivity : Activity() {
             else -> { song -> song.folder.ifBlank { "Ismeretlen mappa" } }
         }
         val groups = librarySongs.groupBy(key).toSortedMap(String.CASE_INSENSITIVE_ORDER)
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val groupStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
         libraryContainer.addView(label("‹  Vissza az összes dalhoz", 13f, Color.rgb(220, 195, 255)).apply {
             setPadding(dp(8), dp(12), dp(8), dp(14))
             setOnClickListener { showLibraryHome() }
@@ -2887,7 +2889,7 @@ class MainActivity : Activity() {
         groups.entries.take(groupVisibleLimit).forEach { entry ->
             val name = entry.key
             val songs = entry.value
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(13), dp(9), dp(13)); isClickable = true; background = rounded(Color.argb(35,255,255,255), 10) }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(if (landscape) 7 else 13), dp(9), dp(if (landscape) 7 else 13)); isClickable = true; background = rounded(Color.argb(35,255,255,255), 10) }
             row.addView(label("♫", 19f, Color.rgb(194,151,255)), LinearLayout.LayoutParams(dp(34), -2))
             row.addView(label(name, 13f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(label("${songs.size} dal  ›", 10f, Color.rgb(190,195,220)))
@@ -2895,7 +2897,12 @@ class MainActivity : Activity() {
                 activeLibraryRenderer = { showLibraryGroupSongs(type, name) }
                 showLibraryGroupSongs(type, name)
             }
-            libraryContainer.addView(row)
+            if (landscape) groupStrip?.addView(row, LinearLayout.LayoutParams(dp(230), dp(66)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+            else libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+        }
+        if (landscape && groupStrip != null && groupStrip.childCount > 0) {
+            val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(groupStrip, ViewGroup.LayoutParams(-2, -1)) }
+            libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(74)))
         }
         if (groups.size > groupVisibleLimit) {
             val remaining = groups.size - groupVisibleLimit
@@ -2921,6 +2928,8 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(12), dp(8), dp(12))
             setOnClickListener { showLibraryGroups(type) }
         })
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val songStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
         songs.forEachIndexed { index, song ->
             val row = label("♫  ${song.title}  —  ${song.artist}", 12f, Color.WHITE).apply {
                 setPadding(dp(8), dp(12), dp(8), dp(12))
@@ -2933,7 +2942,12 @@ class MainActivity : Activity() {
                 }
             }
             markLibrarySongRow(row, song.uri)
-            libraryContainer.addView(row)
+            if (landscape) songStrip?.addView(row, LinearLayout.LayoutParams(dp(235), dp(60)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+            else libraryContainer.addView(row)
+        }
+        if (landscape && songStrip != null && songStrip.childCount > 0) {
+            val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(songStrip, ViewGroup.LayoutParams(-2, -1)) }
+            libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(68)))
         }
     }
 
