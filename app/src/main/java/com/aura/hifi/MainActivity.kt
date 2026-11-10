@@ -78,6 +78,8 @@ class MainActivity : Activity() {
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
+    private var landscapeVuLeftPanel: LinearLayout? = null
+    private var landscapeVuRightPanel: LinearLayout? = null
     private var centerAurixVu: VuView? = null
     private var settingsPreviewVu: VuView? = null
     private lateinit var artworkView: ImageView
@@ -674,6 +676,12 @@ class MainActivity : Activity() {
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value)
+        val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; else -> 54 }
+        val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
+        landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
+        landscapeVuRightPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuRightPanel?.layoutParams = params }
+        sideVuLeft?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuLeft?.layoutParams = params }
+        sideVuRight?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuRight?.layoutParams = params }
     }
     private fun setVuBrightness(value: Int) {
         vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value)
@@ -848,6 +856,8 @@ class MainActivity : Activity() {
             val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
             val leftPanel = makeSidePanel(false)
             val rightPanel = makeSidePanel(true)
+            landscapeVuLeftPanel = leftPanel
+            landscapeVuRightPanel = rightPanel
             val headUnit = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -950,6 +960,8 @@ class MainActivity : Activity() {
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
+            landscapeVuLeftPanel = null
+            landscapeVuRightPanel = null
             original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
