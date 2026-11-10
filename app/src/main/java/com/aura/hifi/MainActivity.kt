@@ -2200,37 +2200,71 @@ class MainActivity : Activity() {
         libraryContainer.addView(header)
     }
 
+    private fun decodeLibraryArtwork(bytes: ByteArray, target: Int): Bitmap? {
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            var sample = 1
+            while (bounds.outWidth / (sample * 2) >= target &&
+                bounds.outHeight / (sample * 2) >= target) sample *= 2
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size,
+                BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                })
+        } catch (_: Exception) { null }
+    }
+
     private fun libraryArtworkView(song: LibrarySong, sizeDp: Int): ImageView {
         val image = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             background = rounded(Color.rgb(31, 35, 44), 9)
             clipToOutline = true
-            setImageResource(android.R.drawable.ic_media_play)
+            setImageResource(android.R.drawable.ic_menu_gallery)
             imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(210, 170, 91))
             contentDescription = "Albumborító: ${song.album}"
             tag = song.uri.toString()
         }
-        if (song.albumId < 0L) return image
-        artworkCache.get(song.albumId)?.let {
-            image.setImageBitmap(it)
-            return image
+        if (song.albumId > 0L) {
+            artworkCache.get(song.albumId)?.let {
+                image.setImageBitmap(it)
+                return image
+            }
         }
         artworkExecutor.execute {
-            val bitmap = try {
-                val artUri = Uri.parse("content://media/external/audio/albumart/${song.albumId}")
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                contentResolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-                val target = (dp(sizeDp) * 2).coerceAtLeast(96)
-                var sample = 1
-                while (bounds.outWidth > 0 && bounds.outHeight > 0 &&
-                    bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) sample *= 2
-                val options = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.RGB_565 }
-                contentResolver.openInputStream(artUri)?.use { BitmapFactory.decodeStream(it, null, options) }
-            } catch (_: Exception) { null }
+            val target = (dp(sizeDp) * 2).coerceAtLeast(96)
+            var bitmap: Bitmap? = null
+
+            // Elsőként az Android MediaStore album-borítóját próbáljuk megnyitni.
+            if (song.albumId > 0L) {
+                try {
+                    val artUri = Uri.parse("content://media/external/audio/albumart/${song.albumId}")
+                    val bytes = contentResolver.openInputStream(artUri)?.use { it.readBytes() }
+                    if (bytes != null) bitmap = decodeLibraryArtwork(bytes, target)
+                } catch (_: Exception) { }
+            }
+
+            // Sok telefonon a MediaStore album-borító URI-ja üres. Ilyenkor
+            // közvetlenül a zenefájl beágyazott képét olvassuk ki.
+            if (bitmap == null) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(this, song.uri)
+                    val embedded = retriever.embeddedPicture
+                    if (embedded != null) bitmap = decodeLibraryArtwork(embedded, target)
+                } catch (_: Exception) {
+                } finally {
+                    try { retriever.release() } catch (_: Exception) { }
+                }
+            }
+
             if (bitmap != null) {
-                artworkCache.put(song.albumId, bitmap)
+                if (song.albumId > 0L) artworkCache.put(song.albumId, bitmap)
                 runOnUiThread {
-                    if (image.tag == song.uri.toString()) image.setImageBitmap(bitmap)
+                    if (!isFinishing && !isDestroyed && image.tag == song.uri.toString()) {
+                        image.setImageBitmap(bitmap)
+                    }
                 }
             }
         }
