@@ -695,6 +695,7 @@ class MainActivity : Activity() {
         landscapeVuRightPanel?.layoutParams?.let { it.width = dp((baseWidth * factor).toInt()); landscapeVuRightPanel?.layoutParams = it }
         sideVuLeft?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuLeft?.layoutParams = it }
         sideVuRight?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuRight?.layoutParams = it }
+        if (::vu.isInitialized) vu.layoutParams?.let { it.height = dp((82 * factor).toInt()); vu.layoutParams = it }
         stylePickerPreviewVu?.layoutParams?.let { it.height = dp((76 * factor).toInt()); stylePickerPreviewVu?.layoutParams = it }
         settingsPreviewVu?.layoutParams?.let { it.height = dp((74 * factor).toInt()); settingsPreviewVu?.layoutParams = it }
     }
