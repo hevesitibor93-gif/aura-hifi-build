@@ -691,6 +691,9 @@ class MainActivity : Activity() {
         landscapeVuRightPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuRightPanel?.layoutParams = params }
         sideVuLeft?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuLeft?.layoutParams = params }
         sideVuRight?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuRight?.layoutParams = params }
+        val portraitHeight = if (value == "circular") 66 else 48
+        portraitLeftVu?.layoutParams?.let { it.height = dp(portraitHeight); portraitLeftVu?.layoutParams = it }
+        portraitRightVu?.layoutParams?.let { it.height = dp(portraitHeight); portraitRightVu?.layoutParams = it }
     }
     private fun setVuOverallScale(value: Int) {
         vuOverallScalePercent = value.coerceIn(70, 130)
@@ -702,6 +705,9 @@ class MainActivity : Activity() {
         landscapeVuRightPanel?.layoutParams?.let { it.width = dp((baseWidth * factor).toInt()); landscapeVuRightPanel?.layoutParams = it }
         sideVuLeft?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuLeft?.layoutParams = it }
         sideVuRight?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuRight?.layoutParams = it }
+        val portraitHeight = ((if (style == "circular") 66 else 48) * factor).toInt()
+        portraitLeftVu?.layoutParams?.let { it.height = dp(portraitHeight); portraitLeftVu?.layoutParams = it }
+        portraitRightVu?.layoutParams?.let { it.height = dp(portraitHeight); portraitRightVu?.layoutParams = it }
         if (::vu.isInitialized) vu.layoutParams?.let { it.height = dp((82 * factor).toInt()); vu.layoutParams = it }
         stylePickerPreviewVu?.layoutParams?.let { it.height = dp((76 * factor).toInt()); stylePickerPreviewVu?.layoutParams = it }
         settingsPreviewVu?.layoutParams?.let { it.height = dp((74 * factor).toInt()); settingsPreviewVu?.layoutParams = it }
