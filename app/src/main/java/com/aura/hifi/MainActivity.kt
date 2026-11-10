@@ -1514,7 +1514,7 @@ class MainActivity : Activity() {
                 setPadding(dp(14), dp(12), dp(12), dp(12))
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { showSettingsCategory(page) }
+                setOnClickListener { performAuraHaptic(this); showSettingsCategory(page) }
             }
             item.addView(label(title, 14f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD })
             item.addView(label(subtitle, 10f, Color.rgb(155, 163, 177)).apply { setPadding(0, dp(3), 0, 0) })
@@ -1559,6 +1559,19 @@ class MainActivity : Activity() {
         }
         bluetoothAutoPlayRow.addView(bluetoothAutoPlaySwitch)
         playbackSettingsPage.addView(bluetoothAutoPlayRow)
+
+        playbackSettingsPage.addView(sectionTitle("KEZELÉS ÉS VISSZAJELZÉS"))
+        val hapticRow = settingRow("HAPTIKUS VISSZAJELZÉS", "Finom rezgés az AURA gombjainak megnyomásakor")
+        val hapticSwitch = Switch(this).apply {
+            text = ""
+            isChecked = playbackPrefs.getBoolean("haptic_feedback", true)
+            setOnCheckedChangeListener { _, checked ->
+                performAuraHaptic(this)
+                playbackPrefs.edit().putBoolean("haptic_feedback", checked).apply()
+            }
+        }
+        hapticRow.addView(hapticSwitch)
+        playbackSettingsPage.addView(hapticRow)
 
         displaySettingsPage.addView(sectionTitle("KIJELZŐ ÉS TÁJOLÁS"))
         val rotationRow = settingRow("KÉPERNYŐFORGATÁS", "Álló / fekvő nézet")
@@ -1905,6 +1918,11 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun performAuraHaptic(view: View) {
+        val enabled = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("haptic_feedback", true)
+        if (enabled) view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+    }
+
     private fun neonRoundButton(symbol: String, size: Int, primary: Boolean, click: () -> Unit) = Button(this).apply {
         text = symbol
         textSize = if (primary) 23f else 19f
@@ -1922,7 +1940,7 @@ class MainActivity : Activity() {
         }
         elevation = dp(7).toFloat()
         stateListAnimator = null
-        setOnClickListener { click() }
+        setOnClickListener { performAuraHaptic(this); click() }
     }
 
     private fun sectionTitle(s: String) = label(s, 11f, gold).apply { typeface = Typeface.DEFAULT_BOLD; setPadding(dp(2), dp(20), 0, dp(9)) }
@@ -1945,7 +1963,7 @@ class MainActivity : Activity() {
         }
         elevation = dp(3).toFloat()
         stateListAnimator = null
-        setOnClickListener { click() }
+        setOnClickListener { performAuraHaptic(this); click() }
     }
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
