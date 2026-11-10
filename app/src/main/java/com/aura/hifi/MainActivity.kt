@@ -676,8 +676,8 @@ class MainActivity : Activity() {
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value)
-        val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; else -> 54 }
-        val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
+        val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; else -> 54 }
+        val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; else -> 82 }
         landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
         landscapeVuRightPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuRightPanel?.layoutParams = params }
         sideVuLeft?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuLeft?.layoutParams = params }
@@ -1803,12 +1803,11 @@ class MainActivity : Activity() {
         val colorChoices = listOf("GOLD" to 0, "ICE" to 1, "WHITE" to 2, "RED" to 3, "MINT" to 4)
         val vuColorButtons = mutableListOf<Button>()
         fun refreshVuColorButtons(selected: Int) {
-            vuColorChoices.forEachIndexed { index, pair ->
+            colorChoices.forEachIndexed { index, pair ->
                 vuColorButtons[index].background = rounded(if (pair.second == selected) Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), 9)
                 vuColorButtons[index].setTextColor(if (pair.second == selected) Color.rgb(255, 207, 112) else Color.WHITE)
             }
         }
-        val vuColorChoices = colorChoices
         colorChoices.forEachIndexed { index, pair ->
             val colorButton = button(pair.first, Color.rgb(35, 41, 53), Color.WHITE) {
                 vuPrefs.edit().putInt("vu_custom_color", pair.second).apply()
@@ -2091,6 +2090,7 @@ class MainActivity : Activity() {
         val savedVuStyle = vuPrefs.getString("vu_style", "car") ?: "car"
         setVuStyle(savedVuStyle)
         refreshVuStyleButtons(savedVuStyle)
+        applyVuCustomSettings()
         setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(if (goldStudioTheme) Color.rgb(19, 17, 13) else Color.rgb(16, 18, 22), 16); elevation = dp(7).toFloat() }
