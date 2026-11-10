@@ -3107,7 +3107,7 @@ class MainActivity : Activity() {
                     android.view.MotionEvent.ACTION_DOWN -> {
                         draggingHandle = true
                         touchOffset = if (event.x in thumbLeft..(thumbLeft + thumbWidth)) event.x - thumbLeft else thumbWidth / 2f
-                        updateScroll(event.x, thumbWidth, maxScroll)
+                        updateScroll(event.x - touchOffset + thumbWidth / 2f, thumbWidth, maxScroll)
                         parent?.requestDisallowInterceptTouchEvent(true)
                         return true
                     }
