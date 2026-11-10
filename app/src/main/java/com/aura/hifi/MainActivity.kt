@@ -1515,6 +1515,7 @@ class MainActivity : Activity() {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { performAuraHaptic(this); showSettingsCategory(page) }
+                applyPremiumPressEffect(this)
             }
             item.addView(label(title, 14f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD })
             item.addView(label(subtitle, 10f, Color.rgb(155, 163, 177)).apply { setPadding(0, dp(3), 0, 0) })
@@ -1923,6 +1924,26 @@ class MainActivity : Activity() {
         if (enabled) view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
     }
 
+    private fun applyPremiumPressEffect(view: View) {
+        val restingElevation = view.elevation
+        view.setOnTouchListener { touched, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    touched.animate().cancel()
+                    touched.animate().scaleX(0.965f).scaleY(0.965f)
+                        .translationZ(dp(3).toFloat()).setDuration(85L).start()
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    touched.animate().cancel()
+                    touched.animate().scaleX(1f).scaleY(1f).translationZ(0f)
+                        .setDuration(220L)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(1.25f)).start()
+                }
+            }
+            false
+        }
+    }
+
     private fun neonRoundButton(symbol: String, size: Int, primary: Boolean, click: () -> Unit) = Button(this).apply {
         text = symbol
         textSize = if (primary) 23f else 19f
@@ -1940,6 +1961,7 @@ class MainActivity : Activity() {
         }
         elevation = dp(7).toFloat()
         stateListAnimator = null
+        applyPremiumPressEffect(this)
         setOnClickListener { performAuraHaptic(this); click() }
     }
 
@@ -1963,6 +1985,7 @@ class MainActivity : Activity() {
         }
         elevation = dp(3).toFloat()
         stateListAnimator = null
+        applyPremiumPressEffect(this)
         setOnClickListener { performAuraHaptic(this); click() }
     }
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
