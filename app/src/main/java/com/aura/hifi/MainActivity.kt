@@ -784,7 +784,7 @@ class MainActivity : Activity() {
                 marginStart = dp(4)
             })
         }
-        controlStack.addView(abQuickRow, LinearLayout.LayoutParams(-1, -2))
+        // A/B quick switcher stays available in Sound Studio, not on the main player screen.
         body.addView(controlStack)
         // A lejátszási sor listája nem jelenik meg külön a főképernyőn.
         // A sor a háttérben megmarad a következő/előző szám funkcióhoz;
