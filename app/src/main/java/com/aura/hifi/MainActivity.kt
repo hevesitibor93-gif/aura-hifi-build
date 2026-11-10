@@ -684,7 +684,7 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        val goldStudioTheme = themePrefs.getString("aura_theme", "original") == "gold_studio"
+        val goldStudioTheme = themePrefs.getString("aura_theme", "gold_studio") == "gold_studio"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
