@@ -78,7 +78,7 @@ class MainActivity : Activity() {
     private lateinit var vu: VuView
     private var sideVuLeft: VuView? = null
     private var sideVuRight: VuView? = null
-    private var centerAurixVu: AurixVuView? = null
+    private var centerAurixVu: VuView? = null
     private var settingsPreviewVu: VuView? = null
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
@@ -673,13 +673,13 @@ class MainActivity : Activity() {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
-        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value)
+        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value)
     }
     private fun setVuBrightness(value: Int) {
         vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
-        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value)
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value)
     }
 
     private fun buildUi() {
@@ -914,9 +914,11 @@ class MainActivity : Activity() {
             val headerView = headUnit.getChildAt(0)
             headUnit.removeAllViews()
             headUnit.addView(headerView, LinearLayout.LayoutParams(-1, dp(25)))
-            centerAurixVu = AurixVuView().apply {
+            centerAurixVu = VuView(false).apply {
+                setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car")
                 setActive(player?.isPlaying == true)
                 setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80))
+                setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true))
                 isClickable = true
                 setOnClickListener { openVuSettingsPage?.invoke() }
             }
