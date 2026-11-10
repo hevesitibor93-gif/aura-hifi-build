@@ -2794,6 +2794,8 @@ class MainActivity : Activity() {
         }
 
         val names = playlistNames()
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val playlistStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
         names.sorted().forEach { name ->
             val uris = playlistUris(name)
             val songCount = uris.count { librarySongByUri.containsKey(it) }
@@ -2812,7 +2814,12 @@ class MainActivity : Activity() {
                 showPlaylistDetail(name)
             }, LinearLayout.LayoutParams(dp(88), dp(38)))
             row.setOnClickListener { showPlaylistDetail(name) }
-            libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) })
+            if (landscape) playlistStrip?.addView(row, LinearLayout.LayoutParams(dp(250), dp(68)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+            else libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) })
+        }
+        if (landscape && playlistStrip != null && playlistStrip.childCount > 0) {
+            val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(playlistStrip, ViewGroup.LayoutParams(-2, -1)) }
+            libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(76)))
         }
 
         libraryContainer.addView(button("＋ AKTUÁLIS SOR MENTÉSE LISTAKÉNT", Color.rgb(91, 67, 157), Color.WHITE) {
