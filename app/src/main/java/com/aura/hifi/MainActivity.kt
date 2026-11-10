@@ -690,6 +690,22 @@ class MainActivity : Activity() {
         vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
     }
 
+    private fun applyVuCustomSettings() {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val thickness = prefs.getInt("vu_custom_thickness", 6).coerceIn(2, 14)
+        val spacing = prefs.getInt("vu_custom_spacing", 18).coerceIn(8, 34)
+        val segments = prefs.getInt("vu_custom_segments", 32).coerceIn(8, 64)
+        val gap = prefs.getInt("vu_custom_segment_gap", 1).coerceIn(0, 5)
+        val color = prefs.getInt("vu_custom_color", 0).coerceIn(0, 4)
+        val views = mutableListOf<VuView>()
+        if (::vu.isInitialized) views.add(vu)
+        sideVuLeft?.let { views.add(it) }
+        sideVuRight?.let { views.add(it) }
+        centerAurixVu?.let { views.add(it) }
+        settingsPreviewVu?.let { views.add(it) }
+        views.forEach { it.setCustomAppearance(thickness, spacing, segments, gap, color) }
+    }
+
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val goldStudioTheme = themePrefs.getString("aura_theme", "gold_studio") == "gold_studio"
@@ -4074,7 +4090,21 @@ class MainActivity : Activity() {
             right = r.coerceIn(0f, 1f)
             invalidate()
         }
-        fun setStyle(value: String) { style = if (value in listOf("simple", "multiband", "spectrum")) value else "car"; invalidate() }
+        private var customThicknessDp = 6
+        private var customSpacingDp = 18
+        private var customSegments = 32
+        private var customSegmentGapDp = 1
+        private var customColorPreset = 0
+
+        fun setStyle(value: String) { style = if (value in listOf("simple", "multiband", "spectrum", "line", "custom")) value else "car"; invalidate() }
+        fun setCustomAppearance(thickness: Int, spacing: Int, segments: Int, segmentGap: Int, colorPreset: Int) {
+            customThicknessDp = thickness.coerceIn(2, 14)
+            customSpacingDp = spacing.coerceIn(8, 34)
+            customSegments = segments.coerceIn(8, 64)
+            customSegmentGapDp = segmentGap.coerceIn(0, 5)
+            customColorPreset = colorPreset.coerceIn(0, 4)
+            invalidate()
+        }
         fun setBrightness(value: Int) { brightness = value.coerceIn(20, 100); invalidate() }
         fun setAnimationEnabled(value: Boolean) { animationEnabled = value; if (!value) { left = 0f; right = 0f }; invalidate() }
 
@@ -4084,6 +4114,7 @@ class MainActivity : Activity() {
             val w = width.toFloat()
             val h = height.toFloat()
             if (verticalSingle) { drawVerticalSingle(c, w, h); return }
+            if (style == "line" || style == "custom") { drawCustomHorizontal(c, w, h, style == "line"); return }
             if (style == "multiband" || style == "spectrum") { drawMultiBand(c, w, h); return }
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
@@ -4142,6 +4173,7 @@ class MainActivity : Activity() {
         }
 
         private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
+            if (style == "line" || style == "custom") { drawCustomVertical(c, w, h, style == "line"); return }
             if (style == "multiband" || style == "spectrum") { drawVerticalMultiBand(c, w, h); return }
             val simpleStyle = style == "simple"
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w-dp(2).toFloat(), h-dp(2).toFloat())
