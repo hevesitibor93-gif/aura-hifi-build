@@ -4206,6 +4206,112 @@ class MainActivity : Activity() {
             }
         }
 
+        private fun customPaletteColor(position: Float): Int {
+            val t = position.coerceIn(0f, 1f)
+            val colors = when (customColorPreset) {
+                1 -> intArrayOf(Color.rgb(78, 218, 235), Color.rgb(83, 145, 255), Color.rgb(195, 112, 255))
+                2 -> intArrayOf(Color.rgb(235, 241, 246), Color.rgb(255, 255, 255), Color.rgb(255, 190, 155))
+                3 -> intArrayOf(Color.rgb(255, 105, 70), Color.rgb(255, 65, 45), Color.rgb(255, 205, 80))
+                4 -> intArrayOf(Color.rgb(80, 220, 165), Color.rgb(135, 235, 185), Color.rgb(235, 235, 125))
+                else -> intArrayOf(Color.rgb(255, 195, 75), Color.rgb(255, 220, 135), Color.rgb(255, 75, 48))
+            }
+            return if (t < 0.72f) blendVuColor(colors[0], colors[1], t / 0.72f)
+            else blendVuColor(colors[1], colors[2], (t - 0.72f) / 0.28f)
+        }
+
+        private fun drawCustomHorizontal(c: Canvas, w: Float, h: Float, continuous: Boolean) {
+            val frame = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(7, 10, 14)
+            c.drawRoundRect(frame, dp(9).toFloat(), dp(9).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 190, 145, 75)
+            c.drawRoundRect(frame, dp(9).toFloat(), dp(9).toFloat(), p)
+            p.style = Paint.Style.FILL
+            val inset = dp(12).toFloat()
+            val labelWidth = dp(13).toFloat()
+            val x = inset + labelWidth
+            val barWidth = (w - x - inset).coerceAtLeast(dp(8).toFloat())
+            val barHeight = dp(customThicknessDp).toFloat().coerceAtMost(h * 0.28f)
+            val spacing = dp(customSpacingDp).toFloat()
+            val center = h * 0.5f
+            val yPositions = floatArrayOf(center - spacing * 0.5f - barHeight * 0.5f, center + spacing * 0.5f - barHeight * 0.5f)
+            val levels = floatArrayOf(left, right)
+            for (row in 0..1) {
+                val y = yPositions[row].coerceIn(dp(3).toFloat(), h - barHeight - dp(3))
+                val track = RectF(x, y, x + barWidth, y + barHeight)
+                p.color = Color.rgb(39, 41, 44)
+                c.drawRoundRect(track, barHeight * 0.5f, barHeight * 0.5f, p)
+                val amount = (barWidth * levels[row]).coerceIn(0f, barWidth)
+                if (amount > 0.5f) {
+                    val activeRect = RectF(x, y, x + amount, y + barHeight)
+                    if (continuous) {
+                        p.shader = android.graphics.LinearGradient(x, y, x + max(amount, 1f), y,
+                            customPaletteColor(0f), customPaletteColor((amount / barWidth).coerceIn(0f, 1f)), android.graphics.Shader.TileMode.CLAMP)
+                        c.drawRoundRect(activeRect, barHeight * 0.5f, barHeight * 0.5f, p)
+                        p.shader = null
+                    } else {
+                        val count = customSegments
+                        val gap = dp(customSegmentGapDp).toFloat()
+                        val segmentWidth = ((barWidth - gap * (count - 1)) / count).coerceAtLeast(0.5f)
+                        val lit = (levels[row] * count).toInt().coerceIn(0, count)
+                        for (i in 0 until count) {
+                            val sx = x + i * (segmentWidth + gap)
+                            val color = customPaletteColor(i.toFloat() / (count - 1).coerceAtLeast(1))
+                            p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(39, 41, 44)
+                            c.drawRoundRect(RectF(sx, y, sx + segmentWidth, y + barHeight), dp(2).toFloat().coerceAtMost(barHeight * 0.5f), dp(2).toFloat().coerceAtMost(barHeight * 0.5f), p)
+                        }
+                    }
+                }
+                p.shader = null
+                p.color = Color.rgb(190, 160, 105)
+                p.textSize = dp(9).toFloat()
+                p.typeface = Typeface.DEFAULT_BOLD
+                c.drawText(if (row == 0) "L" else "R", inset, y + barHeight * 0.82f, p)
+            }
+        }
+
+        private fun drawCustomVertical(c: Canvas, w: Float, h: Float, continuous: Boolean) {
+            val frame = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
+            p.style = Paint.Style.FILL
+            p.color = Color.rgb(7, 10, 14)
+            c.drawRoundRect(frame, dp(7).toFloat(), dp(7).toFloat(), p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1).toFloat()
+            p.color = Color.argb(brightness * 2, 190, 145, 75)
+            c.drawRoundRect(frame, dp(7).toFloat(), dp(7).toFloat(), p)
+            p.style = Paint.Style.FILL
+            val barWidth = dp(customThicknessDp).toFloat().coerceAtMost(w * 0.55f)
+            val x = (w - barWidth) * 0.5f
+            val top = dp(5).toFloat()
+            val bottom = h - dp(5).toFloat()
+            val totalHeight = bottom - top
+            val level = ((left + right) * 0.5f).coerceIn(0f, 1f)
+            p.color = Color.rgb(39, 41, 44)
+            c.drawRoundRect(RectF(x, top, x + barWidth, bottom), barWidth * 0.5f, barWidth * 0.5f, p)
+            if (continuous) {
+                val activeHeight = totalHeight * level
+                if (activeHeight > 0.5f) {
+                    p.shader = android.graphics.LinearGradient(0f, bottom, 0f, top, customPaletteColor(0f), customPaletteColor(1f), android.graphics.Shader.TileMode.CLAMP)
+                    c.drawRoundRect(RectF(x, bottom - activeHeight, x + barWidth, bottom), barWidth * 0.5f, barWidth * 0.5f, p)
+                    p.shader = null
+                }
+            } else {
+                val count = customSegments.coerceAtMost(24)
+                val gap = dp(customSegmentGapDp).toFloat()
+                val segmentHeight = ((totalHeight - gap * (count - 1)) / count).coerceAtLeast(0.5f)
+                val lit = (level * count).toInt().coerceIn(0, count)
+                for (i in 0 until count) {
+                    val y = bottom - (i + 1) * segmentHeight - i * gap
+                    val color = customPaletteColor(i.toFloat() / (count - 1).coerceAtLeast(1))
+                    p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(39, 41, 44)
+                    c.drawRoundRect(RectF(x, y, x + barWidth, y + segmentHeight), barWidth * 0.5f, barWidth * 0.5f, p)
+                }
+            }
+            p.shader = null
+        }
+
         private fun drawMultiBand(c: Canvas, w: Float, h: Float) {
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
