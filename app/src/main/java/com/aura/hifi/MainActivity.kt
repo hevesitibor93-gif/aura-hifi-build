@@ -4580,7 +4580,7 @@ class MainActivity : Activity() {
                 val color = vuSegmentColor(i.toFloat() / (segments - 1).coerceAtLeast(1))
                 p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(47, 51, 48)
                 val rect = RectF(x - tangential * 0.5f, y - radial * 0.5f, x + tangential * 0.5f, y + radial * 0.5f)
-                c.drawRoundRect(rect, dp(1.5f).toFloat(), dp(1.5f).toFloat(), p)
+                c.drawRoundRect(rect, dp(2).toFloat(), dp(2).toFloat(), p)
                 c.restore()
             }
         }
@@ -4661,7 +4661,7 @@ class MainActivity : Activity() {
                 p.style = Paint.Style.FILL
                 p.color = if (i < lit) Color.argb(brightness * 255 / 100, Color.red(color), Color.green(color), Color.blue(color)) else Color.rgb(43, 37, 28)
                 val sx = x + i * (sw + gap)
-                c.drawRoundRect(RectF(sx, y, sx + sw, y + height), dp(1.5f).toFloat(), dp(1.5f).toFloat(), p)
+                c.drawRoundRect(RectF(sx, y, sx + sw, y + height), dp(2).toFloat(), dp(2).toFloat(), p)
             }
         }
 
