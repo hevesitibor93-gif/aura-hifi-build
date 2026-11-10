@@ -1937,7 +1937,48 @@ class MainActivity : Activity() {
         }
         settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
-        soundPage.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+        val soundBackButton = button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }
+        if (landscape && soundPage.childCount == 13) {
+            val soundItems = (0 until soundPage.childCount).map { soundPage.getChildAt(it) }
+            soundPage.removeAllViews()
+            soundPage.orientation = LinearLayout.HORIZONTAL
+            val controlDeck = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(4), dp(3), dp(6), dp(3))
+                background = rounded(Color.rgb(15, 18, 23), 14)
+            }
+            val engineDeck = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(6), dp(3), dp(4), dp(3))
+            }
+            controlDeck.addView(soundBackButton, LinearLayout.LayoutParams(-1, dp(32)).apply { bottomMargin = dp(4) })
+            controlDeck.addView(soundItems[0], LinearLayout.LayoutParams(-1, dp(14)))
+            controlDeck.addView(soundItems[1], LinearLayout.LayoutParams(-1, dp(22)))
+            controlDeck.addView(soundItems[2], LinearLayout.LayoutParams(-1, dp(25)))
+            controlDeck.addView(soundItems[3], LinearLayout.LayoutParams(-1, dp(14)))
+            controlDeck.addView(soundItems[4], LinearLayout.LayoutParams(-1, dp(26)))
+            val outputRowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val outputRowTwo = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val outputButtons = listOf(soundItems[5], soundItems[6], soundItems[7], soundItems[8])
+            (outputButtons[0] as Button).apply { text = "♫  KIMENET"; textSize = 9f; contentDescription = "Kimeneti eszköz / profil kiválasztása" }
+            (outputButtons[1] as Button).apply { text = "💾  ESZKÖZ MENTÉSE"; textSize = 9f; contentDescription = "Aktív eszközprofil mentése" }
+            (outputButtons[2] as Button).apply { text = "💾  ALAP MENTÉSE"; textSize = 9f; contentDescription = "Alapbeállítás mentése" }
+            (outputButtons[3] as Button).apply { text = "↺  ALAPÉRTÉK"; textSize = 9f; contentDescription = "Aktív eszköz visszaállítása az alapbeállításokra" }
+            outputRowOne.addView(outputButtons[0], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
+            outputRowOne.addView(outputButtons[1], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
+            outputRowTwo.addView(outputButtons[2], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
+            outputRowTwo.addView(outputButtons[3], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
+            controlDeck.addView(outputRowOne, LinearLayout.LayoutParams(-1, dp(38)))
+            controlDeck.addView(outputRowTwo, LinearLayout.LayoutParams(-1, dp(38)))
+            controlDeck.addView(soundItems[9], LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
+            engineDeck.addView(soundItems[10], LinearLayout.LayoutParams(-1, dp(24)))
+            engineDeck.addView(soundItems[11], LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(4) })
+            engineDeck.addView(soundItems[12], LinearLayout.LayoutParams(-1, 0, 1f))
+            soundPage.addView(controlDeck, LinearLayout.LayoutParams(0, -1, 0.43f).apply { marginEnd = dp(4) })
+            soundPage.addView(engineDeck, LinearLayout.LayoutParams(0, -1, 0.57f))
+        } else {
+            soundPage.addView(soundBackButton, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+        }
 
         var vuSettingsReturnToCategory = false
         vuSettingsMenuButton.setOnClickListener {
