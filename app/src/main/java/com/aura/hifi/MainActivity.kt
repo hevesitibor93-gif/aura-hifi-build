@@ -134,6 +134,10 @@ class MainActivity : Activity() {
     private var shuffleOriginalQueue: List<Uri>? = null
     private var shuffleButton: Button? = null
     private var repeatButton: Button? = null
+    private val abQuickButtons = mutableMapOf<String, Button>()
+    private var abQuickStatus: TextView? = null
+    private var selectAbQuickSlot: ((String) -> Unit)? = null
+    private var refreshAbQuickButtons: (() -> Unit)? = null
     private lateinit var nextTrackLabel: TextView
     private lateinit var queueContainer: LinearLayout
     private val bg = Color.rgb(9, 11, 16)
@@ -738,6 +742,28 @@ class MainActivity : Activity() {
         val controlStack = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         controlStack.addView(controls, LinearLayout.LayoutParams(-1, -2))
         controlStack.addView(transportExtras, LinearLayout.LayoutParams(-1, -2))
+        val abQuickRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(2), dp(1), dp(2), dp(2))
+        }
+        abQuickStatus = label("A/B  •  HANGZÁSVÁLTÁS", 9f, Color.rgb(255, 207, 112)).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(5), 0, dp(8), 0)
+        }
+        abQuickRow.addView(abQuickStatus, LinearLayout.LayoutParams(0, dp(34), 1f))
+        listOf("A", "B").forEach { slot ->
+            val quickButton = button(slot, Color.rgb(43, 39, 31), Color.WHITE) {
+                selectAbQuickSlot?.invoke(slot)
+            }
+            quickButton.textSize = 11f
+            abQuickButtons[slot] = quickButton
+            abQuickRow.addView(quickButton, LinearLayout.LayoutParams(dp(52), dp(34)).apply {
+                marginStart = dp(4)
+            })
+        }
+        controlStack.addView(abQuickRow, LinearLayout.LayoutParams(-1, -2))
         body.addView(controlStack)
         // A lejátszási sor listája nem jelenik meg külön a főképernyőn.
         // A sor a háttérben megmarad a következő/előző szám funkcióhoz;
@@ -1131,6 +1157,21 @@ class MainActivity : Activity() {
             val other = if (selected == "A") "B" else "A"
             abStatusLabel.text = "AKTÍV: $selected   •   A: ${if (isAbSlotSaved("A")) "mentve" else "üres"}   •   B: ${if (isAbSlotSaved("B")) "mentve" else "üres"}"
             abButtons[other]?.contentDescription = "Váltás a $other hangállapotra"
+            abQuickStatus?.text = "A/B  •  AKTÍV: $selected"
+            listOf("A", "B").forEach { quickSlot ->
+                val quickSelected = selected == quickSlot
+                abQuickButtons[quickSlot]?.apply {
+                    text = if (isAbSlotSaved(quickSlot)) "$quickSlot  ✓" else "$quickSlot  +"
+                    setTextColor(if (quickSelected) Color.BLACK else Color.WHITE)
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        if (quickSelected) intArrayOf(Color.rgb(255, 207, 112), Color.rgb(210, 151, 52))
+                        else intArrayOf(Color.rgb(43, 39, 31), Color.rgb(25, 29, 37))).apply {
+                        cornerRadius = dp(10).toFloat()
+                        setStroke(dp(1), if (quickSelected) Color.rgb(255, 222, 151) else Color.rgb(116, 87, 43))
+                    }
+                    contentDescription = "Váltás a $quickSlot hangállapotra"
+                }
+            }
         }
 
         fun selectAbSlot(slot: String) {
@@ -1141,7 +1182,10 @@ class MainActivity : Activity() {
             soundPrefs.edit().putString("sound_ab_active_${soundOutputProfile}", slot).apply()
             loadSoundAbSlot(soundPrefs, soundOutputProfile, slot)
             refreshAbButtons()
+            refreshAbQuickButtons?.invoke()
         }
+        selectAbQuickSlot = { slot -> selectAbSlot(slot) }
+        refreshAbQuickButtons = { refreshAbButtons() }
 
         listOf("A", "B").forEach { slot ->
             val selectButton = Button(this).apply {
@@ -1220,7 +1264,7 @@ class MainActivity : Activity() {
             "Az A/B mentések külön-külön tárolódnak az aktuális kimeneti eszközhöz.",
             10f, Color.rgb(145, 150, 160)
         ).apply { setPadding(dp(2), 0, dp(2), dp(6)) })
-        soundProfileRefreshers.add { refreshAbButtons() }
+        soundProfileRefreshers.add { refreshAbButtons(); refreshAbQuickButtons?.invoke() }
         refreshAbButtons()
 
         activeSoundCategory.addView(sectionTitle("BASSZUS ÉS MÉLYHANGZÁS"))
