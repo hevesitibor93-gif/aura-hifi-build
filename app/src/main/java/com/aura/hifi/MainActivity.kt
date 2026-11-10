@@ -812,8 +812,8 @@ class MainActivity : Activity() {
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val settingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val soundPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(16)) }
-        val vuSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(16)) }
+        val soundPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 5 else 10), dp(12), dp(8)) }
+        val vuSettingsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) 5 else 10), dp(12), dp(8)) }
         val pages = listOf(playerPage, songsPage, eqPage, settingsPage, vuSettingsPage, soundPage)
         val pageScrolls = pages.map { page -> ScrollView(this).apply { isFillViewport = true; addView(page) } }
         libraryScrollView = pageScrolls[1]
@@ -1137,7 +1137,7 @@ class MainActivity : Activity() {
                 item.setTextColor(if (selected) Color.rgb(255, 224, 160) else Color.rgb(220, 225, 237))
             }
         }
-        soundCategoryNames.chunked(3).forEach { group ->
+        soundCategoryNames.chunked(if (landscape) 6 else 3).forEach { group ->
             val navRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             group.forEach { (key, title) ->
                 val item = TextView(this).apply {
@@ -1145,13 +1145,13 @@ class MainActivity : Activity() {
                     textSize = 10f
                     gravity = Gravity.CENTER
                     typeface = Typeface.DEFAULT_BOLD
-                    setPadding(dp(4), dp(12), dp(4), dp(12))
+                    setPadding(dp(4), dp(if (landscape) 7 else 12), dp(4), dp(if (landscape) 7 else 12))
                     isClickable = true
                     isFocusable = true
                     setOnClickListener { showSoundCategory(key) }
                 }
                 soundCategoryButtons[key] = item
-                navRow.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                navRow.addView(item, LinearLayout.LayoutParams(0, dp(if (landscape) 34 else 42), 1f).apply {
                     if (navRow.childCount > 0) marginStart = dp(5)
                 })
             }
@@ -1531,7 +1531,7 @@ class MainActivity : Activity() {
         fun settingsBackButton(target: LinearLayout) {
             target.addView(button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) {
                 showSettingsCategory(null)
-            }, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
+            }, LinearLayout.LayoutParams(-1, dp(if (landscape) 32 else 40)).apply { bottomMargin = dp(if (landscape) 5 else 12) })
         }
         settingsPage.addView(settingsMenu)
         settingsPage.addView(playbackSettingsPage)
@@ -1544,14 +1544,14 @@ class MainActivity : Activity() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 background = rounded(Color.rgb(24, 29, 39), 14)
-                setPadding(dp(14), dp(12), dp(12), dp(12))
+                setPadding(dp(14), dp(if (landscape) 8 else 12), dp(12), dp(if (landscape) 8 else 12))
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { performAuraHaptic(this); showSettingsCategory(page) }
                 applyPremiumPressEffect(this)
             }
-            item.addView(label(title, 14f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD })
-            item.addView(label(subtitle, 10f, Color.rgb(155, 163, 177)).apply { setPadding(0, dp(3), 0, 0) })
+            item.addView(label(title, if (landscape) 12f else 14f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD })
+            item.addView(label(subtitle, if (landscape) 9f else 10f, Color.rgb(155, 163, 177)).apply { setPadding(0, dp(2), 0, 0) })
             settingsMenu.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
         }
         settingsCategoryButton("▶  LEJÁTSZÁS", "Automatikus indítás és folytatás", playbackSettingsPage)
@@ -1559,6 +1559,23 @@ class MainActivity : Activity() {
         settingsCategoryButton("◈  MEGJELENÉS", "Borító és kazetta megjelenítése", appearanceSettingsPage)
         settingsCategoryButton("▥  VU-MÉRŐ", "Stílus, fényerő, animáció és részletes beállítások", vuAppearanceSettingsPage)
         settingsCategoryButton("▣  MENTÉS ÉS VISSZAÁLLÍTÁS", "Az összes AURA-beállítás és lejátszási lista közös mentése", backupSettingsPage)
+        if (landscape) {
+            val menuHeader = settingsMenu.getChildAt(0)
+            val menuItems = (1 until settingsMenu.childCount).map { settingsMenu.getChildAt(it) }
+            settingsMenu.removeAllViews()
+            settingsMenu.addView(menuHeader)
+            val settingsGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            menuItems.chunked(2).forEach { group ->
+                val gridRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                group.forEach { item ->
+                    settingsMenu.removeView(item)
+                    gridRow.addView(item, LinearLayout.LayoutParams(0, dp(66), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                }
+                if (group.size == 1) gridRow.addView(View(this), LinearLayout.LayoutParams(0, dp(66), 1f))
+                settingsGrid.addView(gridRow, LinearLayout.LayoutParams(-1, dp(70)))
+            }
+            settingsMenu.addView(settingsGrid)
+        }
 
         settingsBackButton(playbackSettingsPage)
         settingsBackButton(displaySettingsPage)
