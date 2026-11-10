@@ -971,14 +971,121 @@ class MainActivity : Activity() {
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
         } else {
-            // Visszavaltas allo modba: a fekvo nezetben elrejtett fo VU visszaallitasa.
+            // Portrait layouts: Gold Studio receives its own equipment-inspired composition.
             vu.visibility = View.VISIBLE
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
             landscapeVuLeftPanel = null
             landscapeVuRightPanel = null
-            original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
+            if (goldStudioTheme) {
+                playerPage.orientation = LinearLayout.VERTICAL
+                playerPage.gravity = Gravity.TOP
+                playerPage.setPadding(dp(14), dp(12), dp(14), dp(14))
+                playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(7, 8, 10), Color.rgb(20, 18, 15), Color.rgb(8, 10, 14))).apply {
+                    cornerRadius = dp(24).toFloat()
+                    setStroke(dp(1), Color.rgb(105, 82, 48))
+                }
+                fun goldPanel() = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(30, 27, 22), Color.rgb(13, 16, 21))).apply {
+                        cornerRadius = dp(18).toFloat()
+                        setStroke(dp(1), Color.rgb(87, 69, 43))
+                    }
+                    setPadding(dp(10), dp(9), dp(10), dp(9))
+                }
+                val studioHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(2), dp(3), dp(10)) }
+                val studioBrand = label("AURA", 23f, Color.rgb(239, 205, 146)).apply {
+                    typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+                    letterSpacing = 0.16f
+                }
+                val studioEdition = label("  GOLD STUDIO  /  REFERENCE PLAYER", 8f, Color.rgb(166, 139, 96)).apply {
+                    typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = 0.10f
+                }
+                studioHeader.addView(studioBrand)
+                studioHeader.addView(studioEdition)
+                studioHeader.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                val status = label("●  HI-FI PLAYBACK", 8f, Color.rgb(198, 166, 112)).apply { typeface = Typeface.DEFAULT_BOLD }
+                studioHeader.addView(status)
+                playerPage.addView(studioHeader, LinearLayout.LayoutParams(-1, dp(38)))
+
+                val hero = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(39, 33, 24), Color.rgb(16, 18, 22), Color.rgb(10, 13, 17))).apply {
+                        cornerRadius = dp(20).toFloat()
+                        setStroke(dp(1), Color.rgb(127, 98, 55))
+                    }
+                    setPadding(dp(9), dp(9), dp(9), dp(9))
+                }
+                artFrame.layoutParams = LinearLayout.LayoutParams(dp(142), dp(142))
+                artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(64, 48, 27), Color.rgb(15, 17, 21))).apply {
+                    cornerRadius = dp(15).toFloat()
+                    setStroke(dp(1), Color.rgb(194, 154, 91))
+                }
+                artFrame.setPadding(dp(4), dp(4), dp(4), dp(4))
+                (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(132); height = dp(132) }
+                (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(132); height = dp(132) }
+                hero.addView(artFrame, LinearLayout.LayoutParams(dp(142), dp(142)))
+                val nowPlaying = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), 0, dp(3), 0) }
+                nowPlaying.addView(label("NOW PLAYING", 8f, Color.rgb(191, 151, 87)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.14f })
+                trackLabel.gravity = Gravity.START
+                trackLabel.textSize = 18f
+                trackLabel.setTextColor(Color.rgb(246, 226, 193))
+                trackLabel.setPadding(0, dp(6), 0, dp(3))
+                nowPlaying.addView(trackLabel)
+                metadataLabel.gravity = Gravity.START
+                metadataLabel.textSize = 11f
+                nowPlaying.addView(metadataLabel)
+                albumLabel.gravity = Gravity.START
+                albumLabel.textSize = 10f
+                nowPlaying.addView(albumLabel)
+                nowPlaying.addView(View(this), LinearLayout.LayoutParams(1, dp(8)))
+                nowPlaying.addView(label("LOSSLESS • AURA SOUND ENGINE", 8f, Color.rgb(142, 133, 116)).apply { typeface = Typeface.DEFAULT_BOLD })
+                hero.addView(nowPlaying, LinearLayout.LayoutParams(0, -1, 1f))
+                playerPage.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+
+                val meterPanel = goldPanel()
+                meterPanel.addView(label("DUAL CHANNEL  /  LIVE METER", 8f, Color.rgb(181, 146, 88)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f })
+                vu.layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(5) }
+                meterPanel.addView(vu)
+                playerPage.addView(meterPanel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+
+                val transportPanel = goldPanel()
+                transportPanel.addView(label("PLAYBACK CONTROL", 8f, Color.rgb(181, 146, 88)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f })
+                seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(4) }
+                transportPanel.addView(seekBar)
+                timeLabel.gravity = Gravity.END
+                timeLabel.textSize = 9f
+                transportPanel.addView(timeLabel)
+                controls.setPadding(0, dp(3), 0, dp(1))
+                transportPanel.addView(controls, LinearLayout.LayoutParams(-1, -2))
+                transportExtras.setPadding(0, 0, 0, 0)
+                transportPanel.addView(transportExtras, LinearLayout.LayoutParams(-1, -2))
+                playerPage.addView(transportPanel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+
+                technicalLabel.gravity = Gravity.CENTER
+                technicalLabel.textSize = 8f
+                technicalLabel.setPadding(0, dp(2), 0, dp(2))
+                playerPage.addView(technicalLabel)
+                nextTrackLabel.textSize = 9f
+                playerPage.addView(nextTrackLabel)
+                original.forEachIndexed { i, child ->
+                    when (i) {
+                        in 11..15 -> eqPage.addView(child)
+                        else -> if (i > 15) settingsPage.addView(child)
+                    }
+                }
+            } else {
+                original.forEachIndexed { i, child ->
+                    when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) }
+                }
+            }
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
