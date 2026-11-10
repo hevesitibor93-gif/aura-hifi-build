@@ -1798,6 +1798,59 @@ class MainActivity : Activity() {
         val customSegmentsSeek = customVuSlider("SZEGMENSEK SZÁMA", "vu_custom_segments", 8, 64, 32)
         val customGapSeek = customVuSlider("SZEGMENSEK KÖZTI RÉS  •  dp", "vu_custom_segment_gap", 0, 5, 1)
 
+        vuAppearanceSettingsPage.addView(label("SZÍNPALETTA", 11f, gold).apply { setPadding(dp(4), dp(10), 0, dp(4)) })
+        val vuColorRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val colorChoices = listOf("GOLD" to 0, "ICE" to 1, "WHITE" to 2, "RED" to 3, "MINT" to 4)
+        val vuColorButtons = mutableListOf<Button>()
+        fun refreshVuColorButtons(selected: Int) {
+            vuColorChoices.forEachIndexed { index, pair ->
+                vuColorButtons[index].background = rounded(if (pair.second == selected) Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), 9)
+                vuColorButtons[index].setTextColor(if (pair.second == selected) Color.rgb(255, 207, 112) else Color.WHITE)
+            }
+        }
+        val vuColorChoices = colorChoices
+        colorChoices.forEachIndexed { index, pair ->
+            val colorButton = button(pair.first, Color.rgb(35, 41, 53), Color.WHITE) {
+                vuPrefs.edit().putInt("vu_custom_color", pair.second).apply()
+                applyVuCustomSettings()
+                refreshVuColorButtons(pair.second)
+            }
+            vuColorButtons.add(colorButton)
+            vuColorRow.addView(colorButton, LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (index < colorChoices.lastIndex) marginEnd = dp(3) })
+        }
+        vuAppearanceSettingsPage.addView(vuColorRow)
+        refreshVuColorButtons(vuPrefs.getInt("vu_custom_color", 0).coerceIn(0, 4))
+
+        val customProfileRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        customProfileRow.addView(button("MENTÉS", Color.rgb(91, 65, 27), Color.WHITE) {
+            vuPrefs.edit()
+                .putInt("vu_custom_saved_thickness", vuPrefs.getInt("vu_custom_thickness", 6))
+                .putInt("vu_custom_saved_spacing", vuPrefs.getInt("vu_custom_spacing", 18))
+                .putInt("vu_custom_saved_segments", vuPrefs.getInt("vu_custom_segments", 32))
+                .putInt("vu_custom_saved_segment_gap", vuPrefs.getInt("vu_custom_segment_gap", 1))
+                .putInt("vu_custom_saved_color", vuPrefs.getInt("vu_custom_color", 0))
+                .putBoolean("vu_custom_profile_saved", true).apply()
+            toast("A saját VU-megjelenés elmentve.")
+        }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(3) })
+        customProfileRow.addView(button("PROFIL BETÖLTÉSE", Color.rgb(35, 41, 53), Color.WHITE) {
+            if (vuPrefs.getBoolean("vu_custom_profile_saved", false)) {
+                vuPrefs.edit()
+                    .putInt("vu_custom_thickness", vuPrefs.getInt("vu_custom_saved_thickness", 6))
+                    .putInt("vu_custom_spacing", vuPrefs.getInt("vu_custom_saved_spacing", 18))
+                    .putInt("vu_custom_segments", vuPrefs.getInt("vu_custom_saved_segments", 32))
+                    .putInt("vu_custom_segment_gap", vuPrefs.getInt("vu_custom_saved_segment_gap", 1))
+                    .putInt("vu_custom_color", vuPrefs.getInt("vu_custom_saved_color", 0)).apply()
+                customThicknessSeek.progress = vuPrefs.getInt("vu_custom_thickness", 6) - 2
+                customSpacingSeek.progress = vuPrefs.getInt("vu_custom_spacing", 18) - 8
+                customSegmentsSeek.progress = vuPrefs.getInt("vu_custom_segments", 32) - 8
+                customGapSeek.progress = vuPrefs.getInt("vu_custom_segment_gap", 1)
+                refreshVuColorButtons(vuPrefs.getInt("vu_custom_color", 0))
+                applyVuCustomSettings()
+                toast("A saját VU-profil betöltve.")
+            } else toast("Még nincs elmentett saját VU-profil.")
+        }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginStart = dp(3) })
+        vuAppearanceSettingsPage.addView(customProfileRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8); bottomMargin = dp(8) })
+
         val animationRow = settingRow("VU-ANIMÁCIÓ", "LED mozgás")
         val vuAnimation = Switch(this).apply {
             text = ""
