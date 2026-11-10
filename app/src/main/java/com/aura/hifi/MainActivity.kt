@@ -1755,6 +1755,49 @@ class MainActivity : Activity() {
             })
         }
         vuAppearanceSettingsPage.addView(vuBrightness)
+        vuAppearanceSettingsPage.addView(sectionTitle("VU STUDIO  •  EGYEDI MÉRETEK"))
+        fun customVuSlider(title: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int): SeekBar {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(29, 30, 34), Color.rgb(14, 17, 23))).apply {
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), Color.rgb(91, 69, 39))
+                }
+                setPadding(dp(10), dp(5), dp(10), dp(2))
+            }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(label(title, 10f, Color.rgb(238, 202, 137)).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
+            val valueLabel = label("", 11f, gold).apply { gravity = Gravity.END; typeface = Typeface.DEFAULT_BOLD }
+            row.addView(valueLabel)
+            card.addView(row)
+            val seek = SeekBar(this).apply {
+                max = maxValue - minValue
+                progress = (vuPrefs.getInt(prefKey, defaultValue) - minValue).coerceIn(0, max)
+                progressTintList = android.content.res.ColorStateList.valueOf(gold)
+                thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
+                        val actual = value + minValue
+                        valueLabel.text = actual.toString()
+                        if (fromUser) {
+                            vuPrefs.edit().putInt(prefKey, actual).apply()
+                            applyVuCustomSettings()
+                        }
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) {}
+                    override fun onStopTrackingTouch(sb: SeekBar?) {}
+                })
+            }
+            valueLabel.text = (seek.progress + minValue).toString()
+            card.addView(seek)
+            vuAppearanceSettingsPage.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            return seek
+        }
+        val customThicknessSeek = customVuSlider("VONAL / LED VASTAGSÁG  •  dp", "vu_custom_thickness", 2, 14, 6)
+        val customSpacingSeek = customVuSlider("KÉT SÁV TÁVOLSÁGA  •  dp", "vu_custom_spacing", 8, 34, 18)
+        val customSegmentsSeek = customVuSlider("SZEGMENSEK SZÁMA", "vu_custom_segments", 8, 64, 32)
+        val customGapSeek = customVuSlider("SZEGMENSEK KÖZTI RÉS  •  dp", "vu_custom_segment_gap", 0, 5, 1)
+
         val animationRow = settingRow("VU-ANIMÁCIÓ", "LED mozgás")
         val vuAnimation = Switch(this).apply {
             text = ""
