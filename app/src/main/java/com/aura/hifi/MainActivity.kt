@@ -2708,57 +2708,80 @@ class MainActivity : Activity() {
                 updateNextTrack()
             }
 
+            val landscapePlaylist = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             if (playlistViewMode == "grid") {
-                songs.forEachIndexed { index, song ->
-                    if (index % 2 == 0) {
-                        val line = LinearLayout(this).apply {
-                            orientation = LinearLayout.HORIZONTAL
-                            gravity = Gravity.TOP
+                val gridStrip = if (landscapePlaylist) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
+                if (landscapePlaylist) {
+                    songs.forEachIndexed { itemIndex, item ->
+                        val tile = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            background = rounded(Color.rgb(24, 29, 39), 11)
+                            setPadding(dp(7), dp(6), dp(7), dp(5))
                         }
-                        for (column in 0..1) {
-                            val itemIndex = index + column
-                            if (itemIndex < songs.size) {
-                                val item = songs[itemIndex]
-                                val tile = LinearLayout(this).apply {
-                                    orientation = LinearLayout.VERTICAL
-                                    background = rounded(Color.rgb(24, 29, 39), 11)
-                                    setPadding(dp(7), dp(8), dp(7), dp(7))
+                        tile.addView(label("♫", 18f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER })
+                        tile.addView(label(item.title, 10f, Color.WHITE).apply {
+                            typeface = Typeface.DEFAULT_BOLD
+                            gravity = Gravity.CENTER
+                            maxLines = 2
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                            setOnClickListener { playlistSongClick(itemIndex, item) }
+                        })
+                        tile.addView(label(item.artist, 8f, Color.rgb(190, 195, 220)).apply {
+                            gravity = Gravity.CENTER
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        })
+                        tile.addView(label(item.album, 8f, Color.rgb(145, 153, 175)).apply {
+                            gravity = Gravity.CENTER
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        })
+                        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+                        addPlaylistSongActions(controls, item)
+                        tile.addView(controls)
+                        gridStrip?.addView(tile, LinearLayout.LayoutParams(dp(190), dp(138)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                    }
+                    if (gridStrip != null && gridStrip.childCount > 0) {
+                        val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(gridStrip, ViewGroup.LayoutParams(-2, -1)) }
+                        libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(144)))
+                    }
+                } else {
+                    songs.forEachIndexed { index, song ->
+                        if (index % 2 == 0) {
+                            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
+                            for (column in 0..1) {
+                                val itemIndex = index + column
+                                if (itemIndex < songs.size) {
+                                    val item = songs[itemIndex]
+                                    val tile = LinearLayout(this).apply {
+                                        orientation = LinearLayout.VERTICAL
+                                        background = rounded(Color.rgb(24, 29, 39), 11)
+                                        setPadding(dp(7), dp(8), dp(7), dp(7))
+                                    }
+                                    tile.addView(label("♫", 21f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER })
+                                    tile.addView(label(item.title, 11f, Color.WHITE).apply {
+                                        typeface = Typeface.DEFAULT_BOLD
+                                        gravity = Gravity.CENTER
+                                        maxLines = 2
+                                        ellipsize = android.text.TextUtils.TruncateAt.END
+                                        setOnClickListener { playlistSongClick(itemIndex, item) }
+                                    })
+                                    tile.addView(label(item.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                                    tile.addView(label(item.album, 8f, Color.rgb(145, 153, 175)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                                    val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+                                    addPlaylistSongActions(controls, item)
+                                    tile.addView(controls)
+                                    line.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                                } else {
+                                    line.addView(View(this), LinearLayout.LayoutParams(0, dp(120), 1f))
                                 }
-                                tile.addView(label("♫", 21f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER })
-                                tile.addView(label(item.title, 11f, Color.WHITE).apply {
-                                    typeface = Typeface.DEFAULT_BOLD
-                                    gravity = Gravity.CENTER
-                                    maxLines = 2
-                                    ellipsize = android.text.TextUtils.TruncateAt.END
-                                    setOnClickListener { playlistSongClick(itemIndex, item) }
-                                })
-                                tile.addView(label(item.artist, 9f, Color.rgb(190, 195, 220)).apply {
-                                    gravity = Gravity.CENTER
-                                    maxLines = 1
-                                    ellipsize = android.text.TextUtils.TruncateAt.END
-                                })
-                                tile.addView(label(item.album, 8f, Color.rgb(145, 153, 175)).apply {
-                                    gravity = Gravity.CENTER
-                                    maxLines = 1
-                                    ellipsize = android.text.TextUtils.TruncateAt.END
-                                })
-                                val controls = LinearLayout(this).apply {
-                                    orientation = LinearLayout.HORIZONTAL
-                                    gravity = Gravity.CENTER
-                                }
-                                addPlaylistSongActions(controls, item)
-                                tile.addView(controls)
-                                line.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply {
-                                    setMargins(dp(3), dp(3), dp(3), dp(3))
-                                })
-                            } else {
-                                line.addView(View(this), LinearLayout.LayoutParams(0, dp(120), 1f))
                             }
+                            libraryContainer.addView(line)
                         }
-                        libraryContainer.addView(line)
                     }
                 }
             } else {
+                val playlistSongStrip = if (landscapePlaylist) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
                 songs.forEachIndexed { index, song ->
                     val row = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -2767,15 +2790,9 @@ class MainActivity : Activity() {
                         setPadding(dp(8), dp(3), dp(4), dp(3))
                     }
                     if (playlistViewMode == "detailed") {
-                        row.addView(label("♫", 19f, Color.rgb(230, 190, 105)).apply {
-                            gravity = Gravity.CENTER
-                        }, LinearLayout.LayoutParams(dp(30), dp(44)))
+                        row.addView(label("♫", 19f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
                     }
-                    val text = if (playlistViewMode == "compact") {
-                        "${song.title}  •  ${song.artist}"
-                    } else {
-                        "${song.title}\n${song.artist}\n${song.album}"
-                    }
+                    val text = if (playlistViewMode == "compact") "${song.title}  •  ${song.artist}" else "${song.title}\n${song.artist}\n${song.album}"
                     row.addView(label(text, if (playlistViewMode == "compact") 10f else 11f, Color.WHITE).apply {
                         setPadding(dp(3), dp(8), dp(3), dp(8))
                         maxLines = if (playlistViewMode == "compact") 1 else 3
@@ -2783,12 +2800,14 @@ class MainActivity : Activity() {
                         setOnClickListener { playlistSongClick(index, song) }
                     }, LinearLayout.LayoutParams(0, -2, 1f))
                     addPlaylistSongActions(row, song)
-                    libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
-                        bottomMargin = dp(5)
-                    })
+                    if (landscapePlaylist) playlistSongStrip?.addView(row, LinearLayout.LayoutParams(dp(250), dp(72)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                    else libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+                }
+                if (landscapePlaylist && playlistSongStrip != null && playlistSongStrip.childCount > 0) {
+                    val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(playlistSongStrip, ViewGroup.LayoutParams(-2, -1)) }
+                    libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(78)))
                 }
             }
-
             val actions = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
