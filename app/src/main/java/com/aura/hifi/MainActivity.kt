@@ -2228,6 +2228,7 @@ class MainActivity : Activity() {
         }
         if (song.albumId > 0L) {
             artworkCache.get(song.albumId)?.let {
+                image.imageTintList = null
                 image.setImageBitmap(it)
                 return image
             }
@@ -2263,6 +2264,8 @@ class MainActivity : Activity() {
                 if (song.albumId > 0L) artworkCache.put(song.albumId, bitmap)
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed && image.tag == song.uri.toString()) {
+                        // A helykitöltő ikon arany árnyalata ne színezze el a valódi borítót.
+                        image.imageTintList = null
                         image.setImageBitmap(bitmap)
                     }
                 }
