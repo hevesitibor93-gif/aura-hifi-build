@@ -81,6 +81,10 @@ class MainActivity : Activity() {
     private var landscapeVuLeftPanel: LinearLayout? = null
     private var landscapeVuRightPanel: LinearLayout? = null
     private var centerAurixVu: VuView? = null
+    private var portraitMeterPanel: LinearLayout? = null
+    private var portraitDualVuPanel: LinearLayout? = null
+    private var portraitLeftVu: VuView? = null
+    private var portraitRightVu: VuView? = null
     private var settingsPreviewVu: VuView? = null
     private var stylePickerPreviewVu: VuView? = null
     private var vuOverallScalePercent = 100
@@ -671,13 +675,16 @@ class MainActivity : Activity() {
     }
 
     private fun setVuActive(value: Boolean) {
-        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); settingsPreviewVu?.setActive(value)
+        vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
-        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
+        vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
-        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
+        vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); portraitLeftVu?.setStyle(value); portraitRightVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
+        val splitPortraitStyle = value == "circular" || value == "spectrum"
+        portraitMeterPanel?.visibility = if (splitPortraitStyle) View.GONE else View.VISIBLE
+        portraitDualVuPanel?.visibility = if (splitPortraitStyle) View.VISIBLE else View.GONE
         val panelWidth = when (value) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; "circular", "aurix" -> 72; else -> 54 }
         val meterHeight = when (value) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; "circular", "aurix" -> 82; else -> 82 }
         landscapeVuLeftPanel?.layoutParams?.let { params -> params.width = dp(panelWidth); landscapeVuLeftPanel?.layoutParams = params }
@@ -701,10 +708,10 @@ class MainActivity : Activity() {
     }
 
     private fun setVuBrightness(value: Int) {
-        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value); stylePickerPreviewVu?.setBrightness(value)
+        vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); portraitLeftVu?.setBrightness(value); portraitRightVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value); stylePickerPreviewVu?.setBrightness(value)
     }
     private fun setVuAnimation(value: Boolean) {
-        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
+        vu.setAnimationEnabled(value); sideVuLeft?.setAnimationEnabled(value); sideVuRight?.setAnimationEnabled(value); centerAurixVu?.setAnimationEnabled(value); portraitLeftVu?.setAnimationEnabled(value); portraitRightVu?.setAnimationEnabled(value); settingsPreviewVu?.setAnimationEnabled(value)
     }
 
     private fun applyVuCustomSettings() {
@@ -911,7 +918,7 @@ class MainActivity : Activity() {
                 }
             }
             leftPanel.addView(label("L", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuLeft = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuLeft = VuView(true, 0).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuLeft?.isClickable = true
             sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
@@ -921,7 +928,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
             rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuRight = VuView(true).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
+            sideVuRight = VuView(true, 1).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
             sideVuRight?.isClickable = true
             sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
@@ -1069,9 +1076,13 @@ class MainActivity : Activity() {
                 playerPage.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
 
                 val meterPanel = goldPanel()
+                portraitMeterPanel = meterPanel
                 meterPanel.addView(label("DUAL CHANNEL  /  LIVE METER", 8f, Color.rgb(181, 146, 88)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f })
                 vu.layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(5) }
                 meterPanel.addView(vu)
+                val initialVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
+                val splitPortraitStyle = initialVuStyle == "circular" || initialVuStyle == "spectrum"
+                meterPanel.visibility = if (splitPortraitStyle) View.GONE else View.VISIBLE
                 playerPage.addView(meterPanel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
 
                 val transportPanel = goldPanel()
@@ -1094,6 +1105,32 @@ class MainActivity : Activity() {
                 playerPage.addView(technicalLabel)
                 nextTrackLabel.textSize = 9f
                 playerPage.addView(nextTrackLabel)
+                val splitVuPanel = goldPanel().apply { visibility = if (splitPortraitStyle) View.VISIBLE else View.GONE }
+                portraitDualVuPanel = splitVuPanel
+                splitVuPanel.addView(label("STEREO MONITOR  /  LEFT & RIGHT", 8f, Color.rgb(181, 146, 88)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f })
+                val splitVuRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) }
+                fun splitVuChannel(channel: String, channelIndex: Int): LinearLayout {
+                    val panel = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                        background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(17, 19, 22), Color.rgb(8, 10, 13))).apply { cornerRadius = dp(11).toFloat(); setStroke(dp(1), Color.rgb(78, 64, 43)) }
+                        setPadding(dp(5), dp(3), dp(5), dp(3))
+                    }
+                    panel.addView(label(channel, 8f, Color.rgb(215, 181, 119)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+                    val channelVu = VuView(false, channelIndex).apply {
+                        setStyle(initialVuStyle)
+                        setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80))
+                        setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true))
+                        setActive(player?.isPlaying == true)
+                        isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() }
+                    }
+                    if (channelIndex == 0) portraitLeftVu = channelVu else portraitRightVu = channelVu
+                    panel.addView(channelVu, LinearLayout.LayoutParams(-1, dp(if (initialVuStyle == "circular") 66 else 48)))
+                    return panel
+                }
+                splitVuRow.addView(splitVuChannel("LEFT  /  L", 0), LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(5) })
+                splitVuRow.addView(splitVuChannel("RIGHT  /  R", 1), LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(5) })
+                splitVuPanel.addView(splitVuRow)
+                playerPage.addView(splitVuPanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
                 original.forEachIndexed { i, child ->
                     when (i) {
                         in 11..15 -> eqPage.addView(child)
@@ -4398,7 +4435,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private inner class VuView(private val verticalSingle: Boolean = false) : View(this@MainActivity) {
+    private inner class VuView(private val verticalSingle: Boolean = false, private val channelOnly: Int = -1) : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
         private var left = 0f
         private var right = 0f
@@ -4438,10 +4475,10 @@ class MainActivity : Activity() {
             val w = width.toFloat()
             val h = height.toFloat()
             if (verticalSingle) {
-                if (style == "circular" || style == "aurix") { drawCircularSingle(c, w, h, (left + right) * 0.5f); return }
+                if (style == "circular" || style == "aurix") { drawCircularSingle(c, w, h, when (channelOnly) { 0 -> left; 1 -> right; else -> (left + right) * 0.5f }); return }
                 drawVerticalSingle(c, w, h); return
             }
-            if (style == "circular") { drawCircularDual(c, w, h); return }
+            if (style == "circular") { if (channelOnly >= 0) drawCircularSingle(c, w, h, if (channelOnly == 0) left else right) else drawCircularDual(c, w, h); return }
             if (style == "aurix") { drawAurixPremium(c, w, h); return }
             if (style == "line" || style == "custom") { drawCustomHorizontal(c, w, h, style == "line"); return }
             if (style == "multiband" || style == "spectrum") { drawMultiBand(c, w, h); return }
@@ -4520,7 +4557,8 @@ class MainActivity : Activity() {
             val top = dp(5).toFloat()
             val bottom = h - dp(5).toFloat()
             val segH = (bottom-top-gap*(count-1))/count
-            val lit = ((left + right) * 0.5f * count).toInt()
+            val channelLevel = when (channelOnly) { 0 -> left; 1 -> right; else -> (left + right) * 0.5f }
+            val lit = (channelLevel * count).toInt()
             for (i in 0 until count) {
                 val y = bottom - (i+1)*segH - i*gap
                 val base = if (simpleStyle) Color.rgb(225, 190, 126) else when {
@@ -4752,6 +4790,17 @@ class MainActivity : Activity() {
             }
         }
 
+        private fun spectrumGradient(position: Float): Int {
+            val t = position.coerceIn(0f, 1f)
+            val stops = floatArrayOf(0f, 0.28f, 0.52f, 0.72f, 0.88f, 1f)
+            val colors = intArrayOf(Color.rgb(25, 92, 235), Color.rgb(40, 190, 245), Color.rgb(45, 220, 155), Color.rgb(105, 225, 75), Color.rgb(255, 190, 55), Color.rgb(255, 58, 48))
+            for (i in 0 until stops.size - 1) if (t <= stops[i + 1]) {
+                val local = (t - stops[i]) / (stops[i + 1] - stops[i])
+                return blendVuColor(colors[i], colors[i + 1], local)
+            }
+            return colors.last()
+        }
+
         private fun drawMultiBand(c: Canvas, w: Float, h: Float) {
             val outer = RectF(dp(2).toFloat(), dp(2).toFloat(), w - dp(2), h - dp(2))
             p.shader = null
@@ -4773,14 +4822,12 @@ class MainActivity : Activity() {
             val segGap = dp(1).toFloat()
             val segH = (bottom - top - segGap * (segments - 1)) / segments
             for (i in 0 until count) {
-                val source = if (i < count / 2) left else right
+                val source = when { channelOnly == 0 -> left; channelOnly == 1 -> right; i < count / 2 -> left; else -> right }
                 val weight = floatArrayOf(.72f, .84f, .92f, 1.0f, .88f, .78f, .94f, .82f)[i % 8]
                 val lit = (source * weight * segments).toInt().coerceIn(0, segments)
                 for (j in 0 until segments) {
                     val y = bottom - (j + 1) * segH - j * segGap
-                    val activeColor = when {
-                        style == "spectrum" && j >= 5 -> Color.rgb(255, 82, 48)
-                        style == "spectrum" && j >= 3 -> Color.rgb(255, 157, 49)
+                    val activeColor = if (style == "spectrum") spectrumGradient(j.toFloat() / (segments - 1).coerceAtLeast(1)) else when {
                         j >= 6 -> Color.rgb(255, 73, 48)
                         j >= 4 -> Color.rgb(255, 169, 55)
                         else -> Color.rgb(246, 196, 91)
@@ -4812,12 +4859,12 @@ class MainActivity : Activity() {
             val segGap = dp(1).toFloat()
             val segH = (bottom - top - segGap * (segments - 1)) / segments
             for (i in 0 until count) {
-                val source = if (i % 2 == 0) left else right
+                val source = when { channelOnly == 0 -> left; channelOnly == 1 -> right; i % 2 == 0 -> left; else -> right }
                 val weight = floatArrayOf(.78f, .92f, 1f, .88f, .74f)[i]
                 val lit = (source * weight * segments).toInt().coerceIn(0, segments)
                 for (j in 0 until segments) {
                     val y = bottom - (j + 1) * segH - j * segGap
-                    val activeColor = if (style == "spectrum" && j > 10) Color.rgb(255, 72, 48) else if (j > 9) Color.rgb(255, 166, 52) else Color.rgb(246, 196, 91)
+                    val activeColor = if (style == "spectrum") spectrumGradient(j.toFloat() / (segments - 1).coerceAtLeast(1)) else if (j > 9) Color.rgb(255, 166, 52) else Color.rgb(246, 196, 91)
                     p.color = if (j < lit) Color.argb(brightness * 255 / 100, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)) else Color.rgb(39, 40, 42)
                     val x = side + i * (barW + gap)
                     c.drawRoundRect(RectF(x, y, x + barW, y + segH), dp(1).toFloat(), dp(1).toFloat(), p)
