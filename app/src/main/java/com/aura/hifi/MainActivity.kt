@@ -106,9 +106,13 @@ class MainActivity : Activity() {
     private var vuProfileControls: (() -> Unit)? = null
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private val queue = mutableListOf<Uri>()
-    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long, val fileName: String)
+    private data class LibrarySong(val uri: Uri, val title: String, val artist: String, val album: String, val folder: String, val dateAdded: Long, val fileName: String, val albumId: Long)
     private val librarySongs = mutableListOf<LibrarySong>()
     private val libraryExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val artworkExecutor = java.util.concurrent.Executors.newFixedThreadPool(2)
+    private val artworkCache = object : android.util.LruCache<Long, Bitmap>(6 * 1024) {
+        override fun sizeOf(key: Long, bitmap: Bitmap): Int = (bitmap.byteCount / 1024).coerceAtLeast(1)
+    }
     private var libraryLoadGeneration = 0
     private var libraryVisibleLimit = 80
     private var lastLibraryQuery = ""
@@ -1977,7 +1981,8 @@ class MainActivity : Activity() {
                 MediaStore.Audio.Media.DATE_ADDED,
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.DATA,
-                MediaStore.MediaColumns.DISPLAY_NAME
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.Audio.Media.ALBUM_ID
             )
             val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
             try {
@@ -1990,6 +1995,7 @@ class MainActivity : Activity() {
                     val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
                     val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
                     val displayNameCol = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val albumIdCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
                     while (cursor.moveToNext()) {
                         val id = cursor.getLong(idCol)
                         val title = cursor.getString(titleCol) ?: "Ismeretlen cím"
@@ -2000,8 +2006,9 @@ class MainActivity : Activity() {
                             ?.takeIf { it.isNotBlank() } ?: fullPath?.let { java.io.File(it).name } ?: title
                         val folder = fullPath?.let { java.io.File(it).parentFile?.absolutePath }
                             ?.takeIf { it.isNotBlank() } ?: "Ismeretlen mappa"
+                        val albumId = if (albumIdCol >= 0) cursor.getLong(albumIdCol) else -1L
                         val song = LibrarySong(android.content.ContentUris.withAppendedId(collection, id),
-                            title, artist, album, folder, cursor.getLong(dateCol), fileName)
+                            title, artist, album, folder, cursor.getLong(dateCol), fileName, albumId)
                         loadedSongs.add(song)
                         loadedSongByUri[song.uri.toString()] = song
                     }
@@ -2193,6 +2200,46 @@ class MainActivity : Activity() {
         libraryContainer.addView(header)
     }
 
+    private fun libraryArtworkView(song: LibrarySong, sizeDp: Int): ImageView {
+        val image = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = rounded(Color.rgb(31, 35, 44), 9)
+            clipToOutline = true
+            setImageResource(android.R.drawable.ic_media_play)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.rgb(210, 170, 91))
+            contentDescription = "Albumborító: ${song.album}"
+            tag = song.uri.toString()
+        }
+        if (song.albumId < 0L) return image
+        artworkCache.get(song.albumId)?.let {
+            image.setImageBitmap(it)
+            return image
+        }
+        artworkExecutor.execute {
+            val bitmap = try {
+                val artUri = Uri.parse("content://media/external/audio/albumart/${song.albumId}")
+                contentResolver.openInputStream(artUri)?.use { stream ->
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    stream.mark(64 * 1024)
+                    BitmapFactory.decodeStream(stream, null, bounds)
+                    stream.reset()
+                    val target = (dp(sizeDp) * 2).coerceAtLeast(96)
+                    var sample = 1
+                    while (bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) sample *= 2
+                    val options = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.RGB_565 }
+                    BitmapFactory.decodeStream(stream, null, options)
+                }
+            } catch (_: Exception) { null }
+            if (bitmap != null) {
+                artworkCache.put(song.albumId, bitmap)
+                runOnUiThread {
+                    if (image.tag == song.uri.toString()) image.setImageBitmap(bitmap)
+                }
+            }
+        }
+        return image
+    }
+
     private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
         val ordered = sortLibrarySongs(songs, scope, allowManual)
         val viewMode = listViewMode(scope)
@@ -2217,7 +2264,7 @@ class MainActivity : Activity() {
                             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                             background = rounded(Color.rgb(27, 32, 48), 12)
                             setPadding(dp(7), dp(10), dp(7), dp(10))
-                            addView(label("♫", 25f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER })
+                            addView(libraryArtworkView(song, 104), LinearLayout.LayoutParams(-1, dp(104)).apply { bottomMargin = dp(7) })
                             addView(label(song.title, 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
                             addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
@@ -2232,8 +2279,15 @@ class MainActivity : Activity() {
         } else {
             ordered.forEachIndexed { index, song ->
                 val row = if (viewMode == "compact") {
-                    label("♫  ${song.title} — ${song.artist}", 12f, Color.WHITE).apply {
-                        setPadding(dp(9), dp(10), dp(8), dp(10))
+                    LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        addView(libraryArtworkView(song, 34), LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(9) })
+                        addView(label("${song.title} — ${song.artist}", 12f, Color.WHITE).apply {
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        }, LinearLayout.LayoutParams(0, -2, 1f))
+                        setPadding(dp(9), dp(5), dp(8), dp(5))
                         setOnClickListener { playFrom(index, song) }
                     }
                 } else {
@@ -2241,7 +2295,7 @@ class MainActivity : Activity() {
                         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                         background = rounded(Color.rgb(27, 32, 48), 10)
                         setPadding(dp(8), dp(8), dp(8), dp(8))
-                        addView(label("♫", 20f, Color.rgb(194, 151, 255)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(38), dp(42)))
+                        addView(libraryArtworkView(song, 48), LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(10) })
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
                         details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
