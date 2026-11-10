@@ -2449,7 +2449,7 @@ class MainActivity : Activity() {
         }
         if (viewMode == "grid") {
             val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            val columns = if (landscape) 4 else 2
+            val columns = if (landscape) ordered.size.coerceAtLeast(1) else 2
             val coverSize = if (landscape) 68 else 104
             val tileHeight = if (landscape) 126 else 176
             var index = 0
@@ -2471,13 +2471,24 @@ class MainActivity : Activity() {
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
-                        line.addView(tile, LinearLayout.LayoutParams(0, dp(tileHeight), 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                        line.addView(tile, LinearLayout.LayoutParams(if (landscape) dp(116) else 0, dp(tileHeight), if (landscape) 0f else 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
                         index++
                     }
                 }
-                libraryContainer.addView(line)
+                if (landscape) {
+                    val scroller = HorizontalScrollView(this).apply {
+                        isHorizontalScrollBarEnabled = false
+                        overScrollMode = View.OVER_SCROLL_NEVER
+                        addView(line, ViewGroup.LayoutParams(-2, dp(tileHeight + 6)))
+                    }
+                    libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(tileHeight + 12)))
+                } else {
+                    libraryContainer.addView(line)
+                }
             }
         } else {
+            val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            val landscapeStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
             ordered.forEachIndexed { index, song ->
                 val row = if (viewMode == "compact") {
                     LinearLayout(this).apply {
@@ -2506,7 +2517,19 @@ class MainActivity : Activity() {
                     }
                 }
                 markLibrarySongRow(row, song.uri)
-                libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+                if (landscape) {
+                    landscapeStrip?.addView(row, LinearLayout.LayoutParams(dp(if (viewMode == "compact") 205 else 235), dp(if (viewMode == "compact") 58 else 76)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                } else {
+                    libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+                }
+            }
+            if (landscape && landscapeStrip != null && landscapeStrip.childCount > 0) {
+                val scroller = HorizontalScrollView(this).apply {
+                    isHorizontalScrollBarEnabled = false
+                    overScrollMode = View.OVER_SCROLL_NEVER
+                    addView(landscapeStrip, ViewGroup.LayoutParams(-2, -1))
+                }
+                libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(if (viewMode == "compact") 64 else 82)))
             }
         }
         if (ordered.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
