@@ -3072,6 +3072,78 @@ class MainActivity : Activity() {
         bandScroll.addView(bandRow)
         eqContainer.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(238)))
 
+        // Dedicated, wider touch strip for horizontal EQ navigation.
+        val bandScrollHandle = object : View(this) {
+            private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(54, 55, 59) }
+            private val thumbPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(205, 151, 65) }
+            private var draggingHandle = false
+            private var touchOffset = 0f
+
+            private fun metrics(): Triple<Float, Float, Float> {
+                val inset = dp(8).toFloat()
+                val trackWidth = (width - inset * 2f).coerceAtLeast(1f)
+                val contentWidth = (bandScroll.getChildAt(0)?.width ?: width).toFloat().coerceAtLeast(width.toFloat())
+                val maxScroll = (contentWidth - width).coerceAtLeast(0f)
+                val thumbWidth = (trackWidth * width / contentWidth).coerceAtLeast(dp(42).toFloat()).coerceAtMost(trackWidth)
+                val thumbLeft = inset + if (maxScroll > 0f) {
+                    (trackWidth - thumbWidth) * (bandScroll.scrollX / maxScroll).coerceIn(0f, 1f)
+                } else 0f
+                return Triple(thumbLeft, thumbWidth, maxScroll)
+            }
+
+            override fun onDraw(canvas: Canvas) {
+                super.onDraw(canvas)
+                val inset = dp(8).toFloat()
+                val centerY = height / 2f
+                val trackRight = (width - inset).coerceAtLeast(inset + 1f)
+                canvas.drawRoundRect(inset, centerY - dp(2), trackRight, centerY + dp(2), dp(2).toFloat(), trackPaint)
+                val (thumbLeft, thumbWidth, _) = metrics()
+                canvas.drawRoundRect(thumbLeft, centerY - dp(4), thumbLeft + thumbWidth, centerY + dp(4), dp(4).toFloat(), thumbPaint)
+            }
+
+            override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+                val (thumbLeft, thumbWidth, maxScroll) = metrics()
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        draggingHandle = true
+                        touchOffset = if (event.x in thumbLeft..(thumbLeft + thumbWidth)) event.x - thumbLeft else thumbWidth / 2f
+                        updateScroll(event.x, thumbWidth, maxScroll)
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                        return true
+                    }
+                    android.view.MotionEvent.ACTION_MOVE -> {
+                        if (draggingHandle) updateScroll(event.x - touchOffset + thumbWidth / 2f, thumbWidth, maxScroll)
+                        return true
+                    }
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        draggingHandle = false
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        performClick()
+                        return true
+                    }
+                }
+                return true
+            }
+
+            private fun updateScroll(thumbCenterX: Float, thumbWidth: Float, maxScroll: Float) {
+                val inset = dp(8).toFloat()
+                val trackWidth = (width - inset * 2f).coerceAtLeast(1f)
+                val fraction = ((thumbCenterX - inset - thumbWidth / 2f) / (trackWidth - thumbWidth).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                bandScroll.scrollTo((fraction * maxScroll).toInt(), 0)
+                invalidate()
+            }
+
+            override fun performClick(): Boolean { super.performClick(); return true }
+        }.apply {
+            contentDescription = "EQ sávok vízszintes görgetése"
+            isClickable = true
+        }
+        bandScroll.setOnScrollChangeListener { _, _, _, _, _ -> bandScrollHandle.invalidate() }
+        eqContainer.addView(bandScrollHandle, LinearLayout.LayoutParams(-1, dp(32)).apply {
+            topMargin = dp(2)
+            bottomMargin = dp(5)
+        })
+
         val dialRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
