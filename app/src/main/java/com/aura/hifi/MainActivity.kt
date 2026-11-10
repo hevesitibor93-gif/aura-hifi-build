@@ -950,8 +950,9 @@ class MainActivity : Activity() {
             original.forEachIndexed { i, child -> when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) } }
         }
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
-        songsPage.addView(label("AURA  /  HI-FI STUDIO", 10f, if (goldStudioTheme) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(5), 0, dp(2)) })
-        songsPage.addView(label("ZENETÁR", 23f, if (goldStudioTheme) Color.rgb(242, 218, 177) else Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(8)) })
+        val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, if (goldStudioTheme) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
+        songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, if (goldStudioTheme) Color.rgb(242, 218, 177) else Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
@@ -960,7 +961,7 @@ class MainActivity : Activity() {
             ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(139, 111, 68) else Color.rgb(126, 113, 221)) }
             setPadding(dp(18), dp(4), dp(18), dp(4))
         }
-        songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(14) })
+        songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(if (landscapeLibrary) 38 else 48)).apply { bottomMargin = dp(if (landscapeLibrary) 6 else 14) })
         val categoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun categoryCard(icon: String, title: String, subtitle: String, action: () -> Unit): View {
             return LinearLayout(this).apply {
@@ -969,10 +970,10 @@ class MainActivity : Activity() {
                     if (goldStudioTheme) intArrayOf(Color.rgb(91, 66, 31), Color.rgb(48, 39, 27), Color.rgb(17, 20, 25))
                     else intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
                 ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(194, 151, 82) else Color.argb(220, 235, 190, 105)) }
-                setPadding(dp(5), dp(12), dp(5), dp(12)); isClickable = true; isFocusable = true
-                addView(label(icon, 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
-                addView(label(title, 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                addView(label(subtitle, 9f, if (goldStudioTheme) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
+                setPadding(dp(5), dp(if (landscapeLibrary) 5 else 12), dp(5), dp(if (landscapeLibrary) 5 else 12)); isClickable = true; isFocusable = true
+                addView(label(icon, if (landscapeLibrary) 18f else 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
+                addView(label(title, if (landscapeLibrary) 10f else 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+                addView(label(subtitle, if (landscapeLibrary) 8f else 9f, if (goldStudioTheme) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
                 setOnClickListener { action() }
             }
         }
@@ -986,8 +987,25 @@ class MainActivity : Activity() {
         extraCategoryRow.addView(categoryCard("♫", "Nemrég játszott", "Előzmények") { showRecentlyPlayed() }, LinearLayout.LayoutParams(0, dp(92), 1f).apply { marginStart = dp(5) })
         val categoryGroup = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         libraryCategoryRow = categoryGroup
-        categoryGroup.addView(categoryRow)
-        categoryGroup.addView(extraCategoryRow)
+        if (landscapeLibrary) {
+            val compactCategoryStrip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            listOf(categoryRow, extraCategoryRow).forEach { sourceRow ->
+                while (sourceRow.childCount > 0) {
+                    val item = sourceRow.getChildAt(0)
+                    sourceRow.removeViewAt(0)
+                    compactCategoryStrip.addView(item, LinearLayout.LayoutParams(dp(116), dp(70)).apply { marginEnd = dp(6) })
+                }
+            }
+            val categoryScroller = HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_NEVER
+                addView(compactCategoryStrip)
+            }
+            categoryGroup.addView(categoryScroller, LinearLayout.LayoutParams(-1, dp(76)))
+        } else {
+            categoryGroup.addView(categoryRow)
+            categoryGroup.addView(extraCategoryRow)
+        }
         val sortRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(12), dp(3), dp(5)) }
         sortRow.addView(label("Rendezés:", 12f, Color.WHITE), LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
         var sortSpinnerInitialized = false
@@ -2370,8 +2388,8 @@ class MainActivity : Activity() {
         if (viewMode == "grid") {
             val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             val columns = if (landscape) 4 else 2
-            val coverSize = if (landscape) 76 else 104
-            val tileHeight = if (landscape) 142 else 176
+            val coverSize = if (landscape) 68 else 104
+            val tileHeight = if (landscape) 126 else 176
             var index = 0
             while (index < ordered.size) {
                 val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
