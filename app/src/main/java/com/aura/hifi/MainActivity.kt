@@ -1381,6 +1381,88 @@ class MainActivity : Activity() {
             refreshSoundProfileStatus()
         }
         soundProfileRefreshers.add { refreshSoundProfileStatus() }
+
+        // Conservative, opt-in starting points. They modify only the AURA Sound Engine,
+        // never the original 12-band EQ, and are saved to the active output profile.
+        fun applySoundPreset(preset: String) {
+            if (preset == "ORIGINAL") {
+                soundPrefs.edit().putBoolean("sound_dsp_bypass", true).apply()
+                loadAuraSoundEngineSettings(soundPrefs)
+                soundProfileRefreshers.forEach { it() }
+                saveSoundProfile(soundPrefs, soundOutputProfile)
+                refreshSoundProfileStatus()
+                toast("Eredeti AURA hang: az új DSP kikapcsolva, az EQ aktív marad")
+                return
+            }
+            val enabled = mapOf(
+                "sound_bass_depth_enabled" to (preset == "PUNCH"),
+                "sound_bass_punch_enabled" to (preset == "PUNCH"),
+                "sound_harmonic_bass_enabled" to false,
+                "sound_dynamic_punch_enabled" to false,
+                "sound_clarity_enabled" to (preset == "CLEAR"),
+                "sound_tone_enabled" to (preset == "CLEAR"),
+                "sound_stereo_width_enabled" to (preset == "STAGE"),
+                "sound_balance_enabled" to false,
+                "sound_preamp_enabled" to false
+            )
+            val values = mapOf(
+                "sound_bass_depth_db" to if (preset == "PUNCH") 80 else 0,
+                "sound_bass_punch_db" to if (preset == "PUNCH") 120 else 0,
+                "sound_harmonic_bass" to 0,
+                "sound_dynamic_punch" to 0,
+                "sound_clarity_db" to if (preset == "CLEAR") 100 else 0,
+                "sound_tone_amount" to if (preset == "CLEAR") 8 else 0,
+                "sound_stereo_width" to if (preset == "STAGE") 108 else 100,
+                "sound_balance" to 0,
+                "sound_preamp_db" to 0
+            )
+            val editor = soundPrefs.edit().putBoolean("sound_dsp_bypass", false)
+            enabled.forEach { (key, value) -> editor.putBoolean(key, value) }
+            values.forEach { (key, value) -> editor.putInt(key, value) }
+            editor.apply()
+            loadAuraSoundEngineSettings(soundPrefs)
+            soundProfileRefreshers.forEach { it() }
+            saveSoundProfile(soundPrefs, soundOutputProfile)
+            refreshSoundProfileStatus()
+            toast(when (preset) {
+                "PUNCH" -> "PUNCH: visszafogott mély- és ütéskiemelés"
+                "CLEAR" -> "CLEAR: finom részlet- és hangszínkiemelés"
+                else -> "STAGE: enyhén szélesebb sztereótér"
+            })
+        }
+
+        val soundPresetPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(3), dp(2), dp(9))
+        }
+        soundPresetPanel.addView(label("GYORS HANGKARAKTEREK", 10f, Color.rgb(255, 207, 112)).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(2), 0, dp(5))
+        })
+        soundPresetPanel.addView(label(
+            "Óvatos kiinduló beállítások. Csak választáskor módosítanak; az eredeti EQ-hoz nem nyúlnak.",
+            10f, Color.rgb(155, 163, 177)
+        ).apply { setPadding(0, 0, 0, dp(5)) })
+        val presetScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val presetRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            "ORIGINAL" to "EREDETI AURA",
+            "PUNCH" to "PUNCH",
+            "CLEAR" to "CLEAR",
+            "STAGE" to "WIDE STAGE"
+        ).forEach { (key, title) ->
+            presetRow.addView(button(title, Color.rgb(43, 39, 31), Color.rgb(255, 224, 160)) {
+                applySoundPreset(key)
+            }, LinearLayout.LayoutParams(-2, dp(40)).apply {
+                marginEnd = dp(7)
+            })
+        }
+        presetScroll.addView(presetRow)
+        soundPresetPanel.addView(presetScroll)
+        soundPage.addView(soundPresetPanel, soundPage.indexOfChild(soundCategoryNav))
         activeSoundCategory.addView(label("A clipping figyelése külön jelzésként kerül be. A jelenlegi PCM16 kimenet csúcsértékeit már méri a hangmotor; limiter nem kapcsolódik be automatikusan.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), dp(8), dp(3), dp(14)) })
         // Settings hub: every non-audio setting lives in its own category page.
         val settingsMenu = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
