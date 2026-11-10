@@ -2892,7 +2892,20 @@ class MainActivity : Activity() {
         libraryContainer.addView(label("DALOK • " + songs.size, 11f, Color.rgb(235, 205, 145))); renderSongRows(songs)
         val folders = librarySongs.map { it.folder }.distinct().filter { it.contains(query, true) }.take(30)
         libraryContainer.addView(label("MAPPÁK • " + folders.size, 11f, Color.rgb(235, 205, 145)))
-        folders.forEach { path -> libraryContainer.addView(label("📁  " + java.io.File(path).name + "  ›", 12f, Color.WHITE).apply { setPadding(dp(9), dp(10), dp(8), dp(10)); setOnClickListener { showFolderBrowser(path) } }) }
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val folderStrip = if (landscape) LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL } else null
+        folders.forEach { path ->
+            val folderEntry = label("📁  " + java.io.File(path).name + "  ›", 12f, Color.WHITE).apply {
+                setPadding(dp(9), dp(10), dp(8), dp(10))
+                setOnClickListener { showFolderBrowser(path) }
+            }
+            if (landscape) folderStrip?.addView(folderEntry, LinearLayout.LayoutParams(dp(220), dp(58)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+            else libraryContainer.addView(folderEntry)
+        }
+        if (landscape && folderStrip != null && folderStrip.childCount > 0) {
+            val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(folderStrip, ViewGroup.LayoutParams(-2, -1)) }
+            libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(64)))
+        }
     }
 
     private fun showLibraryHome() {
