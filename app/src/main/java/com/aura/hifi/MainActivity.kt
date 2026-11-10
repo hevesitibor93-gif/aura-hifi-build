@@ -697,12 +697,12 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURIX"; textSize = 23f; letterSpacing = 0.10f; setTextColor(Color.rgb(230, 190, 105)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
-        val hi = TextView(this).apply { text = "  V50"; textSize = 12f; setTextColor(gold); typeface = Typeface.DEFAULT_BOLD }
+        val brand = TextView(this).apply { text = "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val hi = TextView(this).apply { text = "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         body.addView(header)
-        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = rounded(Color.rgb(25, 27, 34), 18); setPadding(dp(5), dp(5), dp(5), dp(5)); elevation = dp(8).toFloat() }
-        artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(66, 53, 31), Color.rgb(18, 20, 26), Color.rgb(37, 31, 22))).apply { cornerRadius = dp(18).toFloat() }; setImageDrawable(null) }
+        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
+        artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
@@ -711,11 +711,11 @@ class MainActivity : Activity() {
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
         applyArtworkMode()
         vu = VuView().apply { isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() } }; body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
-        trackLabel = label("", 18f, Color.rgb(255, 190, 75)).apply { gravity = Gravity.CENTER; setPadding(dp(4), dp(3), dp(4), dp(2)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
+        trackLabel = label("", 20f, Color.rgb(242, 211, 157)).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.015f; setPadding(dp(4), dp(5), dp(4), dp(3)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
         body.addView(trackLabel)
-        metadataLabel = label("", 12f, Color.rgb(80, 165, 255)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
+        metadataLabel = label("", 12f, Color.rgb(184, 177, 160)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
         body.addView(metadataLabel)
-        albumLabel = label("", 10f, Color.rgb(155, 205, 145)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(2)); maxLines = 1 }
+        albumLabel = label("", 10f, Color.rgb(151, 137, 111)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(3)); maxLines = 1 }
         body.addView(albumLabel)
         seekBar = SeekBar(this).apply {
             max = 1000
@@ -801,11 +801,11 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(4, 7, 12), Color.rgb(38, 42, 51), Color.rgb(9, 12, 18), Color.rgb(3, 5, 9))).apply {
-                cornerRadius = dp(30).toFloat()
-                setStroke(dp(2), Color.rgb(103, 111, 124))
+                intArrayOf(Color.rgb(5, 7, 11), Color.rgb(27, 27, 29), Color.rgb(10, 12, 16), Color.rgb(4, 6, 10))).apply {
+                cornerRadius = dp(26).toFloat()
+                setStroke(dp(1), Color.rgb(112, 91, 61))
             }
-            elevation = dp(18).toFloat()
+            elevation = dp(12).toFloat()
         }
         val songsPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val eqPage = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -1834,7 +1834,7 @@ class MainActivity : Activity() {
         refreshVuStyleButtons(savedVuStyle)
         setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(Color.rgb(16, 18, 22), 16) }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int, resetLibrary: Boolean = true) {
             activePageIndex = index
@@ -1843,7 +1843,7 @@ class MainActivity : Activity() {
                 showLibraryHome()
                 pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
             }
-            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) gold else Color.WHITE); b.background = rounded(if (selected) Color.rgb(48, 42, 29) else Color.rgb(35, 41, 53), 12) }
+            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) Color.rgb(245, 211, 151) else Color.rgb(160, 160, 158)); b.background = rounded(if (selected) Color.rgb(57, 46, 30) else Color.rgb(26, 28, 31), 12) }
         }
         settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
@@ -1874,7 +1874,7 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(35, 41, 53), Color.WHITE) { showPage(i) }; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f)) }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         root.addView(nav)
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         showPage(0)
@@ -1909,7 +1909,7 @@ class MainActivity : Activity() {
         text = symbol
         textSize = if (primary) 23f else 19f
         typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        setTextColor(if (primary) Color.rgb(255, 220, 155) else Color.rgb(190, 222, 255))
+        setTextColor(if (primary) Color.rgb(255, 220, 165) else Color.rgb(196, 184, 158))
         includeFontPadding = false
         isAllCaps = false
         minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
@@ -1918,7 +1918,7 @@ class MainActivity : Activity() {
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(Color.rgb(13, 18, 26))
-            setStroke(dp(if (primary) 2 else 1), if (primary) Color.rgb(255, 177, 64) else Color.rgb(67, 157, 224))
+            setStroke(dp(if (primary) 2 else 1), if (primary) Color.rgb(224, 174, 91) else Color.rgb(104, 99, 88))
         }
         elevation = dp(7).toFloat()
         stateListAnimator = null
