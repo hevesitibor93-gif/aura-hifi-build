@@ -83,6 +83,7 @@ class MainActivity : Activity() {
     private var centerAurixVu: VuView? = null
     private var settingsPreviewVu: VuView? = null
     private var stylePickerPreviewVu: VuView? = null
+    private var vuOverallScalePercent = 100
     private lateinit var artworkView: ImageView
     private lateinit var vinylView: VinylView
     private var showCover = true
@@ -684,6 +685,20 @@ class MainActivity : Activity() {
         sideVuLeft?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuLeft?.layoutParams = params }
         sideVuRight?.layoutParams?.let { params -> params.height = dp(meterHeight); sideVuRight?.layoutParams = params }
     }
+    private fun setVuOverallScale(value: Int) {
+        vuOverallScalePercent = value.coerceIn(70, 130)
+        val factor = vuOverallScalePercent / 100f
+        val style = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
+        val baseWidth = when (style) { "multiband", "spectrum" -> 62; "simple" -> 50; "line", "custom" -> 58; "circular", "aurix" -> 72; else -> 54 }
+        val baseHeight = when (style) { "multiband", "spectrum" -> 92; "simple" -> 76; "line", "custom" -> 86; else -> 82 }
+        landscapeVuLeftPanel?.layoutParams?.let { it.width = dp((baseWidth * factor).toInt()); landscapeVuLeftPanel?.layoutParams = it }
+        landscapeVuRightPanel?.layoutParams?.let { it.width = dp((baseWidth * factor).toInt()); landscapeVuRightPanel?.layoutParams = it }
+        sideVuLeft?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuLeft?.layoutParams = it }
+        sideVuRight?.layoutParams?.let { it.height = dp((baseHeight * factor).toInt()); sideVuRight?.layoutParams = it }
+        stylePickerPreviewVu?.layoutParams?.let { it.height = dp((76 * factor).toInt()); stylePickerPreviewVu?.layoutParams = it }
+        settingsPreviewVu?.layoutParams?.let { it.height = dp((74 * factor).toInt()); settingsPreviewVu?.layoutParams = it }
+    }
+
     private fun setVuBrightness(value: Int) {
         vu.setBrightness(value); sideVuLeft?.setBrightness(value); sideVuRight?.setBrightness(value); centerAurixVu?.setBrightness(value); settingsPreviewVu?.setBrightness(value); stylePickerPreviewVu?.setBrightness(value)
     }
@@ -1893,7 +1908,23 @@ class MainActivity : Activity() {
             })
         }
         vuAppearanceSettingsPage.addView(vuBrightness)
-        vuAppearanceSettingsPage.addView(sectionTitle("VU STUDIO  •  EGYEDI MÉRETEK"))
+        val vuStudioHeader = button("▾  VU STUDIO  •  EGYEDI MÉRETEK", Color.rgb(37, 29, 19), Color.rgb(255, 207, 112)) {}
+        vuAppearanceSettingsPage.addView(vuStudioHeader, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8); bottomMargin = dp(4) })
+        val vuStudioContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Color.rgb(12, 15, 19), 14)
+            setPadding(dp(8), dp(7), dp(8), dp(8))
+        }
+        val vuStudioInitiallyExpanded = vuPrefs.getBoolean("vu_studio_expanded", true)
+        vuStudioContent.visibility = if (vuStudioInitiallyExpanded) View.VISIBLE else View.GONE
+        vuStudioHeader.setOnClickListener {
+            val expand = vuStudioContent.visibility != View.VISIBLE
+            vuStudioContent.visibility = if (expand) View.VISIBLE else View.GONE
+            vuPrefs.edit().putBoolean("vu_studio_expanded", expand).apply()
+            vuStudioHeader.text = (if (expand) "▾" else "▸") + "  VU STUDIO  •  EGYEDI MÉRETEK"
+        }
+        vuStudioHeader.text = (if (vuStudioInitiallyExpanded) "▾" else "▸") + "  VU STUDIO  •  EGYEDI MÉRETEK"
+        vuAppearanceSettingsPage.addView(vuStudioContent, LinearLayout.LayoutParams(-1, -2))
         fun customVuSlider(title: String, prefKey: String, minValue: Int, maxValue: Int, defaultValue: Int): SeekBar {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -1928,15 +1959,47 @@ class MainActivity : Activity() {
             }
             valueLabel.text = (seek.progress + minValue).toString()
             card.addView(seek)
-            vuAppearanceSettingsPage.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            vuStudioContent.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
             return seek
         }
+
+        vuStudioContent.addView(label("TELJES VU-MÉRET", 11f, gold).apply { setPadding(dp(4), dp(10), 0, dp(2)) })
+        val overallScaleCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(29, 30, 34), Color.rgb(14, 17, 23))).apply {
+                cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(91, 69, 39))
+            }
+            setPadding(dp(10), dp(5), dp(10), dp(2))
+        }
+        val overallScaleLabel = label("", 11f, gold).apply { gravity = Gravity.END }
+        val overallScaleHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        overallScaleHeader.addView(label("VU MÉRETEZÉSE  •  70–130%", 10f, Color.rgb(238, 202, 137)), LinearLayout.LayoutParams(0, -2, 1f))
+        overallScaleHeader.addView(overallScaleLabel)
+        overallScaleCard.addView(overallScaleHeader)
+        val overallScaleSeek = SeekBar(this).apply {
+            max = 60
+            progress = (vuPrefs.getInt("vu_overall_scale", 100) - 70).coerceIn(0, 60)
+            progressTintList = android.content.res.ColorStateList.valueOf(gold)
+            thumbTintList = android.content.res.ColorStateList.valueOf(gold)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
+                    val actual = value + 70
+                    overallScaleLabel.text = "$actual%"
+                    if (fromUser) { vuPrefs.edit().putInt("vu_overall_scale", actual).apply(); setVuOverallScale(actual) }
+                }
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {}
+            })
+        }
+        overallScaleLabel.text = "${overallScaleSeek.progress + 70}%"
+        overallScaleCard.addView(overallScaleSeek)
+        vuStudioContent.addView(overallScaleCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         val customThicknessSeek = customVuSlider("VONAL / LED VASTAGSÁG  •  dp", "vu_custom_thickness", 2, 14, 6)
         val customSpacingSeek = customVuSlider("KÉT SÁV TÁVOLSÁGA  •  dp", "vu_custom_spacing", 8, 34, 18)
         val customSegmentsSeek = customVuSlider("SZEGMENSEK SZÁMA", "vu_custom_segments", 8, 64, 32)
         val customGapSeek = customVuSlider("SZEGMENSEK KÖZTI RÉS  •  dp", "vu_custom_segment_gap", 0, 5, 1)
 
-        vuAppearanceSettingsPage.addView(label("SZÍNPALETTA", 11f, gold).apply { setPadding(dp(4), dp(10), 0, dp(4)) })
+        vuStudioContent.addView(label("SZÍNPALETTA", 11f, gold).apply { setPadding(dp(4), dp(10), 0, dp(4)) })
         val vuColorRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val colorChoices = listOf("GOLD" to 0, "ICE" to 1, "WHITE" to 2, "RED" to 3, "MINT" to 4)
         val vuColorButtons = mutableListOf<Button>()
@@ -1955,7 +2018,7 @@ class MainActivity : Activity() {
             vuColorButtons.add(colorButton)
             vuColorRow.addView(colorButton, LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (index < colorChoices.lastIndex) marginEnd = dp(3) })
         }
-        vuAppearanceSettingsPage.addView(vuColorRow)
+        vuStudioContent.addView(vuColorRow)
         refreshVuColorButtons(vuPrefs.getInt("vu_custom_color", 0).coerceIn(0, 4))
 
         val customProfileRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
@@ -1986,7 +2049,7 @@ class MainActivity : Activity() {
                 toast("A saját VU-profil betöltve.")
             } else toast("Még nincs elmentett saját VU-profil.")
         }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginStart = dp(3) })
-        vuAppearanceSettingsPage.addView(customProfileRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8); bottomMargin = dp(8) })
+        vuStudioContent.addView(customProfileRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8); bottomMargin = dp(8) })
 
         val animationRow = settingRow("VU-ANIMÁCIÓ", "LED mozgás")
         val vuAnimation = Switch(this).apply {
@@ -2230,6 +2293,7 @@ class MainActivity : Activity() {
         refreshVuStyleButtons(savedVuStyle)
         applyVuCustomSettings()
         setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
+        setVuOverallScale(vuPrefs.getInt("vu_overall_scale", 100))
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(if (goldStudioTheme) Color.rgb(19, 17, 13) else Color.rgb(16, 18, 22), 16); elevation = dp(7).toFloat() }
         val navButtons = mutableListOf<Button>()
