@@ -1247,7 +1247,7 @@ class MainActivity : Activity() {
                 letterSpacing = .04f
                 setPadding(0, dp(3), 0, dp(1))
             })
-            // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
+            // Mechanical cassette transport keys are wired to the shared playback engine.
             val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(2), dp(3), dp(2), 0) }
             for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
                 val face = TextView(this).apply {
@@ -1309,6 +1309,13 @@ class MainActivity : Activity() {
                 setMargins(dp(2), 0, dp(2), 0)
             })
             radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
+
+            // The fascia/body of each rack component is also a direct shortcut;
+            // its own transport and preset buttons keep their individual actions.
+            musicDeck.setOnClickListener { openLibraryPage?.invoke() }
+            ampDeck.setOnClickListener { openSoundEnginePage?.invoke() }
+            cassetteDeck.setOnClickListener { togglePlayback() }
+            radioDeck.setOnClickListener { showRadioStationManager() }
 
             fun towerSideRail(): LinearLayout {
                 return LinearLayout(this).apply {
@@ -1893,6 +1900,14 @@ class MainActivity : Activity() {
                     setMargins(dp(3), 0, dp(3), 0)
                 })
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
+
+                // Tap an open area of a module to enter its dedicated controls.
+                // Child transport/preset keys retain their own click handlers.
+                sourceDeck.setOnClickListener { openLibraryPage?.invoke() }
+                amp.setOnClickListener { openSoundEnginePage?.invoke() }
+                cassette.setOnClickListener { togglePlayback() }
+                radio.setOnClickListener { showRadioStationManager() }
+
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
                 val towerBottomSpine = portraitMountingSpine(false)
                 playerPage.addView(towerBottomSpine, LinearLayout.LayoutParams(-1, dp(4)).apply {
