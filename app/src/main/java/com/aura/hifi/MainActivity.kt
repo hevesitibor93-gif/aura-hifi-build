@@ -50,6 +50,7 @@ class MainActivity : Activity() {
     private var towerRadioStationDisplay: TextView? = null
     private var activeRadioStationName: String? = null
     private var towerTapeCounterLabel: TextView? = null
+    private var towerTapeStatusLabel: TextView? = null
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
@@ -1251,6 +1252,12 @@ class MainActivity : Activity() {
                 setPadding(0, dp(3), 0, dp(1))
             }
             cassetteDeck.addView(towerTapeCounterLabel)
+            towerTapeStatusLabel = label("TRANSPORT  /  STOPPED", 6f, Color.rgb(151, 208, 174)).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("monospace", Typeface.BOLD)
+                letterSpacing = .06f
+            }
+            cassetteDeck.addView(towerTapeStatusLabel, LinearLayout.LayoutParams(-1, dp(13)))
             // Mechanical cassette transport keys are wired to the shared playback engine.
             val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(2), dp(3), dp(2), 0) }
             for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
@@ -1847,6 +1854,12 @@ class MainActivity : Activity() {
                     setPadding(0, dp(3), 0, dp(1))
                 }
                 cassette.addView(towerTapeCounterLabel)
+                towerTapeStatusLabel = label("TRANSPORT  /  STOPPED", 7f, displayGreen).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.create("monospace", Typeface.BOLD)
+                    letterSpacing = .06f
+                }
+                cassette.addView(towerTapeStatusLabel, LinearLayout.LayoutParams(-1, dp(14)))
                 // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
                 val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(4), dp(5), 0) }
                 for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
@@ -5657,7 +5670,17 @@ class MainActivity : Activity() {
         val p = player ?: return
         try {
             val duration = p.duration; val position = p.currentPosition
-            towerTapeCounterLabel?.text = "TAPE COUNTER   ${formatTime(position)}   •   METAL / CrO₂"
+            if (activeRadioStationName != null) {
+                towerTapeCounterLabel?.text = "LIVE STREAM   •   NETWORK TUNER"
+                towerTapeStatusLabel?.text = if (p.isPlaying) "TRANSPORT  /  LIVE" else "TRANSPORT  /  PAUSED"
+            } else {
+                towerTapeCounterLabel?.text = "TAPE COUNTER   ${formatTime(position)}   •   METAL / CrO₂"
+                towerTapeStatusLabel?.text = when {
+                    p.isPlaying -> "TRANSPORT  /  PLAYING"
+                    position > 0L -> "TRANSPORT  /  PAUSED"
+                    else -> "TRANSPORT  /  STOPPED"
+                }
+            }
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
             vinylView.invalidate()
             val timeText = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
