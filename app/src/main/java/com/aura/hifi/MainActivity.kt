@@ -5127,6 +5127,10 @@ class MainActivity : Activity() {
                         text = "STREAM ERROR  •  $stationName"
                         setTextColor(Color.rgb(255, 125, 105))
                     }
+                    towerTapeStatusLabel?.apply {
+                        text = "TRANSPORT  /  ERROR"
+                        setTextColor(Color.rgb(255, 125, 105))
+                    }
                     toast("$stationName nem érhető el: " + (error.message ?: "lejátszási hiba"))
                 }
             }
@@ -5748,7 +5752,16 @@ class MainActivity : Activity() {
             val duration = p.duration; val position = p.currentPosition
             if (activeRadioStationName != null) {
                 towerTapeCounterLabel?.text = "LIVE STREAM   •   NETWORK TUNER"
-                towerTapeStatusLabel?.text = if (p.isPlaying) "TRANSPORT  /  LIVE" else "TRANSPORT  /  PAUSED"
+                towerTapeStatusLabel?.apply {
+                    text = when (p.playbackState) {
+                        Player.STATE_BUFFERING -> "TRANSPORT  /  BUFFERING"
+                        Player.STATE_READY -> if (p.isPlaying) "TRANSPORT  /  LIVE" else "TRANSPORT  /  PAUSED"
+                        Player.STATE_ENDED -> "TRANSPORT  /  ENDED"
+                        else -> if (p.playWhenReady) "TRANSPORT  /  BUFFERING" else "TRANSPORT  /  PAUSED"
+                    }
+                    setTextColor(if (p.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
+                        else if (p.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                }
             } else {
                 towerTapeCounterLabel?.text = "TAPE COUNTER   ${formatTime(position)}   •   METAL / CrO₂"
                 towerTapeStatusLabel?.text = when {
