@@ -1302,7 +1302,16 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
             })
             radioDeck.addView(tunerDisplay, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(4) })
-            radioStatusLabel = label("STREAM SOURCE  /  STANDBY", 6f, Color.rgb(151, 208, 174)).apply {
+            radioStatusLabel = label(
+                when {
+                    activeRadioStationName == null -> "LOCAL SOURCE  /  READY"
+                    player?.playbackState == Player.STATE_BUFFERING -> "BUFFERING  •  $activeRadioStationName"
+                    player?.isPlaying == true -> "ON AIR  •  $activeRadioStationName"
+                    else -> "PAUSED  •  $activeRadioStationName"
+                },
+                6f,
+                if (activeRadioStationName != null && player?.isPlaying == true) Color.rgb(151, 208, 174) else Color.rgb(230, 190, 112)
+            ).apply {
                 gravity = Gravity.CENTER
                 letterSpacing = .08f
                 setPadding(0, dp(4), 0, dp(2))
@@ -1909,7 +1918,16 @@ class MainActivity : Activity() {
                 radioScreen.addView(towerRadioStationDisplay)
                 radioScreen.addView(label("—  —  —  —  —  —  —  —", 8f, Color.rgb(92, 134, 107)).apply { gravity = Gravity.CENTER })
                 radio.addView(radioScreen, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(5) })
-                radioStatusLabel = label("STREAM SOURCE  /  STANDBY", 7f, displayGreen).apply {
+                radioStatusLabel = label(
+                    when {
+                        activeRadioStationName == null -> "LOCAL SOURCE  /  READY"
+                        player?.playbackState == Player.STATE_BUFFERING -> "BUFFERING  •  $activeRadioStationName"
+                        player?.isPlaying == true -> "ON AIR  •  $activeRadioStationName"
+                        else -> "PAUSED  •  $activeRadioStationName"
+                    },
+                    7f,
+                    if (activeRadioStationName != null && player?.isPlaying == true) displayGreen else champagne
+                ).apply {
                     gravity = Gravity.CENTER
                     letterSpacing = .10f
                     setPadding(0, dp(5), 0, dp(2))
