@@ -4752,19 +4752,36 @@ class MainActivity : Activity() {
         try { if (p.duration > 0) p.seekTo((p.currentPosition + deltaMs).coerceIn(0L, p.duration)) } catch (_: Exception) {}
     }
     private fun handleTowerCassetteKey(key: String) {
+        val isLiveRadio = activeRadioStationName != null
         when (key) {
-            "REW" -> seekBy(-10_000L)
+            "REW" -> {
+                if (isLiveRadio) toast("Élő rádiónál a visszatekerés nem használható.")
+                else seekBy(-10_000L)
+            }
             "PLAY" -> togglePlayback()
             "STOP" -> {
-                try { player?.pause(); player?.seekTo(0L) } catch (_: Exception) {}
+                try { player?.pause(); if (!isLiveRadio) player?.seekTo(0L) } catch (_: Exception) {}
                 setVuActive(false)
-                try { playButton.text = "▶"; vinylView.invalidate() } catch (_: Exception) {}
+                try {
+                    playButton.text = "▶"
+                    vinylView.invalidate()
+                    towerTapeCounterLabel?.text = if (isLiveRadio) "LIVE STREAM   •   NETWORK TUNER" else "TAPE COUNTER   00:00   •   METAL / CrO₂"
+                    towerTapeStatusLabel?.text = "TRANSPORT  /  STOPPED"
+                } catch (_: Exception) {}
             }
-            "FF" -> seekBy(10_000L)
+            "FF" -> {
+                if (isLiveRadio) toast("Élő rádiónál az előretekerés nem használható.")
+                else seekBy(10_000L)
+            }
             "EJECT" -> {
-                try { player?.pause(); player?.seekTo(0L) } catch (_: Exception) {}
+                try { player?.pause(); if (!isLiveRadio) player?.seekTo(0L) } catch (_: Exception) {}
                 setVuActive(false)
-                try { playButton.text = "▶"; vinylView.invalidate() } catch (_: Exception) {}
+                try {
+                    playButton.text = "▶"
+                    vinylView.invalidate()
+                    towerTapeCounterLabel?.text = if (isLiveRadio) "LIVE STREAM   •   NETWORK TUNER" else "TAPE COUNTER   00:00   •   METAL / CrO₂"
+                    towerTapeStatusLabel?.text = "TRANSPORT  /  EJECTED"
+                } catch (_: Exception) {}
                 openAudio()
             }
         }
