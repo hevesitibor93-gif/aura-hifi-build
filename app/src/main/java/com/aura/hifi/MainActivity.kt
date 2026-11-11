@@ -745,16 +745,20 @@ class MainActivity : Activity() {
         val goldHeaderOverflowActions = mutableListOf<View>()
         fun goldHeaderAction(title: String): TextView = TextView(this).apply {
             text = title
-            textSize = 9f
+            textSize = if (towerTheme) 8f else 9f
             gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(231, 204, 157))
-            setPadding(dp(8), dp(3), dp(8), dp(3))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(9).toFloat()
-                setColor(Color.rgb(34, 29, 21))
-                setStroke(dp(1), Color.rgb(111, 86, 48))
+            typeface = if (towerTheme) Typeface.create("sans-serif-condensed", Typeface.BOLD) else Typeface.DEFAULT_BOLD
+            setTextColor(if (towerTheme) Color.rgb(226, 205, 160) else Color.rgb(231, 204, 157))
+            setPadding(dp(if (towerTheme) 6 else 8), dp(3), dp(if (towerTheme) 6 else 8), dp(3))
+            background = GradientDrawable(
+                if (towerTheme) GradientDrawable.Orientation.TOP_BOTTOM else GradientDrawable.Orientation.TL_BR,
+                if (towerTheme) intArrayOf(Color.rgb(83, 86, 84), Color.rgb(28, 31, 31), Color.rgb(12, 14, 15))
+                else intArrayOf(Color.rgb(34, 29, 21), Color.rgb(34, 29, 21))
+            ).apply {
+                cornerRadius = dp(if (towerTheme) 4 else 9).toFloat()
+                setStroke(dp(1), if (towerTheme) Color.rgb(132, 128, 113) else Color.rgb(111, 86, 48))
             }
+            elevation = dp(if (towerTheme) 3 else 0).toFloat()
             isClickable = true
             isFocusable = true
             applyPremiumPressEffect(this)
@@ -1109,6 +1113,12 @@ class MainActivity : Activity() {
             (transportExtras.parent as? ViewGroup)?.removeView(transportExtras)
             transportExtras.setPadding(0, 0, 0, 0)
             cassetteDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(31)))
+            cassetteDeck.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 6f, champagne).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("monospace", Typeface.BOLD)
+                letterSpacing = .04f
+                setPadding(0, dp(3), 0, dp(1))
+            })
 
             val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  ONLINE")
             val tunerDisplay = LinearLayout(this).apply {
@@ -1414,7 +1424,7 @@ class MainActivity : Activity() {
                     setOnClickListener { openSoundEnginePage?.invoke() }
                 }, LinearLayout.LayoutParams(dp(48), dp(48)))
                 ampInfo.addView(button("TONE  /  EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
-                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(66), -1))
+                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(86), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
@@ -1439,6 +1449,12 @@ class MainActivity : Activity() {
                 cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 (controls.parent as? ViewGroup)?.removeView(controls)
                 cassette.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                cassette.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 7f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.create("monospace", Typeface.BOLD)
+                    letterSpacing = .04f
+                    setPadding(0, dp(3), 0, dp(1))
+                })
                 playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
