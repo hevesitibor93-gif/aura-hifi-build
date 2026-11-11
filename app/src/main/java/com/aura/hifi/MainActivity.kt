@@ -5104,8 +5104,9 @@ class MainActivity : Activity() {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
                         Player.STATE_READY -> radioStatusLabel?.apply {
-                            text = "ON AIR  •  $stationName"
-                            setTextColor(Color.rgb(151, 208, 174))
+                            val onAir = exo.playWhenReady
+                            text = if (onAir) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
+                            setTextColor(if (onAir) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
                         }
                         Player.STATE_BUFFERING -> radioStatusLabel?.apply {
                             text = "BUFFERING  •  $stationName"
@@ -5118,6 +5119,10 @@ class MainActivity : Activity() {
                     setVuActive(isPlaying)
                     playButton.text = if (isPlaying) "Ⅱ" else "▶"
                     vinylView.invalidate()
+                    radioStatusLabel?.apply {
+                        text = if (isPlaying) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
+                        setTextColor(if (isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                    }
                     updateProgress()
                 }
                 override fun onPlayerError(error: PlaybackException) {
