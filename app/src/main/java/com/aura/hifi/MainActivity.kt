@@ -47,6 +47,8 @@ class MainActivity : Activity() {
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
     private var radioStatusLabel: TextView? = null
+    private var towerRadioStationDisplay: TextView? = null
+    private var activeRadioStationName: String? = null
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
@@ -1279,11 +1281,14 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 letterSpacing = .16f
             })
-            tunerDisplay.addView(label("NET  •  96 kHz", 14f, displayGreen).apply {
+            towerRadioStationDisplay = label(activeRadioStationName ?: "NET  •  96 kHz", 14f, displayGreen).apply {
                 gravity = Gravity.CENTER
                 typeface = Typeface.create("monospace", Typeface.BOLD)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, dp(2), 0, dp(2))
-            })
+            }
+            tunerDisplay.addView(towerRadioStationDisplay)
             tunerDisplay.addView(label("—  —  —  —  —  —  —", 7f, Color.rgb(92, 134, 107)).apply {
                 gravity = Gravity.CENTER
             })
@@ -1872,11 +1877,14 @@ class MainActivity : Activity() {
                     setPadding(dp(8), dp(6), dp(8), dp(6))
                 }
                 radioScreen.addView(label("DIGITAL NETWORK TUNER", 7f, Color.rgb(133, 170, 143)).apply { gravity = Gravity.CENTER; letterSpacing = .16f })
-                radioScreen.addView(label("NET  •  96 kHz", 17f, displayGreen).apply {
+                towerRadioStationDisplay = label(activeRadioStationName ?: "NET  •  96 kHz", 17f, displayGreen).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.create("monospace", Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
                     setPadding(0, dp(3), 0, dp(3))
-                })
+                }
+                radioScreen.addView(towerRadioStationDisplay)
                 radioScreen.addView(label("—  —  —  —  —  —  —  —", 8f, Color.rgb(92, 134, 107)).apply { gravity = Gravity.CENTER })
                 radio.addView(radioScreen, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(5) })
                 radioStatusLabel = label("STREAM SOURCE  /  STANDBY", 7f, displayGreen).apply {
@@ -4985,6 +4993,8 @@ class MainActivity : Activity() {
             openPlayerPage?.invoke()
             releaseAudio()
             attachVuMeter()
+            activeRadioStationName = stationName
+            towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
             trackLabel.text = stationName
             metadataLabel.text = "MAGYAR INTERNET RÁDIÓ"
             albumLabel.text = "AURA NETWORK TUNER"
@@ -5045,6 +5055,12 @@ class MainActivity : Activity() {
     }
 
     private fun startTrack(uri: Uri) {
+        activeRadioStationName = null
+        towerRadioStationDisplay?.text = "NET  •  96 kHz"
+        radioStatusLabel?.apply {
+            text = "LOCAL SOURCE  /  READY"
+            setTextColor(Color.rgb(151, 208, 174))
+        }
         val activePlayer = player
         if (activePlayer == null) {
             // Service creation is asynchronous; queue the requested track instead of failing immediately.
