@@ -4839,7 +4839,7 @@ class MainActivity : Activity() {
         }
         val urlInput = EditText(this).apply {
             hint = "Stream URL (https://...)"
-            singleLine = true
+            isSingleLine = true
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
         }
         form.addView(nameInput)
