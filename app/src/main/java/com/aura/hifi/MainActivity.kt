@@ -3733,16 +3733,23 @@ class MainActivity : Activity() {
         showPage(0)
         setContentView(root)
         if (towerTheme && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            pageScrolls[0].removeView(playerPage)
+            val towerFitFrame = android.widget.FrameLayout(this).apply {
+                clipChildren = true; clipToPadding = true
+            }
+            towerFitFrame.addView(playerPage, android.widget.FrameLayout.LayoutParams(-1, -2))
+            pageScrolls[0].addView(towerFitFrame, ScrollView.LayoutParams(-1, -2))
             pageScrolls[0].post {
                 val availableHeight = pageScrolls[0].height
                 val availableWidth = pageScrolls[0].width
                 val naturalHeight = playerPage.height
                 if (availableHeight > 0 && naturalHeight > availableHeight) {
-                    val factor = (availableHeight.toFloat() / naturalHeight.toFloat()).coerceIn(0.45f, 1f)
+                    val factor = (availableHeight.toFloat() / naturalHeight.toFloat()).coerceIn(0.42f, 1f)
                     playerPage.pivotX = 0f; playerPage.pivotY = 0f
                     playerPage.scaleX = factor; playerPage.scaleY = factor
+                    playerPage.layoutParams = playerPage.layoutParams.apply { height = naturalHeight }
+                    towerFitFrame.layoutParams = towerFitFrame.layoutParams.apply { height = (naturalHeight * factor).toInt() }
                     playerPage.translationX = ((availableWidth - playerPage.width * factor) / 2f).coerceAtLeast(0f)
-                    playerPage.layoutParams = playerPage.layoutParams.apply { height = (naturalHeight * factor).toInt() }
                 }
             }
         }
