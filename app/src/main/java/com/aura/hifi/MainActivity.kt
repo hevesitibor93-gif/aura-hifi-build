@@ -49,6 +49,7 @@ class MainActivity : Activity() {
     private var radioStatusLabel: TextView? = null
     private var towerRadioStationDisplay: TextView? = null
     private var activeRadioStationName: String? = null
+    private var radioStreamError = false
     private var towerTapeCounterLabel: TextView? = null
     private var towerTapeStatusLabel: TextView? = null
     private var playbackRestoreAttempts = 0
@@ -292,6 +293,7 @@ class MainActivity : Activity() {
             val isNetworkStream = uri.scheme.equals("http", ignoreCase = true) ||
                 uri.scheme.equals("https", ignoreCase = true)
             if (isNetworkStream) {
+                radioStreamError = false
                 val stationName = metadata.title?.toString()?.takeIf { it.isNotBlank() }
                     ?: uri.host ?: "INTERNET RÁDIÓ"
                 activeRadioStationName = stationName
@@ -379,6 +381,7 @@ class MainActivity : Activity() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                if (activeRadioStationName != null) radioStreamError = true
                 activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
                         text = "STREAM ERROR  •  $stationName"
@@ -5121,6 +5124,7 @@ class MainActivity : Activity() {
             releaseAudio()
             attachVuMeter()
             activeRadioStationName = stationName
+            radioStreamError = false
             towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
             trackLabel.text = stationName
             metadataLabel.text = "MAGYAR INTERNET RÁDIÓ"
@@ -5163,6 +5167,7 @@ class MainActivity : Activity() {
                     updateProgress()
                 }
                 override fun onPlayerError(error: PlaybackException) {
+                    radioStreamError = true
                     setVuActive(false)
                     playButton.text = "▶"
                     radioStatusLabel?.apply {
@@ -5182,6 +5187,7 @@ class MainActivity : Activity() {
             exo.prepare()
             exo.playWhenReady = true
         } catch (e: Exception) {
+            radioStreamError = true
             setVuActive(false)
             playButton.text = "▶"
             radioStatusLabel?.apply {
@@ -5194,6 +5200,7 @@ class MainActivity : Activity() {
 
     private fun startTrack(uri: Uri) {
         activeRadioStationName = null
+        radioStreamError = false
         towerRadioStationDisplay?.text = "NET  •  96 kHz"
         radioStatusLabel?.apply {
             text = "LOCAL SOURCE  /  READY"
@@ -5795,13 +5802,14 @@ class MainActivity : Activity() {
             if (activeRadioStationName != null) {
                 towerTapeCounterLabel?.text = "LIVE STREAM   •   NETWORK TUNER"
                 towerTapeStatusLabel?.apply {
-                    text = when (p.playbackState) {
+                    text = if (radioStreamError) "TRANSPORT  /  ERROR" else when (p.playbackState) {
                         Player.STATE_BUFFERING -> "TRANSPORT  /  BUFFERING"
                         Player.STATE_READY -> if (p.isPlaying) "TRANSPORT  /  LIVE" else "TRANSPORT  /  PAUSED"
                         Player.STATE_ENDED -> "TRANSPORT  /  ENDED"
                         else -> if (p.playWhenReady) "TRANSPORT  /  BUFFERING" else "TRANSPORT  /  PAUSED"
                     }
-                    setTextColor(if (p.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
+                    setTextColor(if (radioStreamError) Color.rgb(255, 125, 105)
+                        else if (p.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
                         else if (p.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
                 }
             } else {
