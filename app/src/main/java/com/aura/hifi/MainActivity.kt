@@ -1448,8 +1448,14 @@ class MainActivity : Activity() {
                 }
                 android.app.AlertDialog.Builder(this)
                     .setTitle("TOWER MODULES")
-                    .setMultiChoiceItems(moduleNames, selected) { _, which, checked ->
+                    .setMultiChoiceItems(moduleNames, selected) { dialog, which, checked ->
                         towerPrefs.edit().putBoolean("tower_module_" + moduleKeys[which], checked).apply()
+                        val enabledCount = moduleKeys.count { towerPrefs.getBoolean("tower_module_" + it, true) }
+                        if (enabledCount == 0) {
+                            towerPrefs.edit().putBoolean("tower_module_music", true).apply()
+                            selected[0] = true
+                            (dialog as? android.app.AlertDialog)?.listView?.setItemChecked(0, true)
+                        }
                         applyTowerModules()
                     }
                     .setPositiveButton("DONE", null)
@@ -2011,8 +2017,14 @@ class MainActivity : Activity() {
                     }
                     android.app.AlertDialog.Builder(this)
                         .setTitle("TOWER MODULES")
-                        .setMultiChoiceItems(portraitModuleNames, selected) { _, which, checked ->
+                        .setMultiChoiceItems(portraitModuleNames, selected) { dialog, which, checked ->
                             portraitTowerPrefs.edit().putBoolean("tower_module_" + portraitModuleKeys[which], checked).apply()
+                            val enabledCount = portraitModuleKeys.count { portraitTowerPrefs.getBoolean("tower_module_" + it, true) }
+                            if (enabledCount == 0) {
+                                portraitTowerPrefs.edit().putBoolean("tower_module_music", true).apply()
+                                selected[0] = true
+                                (dialog as? android.app.AlertDialog)?.listView?.setItemChecked(0, true)
+                            }
                             applyPortraitTowerModules()
                         }
                         .setPositiveButton("DONE", null)
