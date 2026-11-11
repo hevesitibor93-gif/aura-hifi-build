@@ -4998,7 +4998,10 @@ class MainActivity : Activity() {
 
     private fun showRadioStationManager() {
         val stations = loadCustomRadioStations()
-        val entries = stations.map { "${it.first}   •   ${it.second}" }.toMutableList()
+        val entries = stations.map { station ->
+            val host = Uri.parse(station.second).host ?: "INTERNET STREAM"
+            "${station.first}   •   ${host.uppercase(java.util.Locale.ROOT)}"
+        }.toMutableList()
         entries.add("＋ ÚJ ÁLLOMÁS HOZZÁADÁSA")
         val listView = android.widget.ListView(this).apply {
             adapter = android.widget.ArrayAdapter(
