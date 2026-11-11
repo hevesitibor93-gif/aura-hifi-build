@@ -5877,6 +5877,10 @@ class MainActivity : Activity() {
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
+        pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
+        pendingRadioStartRunnable = null
+        pendingRadioStation = null
+        pendingRadioStartAttempts = 0
         audioDeviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = null
         AuraPlaybackService.onPreviousRequested = null
