@@ -1058,6 +1058,13 @@ class MainActivity : Activity() {
             timeLabel.gravity = Gravity.END
             timeLabel.textSize = 8f
             musicDeck.addView(timeLabel)
+            // Keep real playback controls on the dedicated music deck.
+            (controls.parent as? ViewGroup)?.removeView(controls)
+            controls.setPadding(0, dp(1), 0, dp(1))
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginEnd = dp(5) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(5) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
+            musicDeck.addView(controls, LinearLayout.LayoutParams(-1, dp(40)))
 
             val ampDeck = towerModule("INTEGRATED AMP", "STEREO POWER  •  TONE")
             vu.visibility = View.VISIBLE
@@ -1424,6 +1431,13 @@ class MainActivity : Activity() {
                 screen.addView(displayText, LinearLayout.LayoutParams(0, -1, 1f))
                 sourceDeck.addView(screen, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 sourceDeck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(17)).apply { topMargin = dp(3) })
+                // Functional previous / play-pause / next controls belong to the music component.
+                (controls.parent as? ViewGroup)?.removeView(controls)
+                controls.setPadding(0, dp(1), 0, dp(1))
+                controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(8) }
+                controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
+                controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
+                sourceDeck.addView(controls, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(1) })
                 playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val amp = component("INTEGRATED AMPLIFIER", "STEREO POWER • TONE CONTROL")
