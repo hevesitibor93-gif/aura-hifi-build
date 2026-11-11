@@ -1345,6 +1345,52 @@ class MainActivity : Activity() {
                 topMargin = dp(5); bottomMargin = dp(5); marginStart = dp(3)
             })
             val towerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            val towerQuickKeys = listOf("music", "amp", "cassette", "radio")
+            val towerQuickLabels = listOf("SOURCE", "AMP", "TAPE", "TUNER")
+            val towerQuickButtons = mutableListOf<TextView>()
+            fun refreshTowerQuickBar() {
+                towerQuickButtons.forEachIndexed { index, keyButton ->
+                    val enabled = towerPrefs.getBoolean("tower_module_" + towerQuickKeys[index], true)
+                    keyButton.setTextColor(if (enabled) champagne else Color.rgb(112, 118, 118))
+                    keyButton.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        if (enabled) intArrayOf(Color.rgb(83, 88, 87), Color.rgb(27, 31, 32))
+                        else intArrayOf(Color.rgb(37, 40, 41), Color.rgb(17, 19, 20))).apply {
+                        cornerRadius = dp(4).toFloat()
+                        setStroke(dp(1), if (enabled) Color.rgb(151, 157, 151) else Color.rgb(66, 70, 70))
+                    }
+                }
+            }
+            val towerQuickBar = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(dp(2), dp(2), dp(2), dp(3))
+            }
+            towerQuickLabels.forEachIndexed { index, quickLabel ->
+                val keyButton = TextView(this).apply {
+                    text = quickLabel
+                    gravity = Gravity.CENTER
+                    textSize = 8f
+                    letterSpacing = .08f
+                    typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                    isAllCaps = true
+                    contentDescription = "Toggle $quickLabel module"
+                    setOnClickListener {
+                        val key = "tower_module_" + towerQuickKeys[index]
+                        val currentlyEnabled = towerPrefs.getBoolean(key, true)
+                        val enabledCount = towerQuickKeys.count { towerPrefs.getBoolean("tower_module_" + it, true) }
+                        if (currentlyEnabled && enabledCount <= 1) {
+                            android.widget.Toast.makeText(this@MainActivity, "At least one module must remain active", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            towerPrefs.edit().putBoolean(key, !currentlyEnabled).apply()
+                            applyTowerModules()
+                        }
+                    }
+                }
+                towerQuickButtons.add(keyButton)
+                towerQuickBar.addView(keyButton, LinearLayout.LayoutParams(0, dp(24), 1f).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                })
+            }
             fun applyTowerModules() {
                 var visibleCount = 0
                 moduleCards.forEachIndexed { index, card ->
@@ -1360,6 +1406,7 @@ class MainActivity : Activity() {
                     joint.visibility = if (moduleCards[index].visibility == View.VISIBLE &&
                         moduleCards[index + 1].visibility == View.VISIBLE) View.VISIBLE else View.GONE
                 }
+                refreshTowerQuickBar()
             }
             applyTowerModules()
             towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
@@ -1376,6 +1423,7 @@ class MainActivity : Activity() {
                     .show()
             }, LinearLayout.LayoutParams(-2, dp(30)).apply { marginStart = dp(5) })
             playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
+            playerPage.addView(towerQuickBar, LinearLayout.LayoutParams(-1, dp(27)))
             playerPage.addView(rack, LinearLayout.LayoutParams(-1, 0, 1f))
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
@@ -1836,6 +1884,50 @@ class MainActivity : Activity() {
                 val portraitModuleKeys = listOf("music", "amp", "cassette", "radio")
                 val portraitModuleNames = arrayOf("MUSIC PLAYER", "AMPLIFIER", "CASSETTE DECK", "INTERNET RADIO")
                 val portraitTowerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+                val portraitQuickLabels = listOf("SOURCE", "AMP", "TAPE", "TUNER")
+                val portraitQuickButtons = mutableListOf<TextView>()
+                fun refreshPortraitQuickBar() {
+                    portraitQuickButtons.forEachIndexed { index, keyButton ->
+                        val enabled = portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
+                        keyButton.setTextColor(if (enabled) champagne else Color.rgb(112, 118, 118))
+                        keyButton.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            if (enabled) intArrayOf(Color.rgb(83, 88, 87), Color.rgb(27, 31, 32))
+                            else intArrayOf(Color.rgb(37, 40, 41), Color.rgb(17, 19, 20))).apply {
+                            cornerRadius = dp(4).toFloat()
+                            setStroke(dp(1), if (enabled) Color.rgb(151, 157, 151) else Color.rgb(66, 70, 70))
+                        }
+                    }
+                }
+                val portraitQuickBar = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(2), dp(2), dp(2), dp(3))
+                }
+                portraitQuickLabels.forEachIndexed { index, quickLabel ->
+                    val keyButton = TextView(this).apply {
+                        text = quickLabel
+                        gravity = Gravity.CENTER
+                        textSize = 8f
+                        letterSpacing = .08f
+                        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                        contentDescription = "Toggle $quickLabel module"
+                        setOnClickListener {
+                            val key = "tower_module_" + portraitModuleKeys[index]
+                            val currentlyEnabled = portraitTowerPrefs.getBoolean(key, true)
+                            val enabledCount = portraitModuleKeys.count { portraitTowerPrefs.getBoolean("tower_module_" + it, true) }
+                            if (currentlyEnabled && enabledCount <= 1) {
+                                android.widget.Toast.makeText(this@MainActivity, "At least one module must remain active", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                portraitTowerPrefs.edit().putBoolean(key, !currentlyEnabled).apply()
+                                applyPortraitTowerModules()
+                            }
+                        }
+                    }
+                    portraitQuickButtons.add(keyButton)
+                    portraitQuickBar.addView(keyButton, LinearLayout.LayoutParams(0, dp(25), 1f).apply {
+                        setMargins(dp(2), 0, dp(2), 0)
+                    })
+                }
                 fun applyPortraitTowerModules() {
                     var visibleCount = 0
                     portraitTowerModules.forEachIndexed { index, module ->
@@ -1851,8 +1943,10 @@ class MainActivity : Activity() {
                         joint.visibility = if (portraitTowerModules[index].visibility == View.VISIBLE &&
                             portraitTowerModules[index + 1].visibility == View.VISIBLE) View.VISIBLE else View.GONE
                     }
+                    refreshPortraitQuickBar()
                 }
                 applyPortraitTowerModules()
+                playerPage.addView(portraitQuickBar, 2, LinearLayout.LayoutParams(-1, dp(28)))
                 towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
                     val selected = BooleanArray(portraitTowerModules.size) { index ->
                         portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
