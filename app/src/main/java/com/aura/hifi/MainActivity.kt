@@ -1274,6 +1274,31 @@ class MainActivity : Activity() {
             }
             radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
 
+            fun towerSideRail(): LinearLayout {
+                return LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(Color.rgb(18, 21, 22), Color.rgb(164, 169, 166), Color.rgb(48, 53, 54), Color.rgb(12, 14, 15))).apply {
+                        cornerRadius = dp(2).toFloat()
+                        setStroke(dp(1), Color.rgb(102, 108, 107))
+                    }
+                    setPadding(dp(1), dp(8), dp(1), dp(8))
+                    repeat(2) { index ->
+                        if (index > 0) addView(View(this@MainActivity), LinearLayout.LayoutParams(1, 0, 1f))
+                        addView(View(this@MainActivity).apply {
+                            background = GradientDrawable().apply {
+                                shape = GradientDrawable.OVAL
+                                setColor(Color.rgb(25, 28, 29))
+                                setStroke(dp(1), Color.rgb(184, 188, 183))
+                            }
+                        }, LinearLayout.LayoutParams(dp(4), dp(4)))
+                    }
+                }
+            }
+            rack.addView(towerSideRail(), LinearLayout.LayoutParams(dp(7), -1).apply {
+                topMargin = dp(5); bottomMargin = dp(5); marginEnd = dp(3)
+            })
             val rackJoints = mutableListOf<View>()
             moduleCards.forEachIndexed { index, card ->
                 rack.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
@@ -1291,6 +1316,9 @@ class MainActivity : Activity() {
                     })
                 }
             }
+            rack.addView(towerSideRail(), LinearLayout.LayoutParams(dp(7), -1).apply {
+                topMargin = dp(5); bottomMargin = dp(5); marginStart = dp(3)
+            })
             val towerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             fun applyTowerModules() {
                 var visibleCount = 0
@@ -1561,10 +1589,27 @@ class MainActivity : Activity() {
                 towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                 addGoldHeaderActions(towerBrand)
                 playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
-                val towerTopSpine = View(this).apply {
-                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                        intArrayOf(Color.rgb(204, 207, 203), Color.rgb(83, 88, 88), Color.rgb(28, 31, 32)))
+                fun portraitMountingSpine(top: Boolean): LinearLayout {
+                    return LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            if (top) intArrayOf(Color.rgb(204, 207, 203), Color.rgb(83, 88, 88), Color.rgb(28, 31, 32))
+                            else intArrayOf(Color.rgb(24, 27, 28), Color.rgb(112, 117, 116), Color.rgb(190, 193, 190)))
+                        setPadding(dp(5), 0, dp(5), 0)
+                        repeat(2) { index ->
+                            if (index > 0) addView(View(this@MainActivity), LinearLayout.LayoutParams(0, 1, 1f))
+                            addView(View(this@MainActivity).apply {
+                                background = GradientDrawable().apply {
+                                    shape = GradientDrawable.OVAL
+                                    setColor(Color.rgb(24, 27, 28))
+                                    setStroke(dp(1), Color.rgb(191, 194, 189))
+                                }
+                            }, LinearLayout.LayoutParams(dp(5), dp(5)))
+                        }
+                    }
                 }
+                val towerTopSpine = portraitMountingSpine(true)
                 playerPage.addView(towerTopSpine, LinearLayout.LayoutParams(-1, dp(3)).apply {
                     leftMargin = dp(3); rightMargin = dp(3); bottomMargin = dp(3)
                 })
@@ -1735,10 +1780,7 @@ class MainActivity : Activity() {
                 }
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
-                val towerBottomSpine = View(this).apply {
-                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                        intArrayOf(Color.rgb(24, 27, 28), Color.rgb(112, 117, 116), Color.rgb(190, 193, 190)))
-                }
+                val towerBottomSpine = portraitMountingSpine(false)
                 playerPage.addView(towerBottomSpine, LinearLayout.LayoutParams(-1, dp(4)).apply {
                     leftMargin = dp(3); rightMargin = dp(3); topMargin = dp(3)
                 })
