@@ -1103,8 +1103,8 @@ class MainActivity : Activity() {
                 artFrame.layoutParams = LinearLayout.LayoutParams(dp(76), dp(76))
                 artFrame.background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setStroke(dp(1), champagne); setColor(Color.BLACK) }
                 artFrame.setPadding(dp(2), dp(2), dp(2), dp(2))
-                (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
-                (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
+                (artworkView.layoutParams as FrameLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
+                (vinylView.layoutParams as FrameLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
                 screen.addView(artFrame, LinearLayout.LayoutParams(dp(76), dp(76)))
                 val displayText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, 0, 0) }
                 displayText.addView(label("NOW PLAYING", 7f, displayGreen).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .12f })
