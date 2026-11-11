@@ -1365,6 +1365,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(dp(2), dp(2), dp(2), dp(3))
             }
+            lateinit var applyTowerModules: () -> Unit
             towerQuickLabels.forEachIndexed { index, quickLabel ->
                 val keyButton = TextView(this).apply {
                     text = quickLabel
@@ -1391,7 +1392,7 @@ class MainActivity : Activity() {
                     setMargins(dp(2), 0, dp(2), 0)
                 })
             }
-            fun applyTowerModules() {
+            applyTowerModules = {
                 var visibleCount = 0
                 moduleCards.forEachIndexed { index, card ->
                     val visible = towerPrefs.getBoolean("tower_module_" + moduleKeys[index], true)
@@ -1903,6 +1904,7 @@ class MainActivity : Activity() {
                     gravity = Gravity.CENTER
                     setPadding(dp(2), dp(2), dp(2), dp(3))
                 }
+                lateinit var applyPortraitTowerModules: () -> Unit
                 portraitQuickLabels.forEachIndexed { index, quickLabel ->
                     val keyButton = TextView(this).apply {
                         text = quickLabel
@@ -1928,7 +1930,7 @@ class MainActivity : Activity() {
                         setMargins(dp(2), 0, dp(2), 0)
                     })
                 }
-                fun applyPortraitTowerModules() {
+                applyPortraitTowerModules = {
                     var visibleCount = 0
                     portraitTowerModules.forEachIndexed { index, module ->
                         val visible = portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
