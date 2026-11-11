@@ -4812,23 +4812,75 @@ class MainActivity : Activity() {
         } catch (_: Exception) { emptyList() }
     }
 
-    private fun showRadioStationManager() {
-        val stations = loadCustomRadioStations()
-        val entries = stations.map { it.first }.toMutableList()
-        entries.add("＋ ÚJ ÁLLOMÁS HOZZÁADÁSA")
-        AlertDialog.Builder(this)
-            .setTitle("AURA  /  SAJÁT INTERNET ADÓK")
-            .setItems(entries.toTypedArray()) { _, which ->
-                if (which < stations.size) {
-                    val station = stations[which]
-                    startRadioStation(station.first, station.second)
-                } else showAddRadioStationDialog()
-            }
-            .setNegativeButton("BEZÁR", null)
-            .show()
+    private fun saveCustomRadioStations(stations: List<Pair<String, String>>) {
+        val array = org.json.JSONArray()
+        stations.forEach { (stationName, stationUrl) ->
+            array.put(org.json.JSONObject().put("name", stationName).put("url", stationUrl))
+        }
+        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
+            .putString("custom_radio_stations", array.toString()).apply()
     }
 
-    private fun showAddRadioStationDialog() {
+    private fun showRadioStationManager() {
+        val stations = loadCustomRadioStations()
+        val entries = stations.map { "${it.first}   •   ${it.second}" }.toMutableList()
+        entries.add("＋ ÚJ ÁLLOMÁS HOZZÁADÁSA")
+        val listView = android.widget.ListView(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_list_item_1,
+                entries
+            )
+            dividerHeight = dp(1)
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("AURA  /  SAJÁT INTERNET ADÓK")
+            .setView(listView)
+            .setNegativeButton("BEZÁR", null)
+            .create()
+        listView.setOnItemClickListener { _, _, which, _ ->
+            if (which < stations.size) {
+                val station = stations[which]
+                startRadioStation(station.first, station.second)
+                dialog.dismiss()
+            } else {
+                dialog.dismiss()
+                showAddRadioStationDialog()
+            }
+        }
+        listView.setOnItemLongClickListener { _, _, which, _ ->
+            if (which < stations.size) {
+                val station = stations[which]
+                AlertDialog.Builder(this)
+                    .setTitle(station.first)
+                    .setItems(arrayOf("SZERKESZTÉS", "TÖRLÉS")) { _, action ->
+                        if (action == 0) {
+                            dialog.dismiss()
+                            showAddRadioStationDialog(station)
+                        } else {
+                            AlertDialog.Builder(this)
+                                .setTitle("ÁLLOMÁS TÖRLÉSE")
+                                .setMessage("Biztosan törlöd ezt az állomást?\n${station.first}")
+                                .setNegativeButton("MÉGSE", null)
+                                .setPositiveButton("TÖRLÉS") { _, _ ->
+                                    val updated = loadCustomRadioStations()
+                                        .filterNot { it.first.equals(station.first, ignoreCase = true) }
+                                    saveCustomRadioStations(updated)
+                                    toast("${station.first} törölve.")
+                                    dialog.dismiss()
+                                    showRadioStationManager()
+                                }
+                                .show()
+                        }
+                    }
+                    .show()
+                true
+            } else false
+        }
+        dialog.show()
+    }
+
+    private fun showAddRadioStationDialog(existingStation: Pair<String, String>? = null) {
         val form = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), dp(4))
@@ -4836,19 +4888,21 @@ class MainActivity : Activity() {
         val nameInput = EditText(this).apply {
             hint = "Állomás neve"
             isSingleLine = true
+            setText(existingStation?.first.orEmpty())
         }
         val urlInput = EditText(this).apply {
             hint = "Stream URL (https://...)"
             isSingleLine = true
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+            setText(existingStation?.second.orEmpty())
         }
         form.addView(nameInput)
         form.addView(urlInput)
         AlertDialog.Builder(this)
-            .setTitle("ÚJ INTERNET RÁDIÓ")
+            .setTitle(if (existingStation == null) "ÚJ INTERNET RÁDIÓ" else "ÁLLOMÁS SZERKESZTÉSE")
             .setView(form)
             .setNegativeButton("MÉGSE", null)
-            .setPositiveButton("MENTÉS") { _, _ ->
+            .setPositiveButton(if (existingStation == null) "MENTÉS" else "MÓDOSÍTÁS") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val url = urlInput.text.toString().trim()
                 if (name.isBlank() || !(url.startsWith("https://") || url.startsWith("http://"))) {
@@ -4856,14 +4910,12 @@ class MainActivity : Activity() {
                     return@setPositiveButton
                 }
                 val stations = loadCustomRadioStations().toMutableList()
+                existingStation?.let { old ->
+                    stations.removeAll { it.first.equals(old.first, ignoreCase = true) }
+                }
                 stations.removeAll { it.first.equals(name, ignoreCase = true) }
                 stations.add(name to url)
-                val array = org.json.JSONArray()
-                stations.forEach { (stationName, stationUrl) ->
-                    array.put(org.json.JSONObject().put("name", stationName).put("url", stationUrl))
-                }
-                getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
-                    .putString("custom_radio_stations", array.toString()).apply()
+                saveCustomRadioStations(stations)
                 toast("$name elmentve a saját adók közé.")
                 startRadioStation(name, url)
             }
