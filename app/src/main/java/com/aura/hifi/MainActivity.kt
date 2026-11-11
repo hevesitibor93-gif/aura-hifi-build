@@ -5038,11 +5038,13 @@ class MainActivity : Activity() {
                             setTextColor(Color.rgb(230, 190, 112))
                         }
                     }
+                    updateProgress()
                 }
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     setVuActive(isPlaying)
                     playButton.text = if (isPlaying) "Ⅱ" else "▶"
                     vinylView.invalidate()
+                    updateProgress()
                 }
                 override fun onPlayerError(error: PlaybackException) {
                     setVuActive(false)
