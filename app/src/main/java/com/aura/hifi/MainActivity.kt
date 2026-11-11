@@ -997,6 +997,15 @@ class MainActivity : Activity() {
                     typeface = Typeface.DEFAULT_BOLD
                     letterSpacing = .06f
                 })
+                val moduleNumber = when {
+                    title.contains("SOURCE") -> "01"
+                    title.contains("AMP") -> "02"
+                    title.contains("HEAD") -> "03"
+                    else -> "04"
+                }
+                fascia.addView(label("  /  $moduleNumber", 6f, Color.rgb(151, 158, 155)).apply {
+                    typeface = Typeface.create("monospace", Typeface.BOLD)
+                })
                 fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
                 shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(23)))
                 shell.addView(label(subtitle, 6f, Color.rgb(143, 149, 148)).apply {
@@ -1434,6 +1443,15 @@ class MainActivity : Activity() {
                     fascia.addView(label("AURA", 10f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .16f })
                     fascia.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
                     fascia.addView(label(title, 8f, Color.rgb(196, 199, 194)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .08f })
+                    val moduleNumber = when {
+                        title.contains("PLAYER") -> "01"
+                        title.contains("AMPLIFIER") -> "02"
+                        title.contains("CASSETTE") -> "03"
+                        else -> "04"
+                    }
+                    fascia.addView(label("  /  $moduleNumber", 7f, Color.rgb(151, 158, 155)).apply {
+                        typeface = Typeface.create("monospace", Typeface.BOLD)
+                    })
                     fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
                     shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(25)))
                     shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(2)) })
