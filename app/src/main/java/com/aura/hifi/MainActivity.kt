@@ -1247,6 +1247,7 @@ class MainActivity : Activity() {
             for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
                 val face = TextView(this).apply {
                     text = key; gravity = Gravity.CENTER; textSize = 6f
+                    setOnClickListener { handleTowerCassetteKey(key) }
                     typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
                     setTextColor(Color.rgb(211, 194, 162))
                     background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(83, 87, 88), Color.rgb(24, 27, 29))).apply {
@@ -1826,6 +1827,7 @@ class MainActivity : Activity() {
                 for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
                     val face = TextView(this).apply {
                         text = key; gravity = Gravity.CENTER; textSize = 8f
+                        setOnClickListener { handleTowerCassetteKey(key) }
                         typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
                         setTextColor(Color.rgb(211, 194, 162))
                         background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(83, 87, 88), Color.rgb(24, 27, 29))).apply {
@@ -4628,6 +4630,24 @@ class MainActivity : Activity() {
     private fun seekBy(deltaMs: Long) {
         val p = player ?: return
         try { if (p.duration > 0) p.seekTo((p.currentPosition + deltaMs).coerceIn(0L, p.duration)) } catch (_: Exception) {}
+    }
+    private fun handleTowerCassetteKey(key: String) {
+        when (key) {
+            "REW" -> seekBy(-10_000L)
+            "PLAY" -> togglePlayback()
+            "STOP" -> {
+                try { player?.pause(); player?.seekTo(0L) } catch (_: Exception) {}
+                setVuActive(false)
+                try { playButton.text = "▶"; vinylView.invalidate() } catch (_: Exception) {}
+            }
+            "FF" -> seekBy(10_000L)
+            "EJECT" -> {
+                try { player?.pause(); player?.seekTo(0L) } catch (_: Exception) {}
+                setVuActive(false)
+                try { playButton.text = "▶"; vinylView.invalidate() } catch (_: Exception) {}
+                openAudio()
+            }
+        }
     }
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
