@@ -293,7 +293,7 @@ class MainActivity : Activity() {
             val isNetworkStream = uri.scheme.equals("http", ignoreCase = true) ||
                 uri.scheme.equals("https", ignoreCase = true)
             if (isNetworkStream) {
-                radioStreamError = false
+                radioStreamError = exo.playerError != null
                 val stationName = metadata.title?.toString()?.takeIf { it.isNotBlank() }
                     ?: uri.host ?: "INTERNET RÁDIÓ"
                 activeRadioStationName = stationName
@@ -303,12 +303,20 @@ class MainActivity : Activity() {
                 towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
                 radioStatusLabel?.apply {
                     text = when {
+                        radioStreamError -> "STREAM ERROR  •  $stationName"
                         exo.playbackState == Player.STATE_BUFFERING -> "BUFFERING  •  $stationName"
                         exo.isPlaying -> "ON AIR  •  $stationName"
                         else -> "PAUSED  •  $stationName"
                     }
-                    setTextColor(if (exo.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
+                    setTextColor(if (radioStreamError) Color.rgb(255, 125, 105)
+                        else if (exo.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
                         else if (exo.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                }
+                towerTapeStatusLabel?.apply {
+                    if (radioStreamError) {
+                        text = "TRANSPORT  /  ERROR"
+                        setTextColor(Color.rgb(255, 125, 105))
+                    }
                 }
             } else {
                 activeRadioStationName = null
@@ -5196,6 +5204,10 @@ class MainActivity : Activity() {
             playButton.text = "▶"
             radioStatusLabel?.apply {
                 text = "STREAM ERROR  •  $stationName"
+                setTextColor(Color.rgb(255, 125, 105))
+            }
+            towerTapeStatusLabel?.apply {
+                text = "TRANSPORT  /  ERROR"
                 setTextColor(Color.rgb(255, 125, 105))
             }
             toast("Nem sikerült elindítani: " + (e.message ?: "ismeretlen hiba"))
