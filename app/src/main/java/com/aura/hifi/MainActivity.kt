@@ -2,6 +2,7 @@ package com.aura.hifi
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.provider.MediaStore
 import android.content.pm.PackageManager
@@ -1301,6 +1302,9 @@ class MainActivity : Activity() {
             radioPresets.addView(towerHardwareKey("DEEJAY") { startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream") }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
                 setMargins(dp(2), 0, dp(2), 0)
             })
+            radioPresets.addView(towerHardwareKey("MY RADIO") { showRadioStationManager() }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
             radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
 
             fun towerSideRail(): LinearLayout {
@@ -1882,6 +1886,9 @@ class MainActivity : Activity() {
                 radioPresets.addView(towerHardwareKey("DEEJAY") { startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream") }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
                     setMargins(dp(3), 0, dp(3), 0)
                 })
+                radioPresets.addView(towerHardwareKey("SAJÁT") { showRadioStationManager() }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                })
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
                 val towerBottomSpine = portraitMountingSpine(false)
@@ -2157,6 +2164,9 @@ class MainActivity : Activity() {
                 radioPanel.addView(button("DEEJAY RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
                 }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
+                radioPanel.addView(button("SAJÁT ADÓK", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    showRadioStationManager()
+                }, LinearLayout.LayoutParams(-1, dp(32)).apply { topMargin = dp(4) })
                 playerPage.addView(radioPanel, LinearLayout.LayoutParams(dp(126), -1).apply { marginStart = dp(7) })
             } else {
                 radioPanel.addView(radioInfo, LinearLayout.LayoutParams(0, -1, 1f))
@@ -2170,6 +2180,9 @@ class MainActivity : Activity() {
                 radioButtons.addView(button("DEEJAY", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
                 }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginStart = dp(4) })
+                radioButtons.addView(button("SAJÁT", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    showRadioStationManager()
+                }, LinearLayout.LayoutParams(0, dp(36), .8f).apply { marginStart = dp(4) })
                 radioPanel.addView(radioButtons, LinearLayout.LayoutParams(0, -1, 1.25f))
                 playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
             }
@@ -4783,6 +4796,78 @@ class MainActivity : Activity() {
                 if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
             }, delay)
         }
+    }
+
+    private fun loadCustomRadioStations(): List<Pair<String, String>> {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val raw = prefs.getString("custom_radio_stations", "[]") ?: "[]"
+        return try {
+            val array = org.json.JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val name = item.optString("name").trim()
+                val url = item.optString("url").trim()
+                if (name.isNotEmpty() && (url.startsWith("https://") || url.startsWith("http://"))) name to url else null
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun showRadioStationManager() {
+        val stations = loadCustomRadioStations()
+        val entries = stations.map { it.first }.toMutableList()
+        entries.add("＋ ÚJ ÁLLOMÁS HOZZÁADÁSA")
+        AlertDialog.Builder(this)
+            .setTitle("AURA  /  SAJÁT INTERNET ADÓK")
+            .setItems(entries.toTypedArray()) { _, which ->
+                if (which < stations.size) {
+                    val station = stations[which]
+                    startRadioStation(station.first, station.second)
+                } else showAddRadioStationDialog()
+            }
+            .setNegativeButton("BEZÁR", null)
+            .show()
+    }
+
+    private fun showAddRadioStationDialog() {
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(4))
+        }
+        val nameInput = EditText(this).apply {
+            hint = "Állomás neve"
+            singleLine = true
+        }
+        val urlInput = EditText(this).apply {
+            hint = "Stream URL (https://...)"
+            singleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        }
+        form.addView(nameInput)
+        form.addView(urlInput)
+        AlertDialog.Builder(this)
+            .setTitle("ÚJ INTERNET RÁDIÓ")
+            .setView(form)
+            .setNegativeButton("MÉGSE", null)
+            .setPositiveButton("MENTÉS") { _, _ ->
+                val name = nameInput.text.toString().trim()
+                val url = urlInput.text.toString().trim()
+                if (name.isBlank() || !(url.startsWith("https://") || url.startsWith("http://"))) {
+                    toast("Adj meg nevet és érvényes http/https stream címet.")
+                    return@setPositiveButton
+                }
+                val stations = loadCustomRadioStations().toMutableList()
+                stations.removeAll { it.first.equals(name, ignoreCase = true) }
+                stations.add(name to url)
+                val array = org.json.JSONArray()
+                stations.forEach { (stationName, stationUrl) ->
+                    array.put(org.json.JSONObject().put("name", stationName).put("url", stationUrl))
+                }
+                getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
+                    .putString("custom_radio_stations", array.toString()).apply()
+                toast("$name elmentve a saját adók közé.")
+                startRadioStation(name, url)
+            }
+            .show()
     }
 
     private fun startRadioStation(stationName: String, streamUrl: String) {
