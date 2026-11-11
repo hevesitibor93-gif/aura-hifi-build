@@ -774,6 +774,25 @@ class MainActivity : Activity() {
             target.addView(settingsAction, LinearLayout.LayoutParams(dp(35), dp(30)).apply { marginStart = dp(5) })
             target.addView(moreAction, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginStart = dp(5) })
         }
+        fun towerHardwareKey(title: String, action: () -> Unit): TextView = TextView(this).apply {
+            text = title
+            textSize = 8f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+            letterSpacing = .08f
+            setTextColor(Color.rgb(231, 213, 174))
+            setPadding(dp(7), dp(4), dp(7), dp(4))
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(91, 94, 91), Color.rgb(39, 42, 42), Color.rgb(17, 19, 20))).apply {
+                cornerRadius = dp(4).toFloat()
+                setStroke(dp(1), Color.rgb(133, 128, 111))
+            }
+            elevation = dp(2).toFloat()
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { performAuraHaptic(this); action() }
+            applyPremiumPressEffect(this)
+        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -1074,7 +1093,7 @@ class MainActivity : Activity() {
                 letterSpacing = .10f
                 setPadding(0, dp(3), 0, dp(2))
             })
-            ampDeck.addView(button("OPEN SOUND ENGINE  ⚙", Color.rgb(65, 53, 34), champagne) {
+            ampDeck.addView(towerHardwareKey("DSP  /  TONE CONTROL") {
                 openSoundEnginePage?.invoke()
             }, LinearLayout.LayoutParams(-1, dp(34)))
 
@@ -1423,7 +1442,7 @@ class MainActivity : Activity() {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(34, 36, 36)); setStroke(dp(2), Color.rgb(133, 119, 91)) }
                     setOnClickListener { openSoundEnginePage?.invoke() }
                 }, LinearLayout.LayoutParams(dp(48), dp(48)))
-                ampInfo.addView(button("TONE  /  EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
+                ampInfo.addView(towerHardwareKey("TONE / EQ") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(86), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
