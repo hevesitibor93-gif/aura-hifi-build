@@ -1860,7 +1860,7 @@ class MainActivity : Activity() {
                     letterSpacing = .06f
                 }
                 cassette.addView(towerTapeStatusLabel, LinearLayout.LayoutParams(-1, dp(14)))
-                // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
+                // Mechanical cassette transport keys are wired to the shared playback engine.
                 val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(4), dp(5), 0) }
                 for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
                     val face = TextView(this).apply {
