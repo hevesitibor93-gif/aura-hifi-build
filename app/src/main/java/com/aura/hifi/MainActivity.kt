@@ -1007,6 +1007,10 @@ class MainActivity : Activity() {
                     typeface = Typeface.create("monospace", Typeface.BOLD)
                 })
                 fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
+                shell.addView(View(this).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.rgb(190, 193, 190), Color.rgb(75, 80, 81), Color.rgb(22, 25, 26)))
+                }, LinearLayout.LayoutParams(-1, dp(2)))
                 shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(23)))
                 shell.addView(label(subtitle, 6f, Color.rgb(143, 149, 148)).apply {
                     letterSpacing = .08f
@@ -1028,6 +1032,28 @@ class MainActivity : Activity() {
                     coolingGrille.addView(slot, LinearLayout.LayoutParams(0, dp(3), 1f).apply { setMargins(dp(1), 0, dp(1), 0) })
                 }
                 shell.addView(coolingGrille, LinearLayout.LayoutParams(-1, dp(5)))
+                val lowerRail = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(2), dp(2), dp(2), 0)
+                }
+                repeat(4) {
+                    lowerRail.addView(View(this).apply {
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(Color.rgb(20, 23, 24))
+                            setStroke(dp(1), Color.rgb(132, 136, 133))
+                        }
+                    }, LinearLayout.LayoutParams(dp(4), dp(4)).apply {
+                        if (it > 0) marginStart = dp(5)
+                    })
+                }
+                lowerRail.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
+                lowerRail.addView(View(this).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.rgb(156, 160, 157), Color.rgb(48, 52, 53)))
+                }, LinearLayout.LayoutParams(dp(34), dp(2)))
+                shell.addView(lowerRail, LinearLayout.LayoutParams(-1, dp(7)))
                 moduleCards.add(shell)
                 return shell
             }
