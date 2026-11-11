@@ -288,11 +288,38 @@ class MainActivity : Activity() {
         val uri = item?.localConfiguration?.uri
         if (uri != null) {
             selectedUri = uri
-            readMetadata(uri)
             val metadata = item.mediaMetadata
-            if (trackLabel.text.isNullOrBlank()) trackLabel.text = metadata.title ?: "Ismeretlen cím"
-            if (metadataLabel.text.isNullOrBlank()) metadataLabel.text = metadata.artist ?: "Ismeretlen előadó"
-            if (albumLabel.text.isNullOrBlank()) albumLabel.text = metadata.albumTitle ?: "Ismeretlen album"
+            val isNetworkStream = uri.scheme.equals("http", ignoreCase = true) ||
+                uri.scheme.equals("https", ignoreCase = true)
+            if (isNetworkStream) {
+                val stationName = metadata.title?.toString()?.takeIf { it.isNotBlank() }
+                    ?: uri.host ?: "INTERNET RÁDIÓ"
+                activeRadioStationName = stationName
+                trackLabel.text = stationName
+                metadataLabel.text = metadata.artist?.toString() ?: "MAGYAR INTERNET RÁDIÓ"
+                albumLabel.text = metadata.albumTitle?.toString() ?: "AURA NETWORK TUNER"
+                towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
+                radioStatusLabel?.apply {
+                    text = when {
+                        exo.playbackState == Player.STATE_BUFFERING -> "BUFFERING  •  $stationName"
+                        exo.isPlaying -> "ON AIR  •  $stationName"
+                        else -> "PAUSED  •  $stationName"
+                    }
+                    setTextColor(if (exo.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
+                        else if (exo.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                }
+            } else {
+                activeRadioStationName = null
+                towerRadioStationDisplay?.text = "NET  •  96 kHz"
+                radioStatusLabel?.apply {
+                    text = "LOCAL SOURCE  /  READY"
+                    setTextColor(Color.rgb(151, 208, 174))
+                }
+                readMetadata(uri)
+                if (trackLabel.text.isNullOrBlank()) trackLabel.text = metadata.title ?: "Ismeretlen cím"
+                if (metadataLabel.text.isNullOrBlank()) metadataLabel.text = metadata.artist ?: "Ismeretlen előadó"
+                if (albumLabel.text.isNullOrBlank()) albumLabel.text = metadata.albumTitle ?: "Ismeretlen album"
+            }
             val queuePosition = queue.indexOf(uri)
             if (queuePosition >= 0) currentIndex = queuePosition
             updateNextTrack()
