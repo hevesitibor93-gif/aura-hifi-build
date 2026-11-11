@@ -1808,7 +1808,7 @@ class MainActivity : Activity() {
                     setStroke(dp(2), Color.rgb(207, 145, 54))
                 }
                 val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(1), dp(3), dp(7)) }
-                towerBrand.addView(towerHardwareKey("☰") { showPage(1) }, LinearLayout.LayoutParams(dp(34), dp(29)))
+                towerBrand.addView(towerHardwareKey("☰") { openLibraryPage?.invoke() }, LinearLayout.LayoutParams(dp(34), dp(29)))
                 towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                 val centeredBrand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
                 centeredBrand.addView(label("AURA", 22f, Color.rgb(255, 211, 137)).apply {
@@ -1819,8 +1819,12 @@ class MainActivity : Activity() {
                 towerBrand.addView(centeredBrand)
                 towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                 towerBrand.addView(towerHardwareKey("CAST") { showRadioStationManager() }, LinearLayout.LayoutParams(dp(39), dp(29)).apply { marginEnd = dp(3) })
-                towerBrand.addView(towerHardwareKey("⚙") { showPage(3) }, LinearLayout.LayoutParams(dp(34), dp(29)).apply { marginEnd = dp(3) })
-                towerBrand.addView(towerHardwareKey("ⓘ") { showPage(3) }, LinearLayout.LayoutParams(dp(34), dp(29)))
+                val towerSettingsKey = towerHardwareKey("⚙") {}
+                goldHeaderPageActions.add(towerSettingsKey to 3)
+                towerBrand.addView(towerSettingsKey, LinearLayout.LayoutParams(dp(34), dp(29)).apply { marginEnd = dp(3) })
+                val towerInfoKey = towerHardwareKey("ⓘ") {}
+                goldHeaderPageActions.add(towerInfoKey to 3)
+                towerBrand.addView(towerInfoKey, LinearLayout.LayoutParams(dp(34), dp(29)))
                 playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(45)))
                 fun portraitMountingSpine(top: Boolean): LinearLayout {
                     return LinearLayout(this).apply {
