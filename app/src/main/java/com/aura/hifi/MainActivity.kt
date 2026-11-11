@@ -964,6 +964,7 @@ class MainActivity : Activity() {
                     }
                     setPadding(dp(6), dp(4), dp(6), dp(4))
                 }
+                fascia.addView(label("●", 5f, champagne).apply { gravity = Gravity.CENTER; setPadding(0, 0, dp(4), 0) })
                 fascia.addView(label("AURA", 9f, champagne).apply {
                     typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
                     letterSpacing = .12f
@@ -971,7 +972,9 @@ class MainActivity : Activity() {
                 fascia.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                 fascia.addView(label(title, 7f, Color.rgb(205, 208, 203)).apply {
                     typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = .06f
                 })
+                fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
                 shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(23)))
                 shell.addView(label(subtitle, 6f, Color.rgb(143, 149, 148)).apply {
                     letterSpacing = .08f
@@ -1037,10 +1040,35 @@ class MainActivity : Activity() {
             vu.visibility = View.VISIBLE
             vu.layoutParams = LinearLayout.LayoutParams(-1, dp(48))
             ampDeck.addView(vu, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
-            ampDeck.addView(label("MASTER VOLUME  /  STEREO", 7f, champagne).apply {
+            val ampControlStrip = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(4).toFloat()
+                    setColor(Color.rgb(12, 14, 15))
+                    setStroke(dp(1), Color.rgb(74, 78, 77))
+                }
+                setPadding(dp(5), dp(3), dp(5), dp(3))
+            }
+            ampControlStrip.addView(label("STEREO  /  PURE", 7f, Color.rgb(160, 177, 164)).apply {
+                typeface = Typeface.DEFAULT_BOLD
+                letterSpacing = .08f
+            }, LinearLayout.LayoutParams(0, -1, 1f))
+            ampControlStrip.addView(label("◉", 29f, champagne).apply {
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.rgb(35, 37, 37))
+                    setStroke(dp(2), Color.rgb(133, 119, 91))
+                }
+                setOnClickListener { openSoundEnginePage?.invoke() }
+            }, LinearLayout.LayoutParams(dp(42), dp(42)))
+            ampDeck.addView(ampControlStrip, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3) })
+            ampDeck.addView(label("MASTER VOLUME     L  /  R", 6f, champagne).apply {
                 gravity = Gravity.CENTER
                 typeface = Typeface.DEFAULT_BOLD
-                setPadding(0, dp(5), 0, dp(4))
+                letterSpacing = .10f
+                setPadding(0, dp(3), 0, dp(2))
             })
             ampDeck.addView(button("OPEN SOUND ENGINE  ⚙", Color.rgb(65, 53, 34), champagne) {
                 openSoundEnginePage?.invoke()
@@ -1083,19 +1111,33 @@ class MainActivity : Activity() {
             cassetteDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(31)))
 
             val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  ONLINE")
-            radioDeck.addView(label("ONLINE RADIO", 10f, displayGreen).apply {
+            val tunerDisplay = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                typeface = Typeface.DEFAULT_BOLD
-                background = GradientDrawable().apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(5, 17, 15), Color.rgb(12, 31, 25))).apply {
                     cornerRadius = dp(4).toFloat()
-                    setColor(Color.rgb(8, 19, 16))
-                    setStroke(dp(1), Color.rgb(67, 86, 73))
+                    setStroke(dp(1), Color.rgb(73, 105, 83))
                 }
-                setPadding(dp(5), dp(10), dp(5), dp(10))
-            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-            radioDeck.addView(label("READY TO CONNECT", 7f, Color.rgb(151, 208, 174)).apply {
+                setPadding(dp(5), dp(6), dp(5), dp(5))
+            }
+            tunerDisplay.addView(label("NETWORK TUNER", 6f, Color.rgb(133, 170, 143)).apply {
                 gravity = Gravity.CENTER
-                setPadding(0, dp(5), 0, dp(3))
+                letterSpacing = .16f
+            })
+            tunerDisplay.addView(label("NET  •  96 kHz", 14f, displayGreen).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("monospace", Typeface.BOLD)
+                setPadding(0, dp(2), 0, dp(2))
+            })
+            tunerDisplay.addView(label("—  —  —  —  —  —  —", 7f, Color.rgb(92, 134, 107)).apply {
+                gravity = Gravity.CENTER
+            })
+            radioDeck.addView(tunerDisplay, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(4) })
+            radioDeck.addView(label("STREAM SOURCE  /  STANDBY", 6f, Color.rgb(151, 208, 174)).apply {
+                gravity = Gravity.CENTER
+                letterSpacing = .08f
+                setPadding(0, dp(4), 0, dp(2))
             })
 
             moduleCards.forEachIndexed { index, card ->
@@ -1295,9 +1337,11 @@ class MainActivity : Activity() {
                         }
                         setPadding(dp(8), dp(4), dp(8), dp(4))
                     }
+                    fascia.addView(label("●", 5f, champagne).apply { gravity = Gravity.CENTER; setPadding(0, 0, dp(4), 0) })
                     fascia.addView(label("AURA", 10f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .16f })
                     fascia.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
                     fascia.addView(label(title, 8f, Color.rgb(196, 199, 194)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .08f })
+                    fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
                     shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(25)))
                     shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(3)) })
                     return shell
@@ -1363,9 +1407,13 @@ class MainActivity : Activity() {
                 vu.layoutParams = LinearLayout.LayoutParams(0, dp(47), 1f)
                 ampFace.addView(vu)
                 val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(7), 0, 0, 0) }
-                ampInfo.addView(label("VOLUME", 7f, champagne).apply { gravity = Gravity.CENTER })
-                ampInfo.addView(label("AURA", 10f, Color.LTGRAY).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                ampInfo.addView(button("EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(55), dp(27)).apply { topMargin = dp(4) })
+                ampInfo.addView(label("MASTER", 7f, champagne).apply { gravity = Gravity.CENTER; letterSpacing = .12f })
+                ampInfo.addView(label("◉", 35f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(34, 36, 36)); setStroke(dp(2), Color.rgb(133, 119, 91)) }
+                    setOnClickListener { openSoundEnginePage?.invoke() }
+                }, LinearLayout.LayoutParams(dp(48), dp(48)))
+                ampInfo.addView(button("TONE  /  EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(66), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
@@ -1394,11 +1442,29 @@ class MainActivity : Activity() {
                 playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
-                radio.addView(label("ONLINE RADIO  /  READY TO CONNECT", 9f, displayGreen).apply {
+                val radioScreen = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
-                    background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setColor(Color.rgb(8, 19, 16)); setStroke(dp(1), Color.rgb(67, 86, 73)) }
-                    setPadding(dp(8), dp(9), dp(8), dp(9))
-                }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(5, 17, 15), Color.rgb(12, 31, 25))).apply {
+                        cornerRadius = dp(5).toFloat()
+                        setStroke(dp(1), Color.rgb(73, 105, 83))
+                    }
+                    setPadding(dp(8), dp(6), dp(8), dp(6))
+                }
+                radioScreen.addView(label("DIGITAL NETWORK TUNER", 7f, Color.rgb(133, 170, 143)).apply { gravity = Gravity.CENTER; letterSpacing = .16f })
+                radioScreen.addView(label("NET  •  96 kHz", 17f, displayGreen).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.create("monospace", Typeface.BOLD)
+                    setPadding(0, dp(3), 0, dp(3))
+                })
+                radioScreen.addView(label("—  —  —  —  —  —  —  —", 8f, Color.rgb(92, 134, 107)).apply { gravity = Gravity.CENTER })
+                radio.addView(radioScreen, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(5) })
+                radio.addView(label("STREAM SOURCE  /  STANDBY", 7f, displayGreen).apply {
+                    gravity = Gravity.CENTER
+                    letterSpacing = .10f
+                    setPadding(0, dp(5), 0, dp(2))
+                })
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
                 val portraitTowerModules = listOf(sourceDeck, amp, cassette, radio)
                 val portraitModuleKeys = listOf("music", "amp", "cassette", "radio")
