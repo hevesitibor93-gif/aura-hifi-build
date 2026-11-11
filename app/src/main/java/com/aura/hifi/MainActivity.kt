@@ -1243,6 +1243,7 @@ class MainActivity : Activity() {
             val ampDeck = towerModule("INTEGRATED AMP", "STEREO POWER  •  TONE")
             vu.visibility = View.VISIBLE
             vu.layoutParams = LinearLayout.LayoutParams(-1, dp(48))
+            vu.setOnClickListener { openVuSettingsPage?.invoke() }
             ampDeck.addView(vu, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
             val ampControlStrip = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -1332,6 +1333,12 @@ class MainActivity : Activity() {
                 setPadding(0, dp(3), 0, dp(1))
             }
             cassetteDeck.addView(towerTapeCounterLabel)
+            // Fixed classic analogue VU for the cassette deck; independent of the selectable amplifier VU style.
+            towerCassetteMeter = TowerAnalogMeterView(dualRow = false).apply {
+                setActive(player?.isPlaying == true)
+                contentDescription = "Classic cassette VU meter"
+            }
+            cassetteDeck.addView(towerCassetteMeter, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(2) })
             towerTapeStatusLabel = label("TRANSPORT  /  STOPPED", 6f, Color.rgb(151, 208, 174)).apply {
                 gravity = Gravity.CENTER
                 typeface = Typeface.create("monospace", Typeface.BOLD)
