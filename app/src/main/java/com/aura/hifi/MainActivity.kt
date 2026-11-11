@@ -1807,12 +1807,21 @@ class MainActivity : Activity() {
                     cornerRadius = dp(8).toFloat()
                     setStroke(dp(2), Color.rgb(207, 145, 54))
                 }
-                val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(5), dp(1), dp(5), dp(7)) }
-                towerBrand.addView(label("AURA", 21f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .18f })
-                towerBrand.addView(label("  HI-FI TOWER EDITION", 8f, Color.rgb(151, 157, 156)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .10f })
+                val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(1), dp(3), dp(7)) }
+                towerBrand.addView(towerHardwareKey("☰") { showPage(1) }, LinearLayout.LayoutParams(dp(34), dp(29)))
                 towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-                addGoldHeaderActions(towerBrand)
-                playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
+                val centeredBrand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+                centeredBrand.addView(label("AURA", 22f, Color.rgb(255, 211, 137)).apply {
+                    gravity = Gravity.CENTER; typeface = Typeface.create("serif", Typeface.BOLD); letterSpacing = .20f
+                    setShadowLayer(dp(5).toFloat(), 0f, 0f, Color.rgb(211, 132, 43))
+                })
+                centeredBrand.addView(label("HI-FI STUDIO", 9f, champagne).apply { gravity = Gravity.CENTER; letterSpacing = .16f; typeface = Typeface.DEFAULT_BOLD })
+                towerBrand.addView(centeredBrand)
+                towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                towerBrand.addView(towerHardwareKey("CAST") { showRadioStationManager() }, LinearLayout.LayoutParams(dp(39), dp(29)).apply { marginEnd = dp(3) })
+                towerBrand.addView(towerHardwareKey("⚙") { showPage(3) }, LinearLayout.LayoutParams(dp(34), dp(29)).apply { marginEnd = dp(3) })
+                towerBrand.addView(towerHardwareKey("ⓘ") { showPage(3) }, LinearLayout.LayoutParams(dp(34), dp(29)))
+                playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(45)))
                 fun portraitMountingSpine(top: Boolean): LinearLayout {
                     return LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -1898,6 +1907,11 @@ class MainActivity : Activity() {
                 controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
                 sourceDeck.addView(controls, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(1) })
+                (transportExtras.parent as? ViewGroup)?.removeView(transportExtras)
+                transportExtras.getChildAt(0).visibility = View.GONE
+                transportExtras.getChildAt(3).visibility = View.GONE
+                transportExtras.setPadding(0, 0, 0, 0)
+                sourceDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(26)))
                 playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
                 playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
                     leftMargin = dp(5); rightMargin = dp(5)
@@ -2171,7 +2185,7 @@ class MainActivity : Activity() {
                 technicalLabel.visibility = View.GONE
                 nextTrackLabel.visibility = View.GONE
                 controlStack.visibility = View.GONE
-                transportExtras.visibility = View.GONE
+                transportExtras.visibility = View.VISIBLE
                 original.forEachIndexed { i, child ->
                     when (i) { in 11..15 -> eqPage.addView(child); else -> if (i > 15) settingsPage.addView(child) }
                 }
