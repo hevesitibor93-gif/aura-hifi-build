@@ -338,7 +338,7 @@ class MainActivity : Activity() {
         playbackListener?.let { exo.removeListener(it) }
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                activeRadioStationName?.let { stationName ->
+                if (!radioStreamError) activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
                         text = when (playbackState) {
                             Player.STATE_BUFFERING -> "BUFFERING  •  $stationName"
@@ -365,7 +365,7 @@ class MainActivity : Activity() {
                 setVuActive(isPlaying)
                 playButton.text = if (isPlaying) "Ⅱ" else "▶"
                 vinylView.invalidate()
-                activeRadioStationName?.let { stationName ->
+                if (!radioStreamError) activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
                         text = if (isPlaying) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
                         setTextColor(if (isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
