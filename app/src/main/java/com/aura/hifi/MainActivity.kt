@@ -740,6 +740,7 @@ class MainActivity : Activity() {
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val goldStudioTheme = themePrefs.getString("aura_theme", "gold_studio") == "gold_studio"
+        val towerTheme = themePrefs.getString("aura_theme", "gold_studio") == "tower_edition"
         val goldHeaderPageActions = mutableListOf<Pair<View, Int>>()
         val goldHeaderOverflowActions = mutableListOf<View>()
         fun goldHeaderAction(title: String): TextView = TextView(this).apply {
@@ -1039,7 +1040,145 @@ class MainActivity : Activity() {
             sideVuRight = null
             landscapeVuLeftPanel = null
             landscapeVuRightPanel = null
-            if (goldStudioTheme) {
+            if (towerTheme) {
+                // AURA Hi-Fi Tower Edition: independent component faces, visually joined as one stack.
+                val metal = Color.rgb(24, 27, 30)
+                val edge = Color.rgb(105, 111, 113)
+                val champagne = Color.rgb(222, 190, 127)
+                val displayGreen = Color.rgb(151, 208, 174)
+                fun component(title: String, subtitle: String): LinearLayout {
+                    val shell = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(Color.rgb(62, 66, 68), metal, Color.rgb(12, 14, 16))).apply {
+                            cornerRadius = dp(9).toFloat()
+                            setStroke(dp(2), edge)
+                        }
+                        setPadding(dp(9), dp(7), dp(9), dp(8))
+                        elevation = dp(5).toFloat()
+                    }
+                    val fascia = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                            intArrayOf(Color.rgb(43, 47, 49), Color.rgb(19, 22, 24))).apply {
+                            cornerRadius = dp(4).toFloat()
+                            setStroke(dp(1), Color.rgb(76, 81, 83))
+                        }
+                        setPadding(dp(8), dp(4), dp(8), dp(4))
+                    }
+                    fascia.addView(label("AURA", 10f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .16f })
+                    fascia.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
+                    fascia.addView(label(title, 8f, Color.rgb(196, 199, 194)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .08f })
+                    shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(25)))
+                    shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(3)) })
+                    return shell
+                }
+                playerPage.orientation = LinearLayout.VERTICAL
+                playerPage.gravity = Gravity.TOP
+                playerPage.setPadding(dp(8), dp(7), dp(8), dp(8))
+                playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(5, 7, 9), Color.rgb(28, 30, 31), Color.rgb(5, 7, 9))).apply {
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(2), Color.rgb(91, 97, 99))
+                }
+                val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(5), dp(1), dp(5), dp(7)) }
+                towerBrand.addView(label("AURA", 21f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .18f })
+                towerBrand.addView(label("  HI-FI TOWER EDITION", 8f, Color.rgb(151, 157, 156)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .10f })
+                towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                addGoldHeaderActions(towerBrand)
+                playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
+
+                val sourceDeck = component("DIGITAL MUSIC PLAYER", "HIGH RESOLUTION • DIGITAL SOURCE")
+                val screen = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(8, 20, 17), Color.rgb(13, 29, 24))).apply {
+                        cornerRadius = dp(5).toFloat()
+                        setStroke(dp(2), Color.rgb(73, 91, 79))
+                    }
+                    setPadding(dp(7), dp(7), dp(7), dp(7))
+                }
+                artFrame.layoutParams = LinearLayout.LayoutParams(dp(76), dp(76))
+                artFrame.background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setStroke(dp(1), champagne); setColor(Color.BLACK) }
+                artFrame.setPadding(dp(2), dp(2), dp(2), dp(2))
+                (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
+                (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
+                screen.addView(artFrame, LinearLayout.LayoutParams(dp(76), dp(76)))
+                val displayText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, 0, 0) }
+                displayText.addView(label("NOW PLAYING", 7f, displayGreen).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .12f })
+                trackLabel.gravity = Gravity.START
+                trackLabel.textSize = 15f
+                trackLabel.setTextColor(Color.rgb(218, 235, 218))
+                trackLabel.setPadding(0, dp(3), 0, dp(2))
+                displayText.addView(trackLabel)
+                metadataLabel.gravity = Gravity.START
+                metadataLabel.textSize = 9f
+                displayText.addView(metadataLabel)
+                albumLabel.gravity = Gravity.START
+                albumLabel.textSize = 8f
+                displayText.addView(albumLabel)
+                displayText.addView(timeLabel.apply { gravity = Gravity.START; textSize = 8f; setTextColor(displayGreen) })
+                screen.addView(displayText, LinearLayout.LayoutParams(0, -1, 1f))
+                sourceDeck.addView(screen, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                sourceDeck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(17)).apply { topMargin = dp(3) })
+                playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+
+                val amp = component("INTEGRATED AMPLIFIER", "STEREO POWER • TONE CONTROL")
+                val ampFace = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.rgb(14, 16, 17)); setStroke(dp(1), Color.rgb(73, 78, 78)) }
+                    setPadding(dp(7), dp(5), dp(7), dp(5))
+                }
+                vu.layoutParams = LinearLayout.LayoutParams(0, dp(47), 1f)
+                ampFace.addView(vu)
+                val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(7), 0, 0, 0) }
+                ampInfo.addView(label("VOLUME", 7f, champagne).apply { gravity = Gravity.CENTER })
+                ampInfo.addView(label("AURA", 10f, Color.LTGRAY).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
+                ampInfo.addView(button("EQ", Color.rgb(65, 53, 34), champagne) { showPage(2) }, LinearLayout.LayoutParams(dp(55), dp(27)).apply { topMargin = dp(4) })
+                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(66), -1))
+                amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                playerPage.addView(amp, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+
+                val cassette = component("CASSETTE DECK", "THREE HEAD • METAL TAPE")
+                val cassetteWindow = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(9, 13, 15), Color.rgb(27, 31, 32))).apply {
+                        cornerRadius = dp(6).toFloat()
+                        setStroke(dp(2), Color.rgb(86, 91, 90))
+                    }
+                    setPadding(dp(12), dp(8), dp(12), dp(8))
+                }
+                fun reel(): TextView = label("◉", 35f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(29, 32, 32)); setStroke(dp(2), Color.rgb(126, 130, 125)) }
+                }
+                cassetteWindow.addView(reel(), LinearLayout.LayoutParams(dp(53), dp(53)))
+                cassetteWindow.addView(label("AURA\nMETAL  •  90", 8f, Color.rgb(204, 207, 196)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, dp(53), 1f))
+                cassetteWindow.addView(reel(), LinearLayout.LayoutParams(dp(53), dp(53)))
+                cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                cassette.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                playerPage.addView(cassette, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+
+                val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
+                radio.addView(label("ONLINE RADIO  /  READY TO CONNECT", 9f, displayGreen).apply {
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setColor(Color.rgb(8, 19, 16)); setStroke(dp(1), Color.rgb(67, 86, 73)) }
+                    setPadding(dp(8), dp(9), dp(8), dp(9))
+                }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                playerPage.addView(radio, LinearLayout.LayoutParams(-1, -2))
+                technicalLabel.visibility = View.GONE
+                nextTrackLabel.visibility = View.GONE
+                controlStack.visibility = View.GONE
+                transportExtras.visibility = View.GONE
+                original.forEachIndexed { i, child ->
+                    when (i) { in 11..15 -> eqPage.addView(child); else -> if (i > 15) settingsPage.addView(child) }
+                }
+            } else if (goldStudioTheme) {
                 playerPage.orientation = LinearLayout.VERTICAL
                 playerPage.gravity = Gravity.TOP
                 playerPage.setPadding(dp(14), dp(12), dp(14), dp(14))
@@ -1871,6 +2010,10 @@ class MainActivity : Activity() {
         appearanceSettingsPage.addView(button("◈  AURA ORIGINAL  •  EREDETI", Color.rgb(35, 41, 53), Color.WHITE) {
             themePrefs.edit().putString("aura_theme", "original").apply()
             toast("AURA Original kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(button("▣  AURA HI-FI TOWER EDITION", Color.rgb(38, 43, 44), Color.rgb(226, 199, 145)) {
+            themePrefs.edit().putString("aura_theme", "tower_edition").apply()
+            toast("AURA Hi-Fi Tower Edition kiválasztva. Az új téma az alkalmazás újraindításakor lép életbe.")
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
         appearanceSettingsPage.addView(button("✦  AURA GOLD STUDIO", Color.rgb(91, 65, 27), Color.rgb(255, 225, 174)) {
             themePrefs.edit().putString("aura_theme", "gold_studio").apply()
