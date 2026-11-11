@@ -1137,7 +1137,7 @@ class MainActivity : Activity() {
                 val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(7), 0, 0, 0) }
                 ampInfo.addView(label("VOLUME", 7f, champagne).apply { gravity = Gravity.CENTER })
                 ampInfo.addView(label("AURA", 10f, Color.LTGRAY).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                ampInfo.addView(button("EQ", Color.rgb(65, 53, 34), champagne) { showPage(2) }, LinearLayout.LayoutParams(dp(55), dp(27)).apply { topMargin = dp(4) })
+                ampInfo.addView(button("EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(55), dp(27)).apply { topMargin = dp(4) })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(66), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
