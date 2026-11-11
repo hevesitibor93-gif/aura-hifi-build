@@ -5214,8 +5214,8 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(8), dp(16), dp(8))
         }
         val stationSearch = EditText(this).apply { hint = "Állomás neve / kulcsszó"; isSingleLine = true }
-        val countrySearch = EditText(this).apply { hint = "Ország (pl. Hungary, Germany)"; singleLine = true }
-        val genreSearch = EditText(this).apply { hint = "Műfaj (pl. rock, dance, jazz)"; singleLine = true }
+        val countrySearch = EditText(this).apply { hint = "Ország (pl. Hungary, Germany)"; isSingleLine = true }
+        val genreSearch = EditText(this).apply { hint = "Műfaj (pl. rock, dance, jazz)"; isSingleLine = true }
         listOf(stationSearch, countrySearch, genreSearch).forEach { field ->
             field.setTextColor(Color.WHITE)
             field.setHintTextColor(Color.LTGRAY)
