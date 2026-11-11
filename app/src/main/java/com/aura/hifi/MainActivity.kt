@@ -937,15 +937,15 @@ class MainActivity : Activity() {
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         if (landscape && towerTheme) {
             // Tower Edition landscape: four independently selectable rack modules.
-            val champagne = Color.rgb(222, 190, 127)
+            val champagne = Color.rgb(211, 194, 162)
             val displayGreen = Color.rgb(151, 208, 174)
             playerPage.orientation = LinearLayout.VERTICAL
             playerPage.gravity = Gravity.TOP
             playerPage.setPadding(dp(9), dp(6), dp(9), dp(7))
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(4, 6, 8), Color.rgb(27, 30, 32), Color.rgb(5, 7, 9))).apply {
+                intArrayOf(Color.rgb(15, 18, 20), Color.rgb(48, 52, 54), Color.rgb(12, 15, 17))).apply {
                 cornerRadius = dp(12).toFloat()
-                setStroke(dp(2), Color.rgb(91, 97, 99))
+                setStroke(dp(2), Color.rgb(166, 169, 166))
             }
             val towerBrand = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -970,9 +970,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.TOP
                     background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(Color.rgb(57, 61, 63), Color.rgb(22, 25, 27), Color.rgb(10, 12, 14))).apply {
+                        intArrayOf(Color.rgb(79, 83, 85), Color.rgb(35, 39, 42), Color.rgb(14, 16, 18))).apply {
                         cornerRadius = dp(8).toFloat()
-                        setStroke(dp(2), Color.rgb(105, 111, 113))
+                        setStroke(dp(2), Color.rgb(142, 147, 148))
                     }
                     setPadding(dp(7), dp(6), dp(7), dp(7))
                     elevation = dp(4).toFloat()
@@ -981,9 +981,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                        intArrayOf(Color.rgb(42, 46, 48), Color.rgb(17, 20, 22))).apply {
+                        intArrayOf(Color.rgb(62, 66, 68), Color.rgb(25, 28, 30))).apply {
                         cornerRadius = dp(4).toFloat()
-                        setStroke(dp(1), Color.rgb(76, 81, 83))
+                        setStroke(dp(1), Color.rgb(105, 110, 111))
                     }
                     setPadding(dp(6), dp(4), dp(6), dp(4))
                 }
@@ -1341,15 +1341,15 @@ class MainActivity : Activity() {
             landscapeVuRightPanel = null
             if (towerTheme) {
                 // AURA Hi-Fi Tower Edition: independent component faces, visually joined as one stack.
-                val metal = Color.rgb(24, 27, 30)
-                val edge = Color.rgb(105, 111, 113)
-                val champagne = Color.rgb(222, 190, 127)
+                val metal = Color.rgb(31, 35, 38)
+                val edge = Color.rgb(142, 147, 148)
+                val champagne = Color.rgb(211, 194, 162)
                 val displayGreen = Color.rgb(151, 208, 174)
                 fun component(title: String, subtitle: String): LinearLayout {
                     val shell = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
                         background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                            intArrayOf(Color.rgb(62, 66, 68), metal, Color.rgb(12, 14, 16))).apply {
+                            intArrayOf(Color.rgb(79, 83, 85), metal, Color.rgb(14, 16, 18))).apply {
                             cornerRadius = dp(9).toFloat()
                             setStroke(dp(2), edge)
                         }
@@ -1360,9 +1360,9 @@ class MainActivity : Activity() {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                            intArrayOf(Color.rgb(43, 47, 49), Color.rgb(19, 22, 24))).apply {
+                            intArrayOf(Color.rgb(62, 66, 68), Color.rgb(25, 28, 30))).apply {
                             cornerRadius = dp(4).toFloat()
-                            setStroke(dp(1), Color.rgb(76, 81, 83))
+                            setStroke(dp(1), Color.rgb(105, 110, 111))
                         }
                         setPadding(dp(8), dp(4), dp(8), dp(4))
                     }
@@ -1379,9 +1379,9 @@ class MainActivity : Activity() {
                 playerPage.gravity = Gravity.TOP
                 playerPage.setPadding(dp(8), dp(7), dp(8), dp(8))
                 playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(5, 7, 9), Color.rgb(28, 30, 31), Color.rgb(5, 7, 9))).apply {
+                    intArrayOf(Color.rgb(15, 18, 20), Color.rgb(48, 52, 54), Color.rgb(12, 15, 17))).apply {
                     cornerRadius = dp(12).toFloat()
-                    setStroke(dp(2), Color.rgb(91, 97, 99))
+                    setStroke(dp(2), Color.rgb(166, 169, 166))
                 }
                 val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(5), dp(1), dp(5), dp(7)) }
                 towerBrand.addView(label("AURA", 21f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .18f })
