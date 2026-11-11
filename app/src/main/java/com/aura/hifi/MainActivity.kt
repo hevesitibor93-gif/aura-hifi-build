@@ -51,6 +51,9 @@ class MainActivity : Activity() {
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
     private var pendingTrackStartRunnable: Runnable? = null
+    private var pendingRadioStation: Pair<String, String>? = null
+    private var pendingRadioStartAttempts = 0
+    private var pendingRadioStartRunnable: Runnable? = null
     private var clippingStatusLabel: TextView? = null
     private var eqClippingActive = false
     private var soundEngineClippingActive = false
@@ -4925,9 +4928,44 @@ class MainActivity : Activity() {
     private fun startRadioStation(stationName: String, streamUrl: String) {
         val exo = player
         if (exo == null) {
-            toast("A háttérlejátszó még indul. Próbáld újra egy pillanat múlva.")
+            pendingRadioStation = stationName to streamUrl
+            pendingRadioStartAttempts = 0
+            pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
+            try { startService(Intent(this, AuraPlaybackService::class.java)) } catch (_: Exception) {}
+            val retry = object : Runnable {
+                override fun run() {
+                    val requestedStation = pendingRadioStation ?: return
+                    val readyPlayer = player
+                    if (readyPlayer != null) {
+                        pendingRadioStation = null
+                        pendingRadioStartRunnable = null
+                        pendingRadioStartAttempts = 0
+                        startRadioStation(requestedStation.first, requestedStation.second)
+                        return
+                    }
+                    pendingRadioStartAttempts++
+                    if (pendingRadioStartAttempts % 10 == 0) {
+                        try { startService(Intent(this@MainActivity, AuraPlaybackService::class.java)) } catch (_: Exception) {}
+                    }
+                    if (pendingRadioStartAttempts < 40) {
+                        handler.postDelayed(this, 100L)
+                    } else {
+                        pendingRadioStation = null
+                        pendingRadioStartRunnable = null
+                        pendingRadioStartAttempts = 0
+                        toast("A háttérlejátszó nem indult el. Próbáld újra.")
+                    }
+                }
+            }
+            pendingRadioStartRunnable = retry
+            handler.postDelayed(retry, 100L)
+            toast("A rádiólejátszó indul…")
             return
         }
+        pendingRadioStation = null
+        pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
+        pendingRadioStartRunnable = null
+        pendingRadioStartAttempts = 0
         try {
             openPlayerPage?.invoke()
             releaseAudio()
