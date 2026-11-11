@@ -1065,6 +1065,9 @@ class MainActivity : Activity() {
             controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(5) }
             controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
             musicDeck.addView(controls, LinearLayout.LayoutParams(-1, dp(40)))
+            (transportExtras.parent as? ViewGroup)?.removeView(transportExtras)
+            transportExtras.setPadding(0, 0, 0, 0)
+            musicDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(31)))
 
             val ampDeck = towerModule("INTEGRATED AMP", "STEREO POWER  •  TONE")
             vu.visibility = View.VISIBLE
@@ -1130,15 +1133,6 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(0, dp(43), 1f))
             tapeWindow.addView(tapeReel(), LinearLayout.LayoutParams(dp(43), dp(43)))
             cassetteDeck.addView(tapeWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-            (controls.parent as? ViewGroup)?.removeView(controls)
-            controls.setPadding(0, dp(2), 0, 0)
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(7) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(7) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
-            cassetteDeck.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
-            (transportExtras.parent as? ViewGroup)?.removeView(transportExtras)
-            transportExtras.setPadding(0, 0, 0, 0)
-            cassetteDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(31)))
             cassetteDeck.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 6f, champagne).apply {
                 gravity = Gravity.CENTER
                 typeface = Typeface.create("monospace", Typeface.BOLD)
@@ -1480,8 +1474,6 @@ class MainActivity : Activity() {
                 cassetteWindow.addView(label("AURA\nMETAL  •  90", 8f, Color.rgb(204, 207, 196)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, dp(53), 1f))
                 cassetteWindow.addView(reel(), LinearLayout.LayoutParams(dp(53), dp(53)))
                 cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-                (controls.parent as? ViewGroup)?.removeView(controls)
-                cassette.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 cassette.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 7f, champagne).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.create("monospace", Typeface.BOLD)
