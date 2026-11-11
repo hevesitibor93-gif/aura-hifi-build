@@ -5134,6 +5134,60 @@ class MainActivity : Activity() {
         val uuid: String
     )
 
+    private fun loadFavoriteRadioStations(): List<Pair<String, String>> {
+        val raw = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("favorite_radio_stations", "[]") ?: "[]"
+        return try {
+            val array = org.json.JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val name = item.optString("name").trim()
+                val url = item.optString("url").trim()
+                if (name.isBlank() || !isValidRadioStreamUrl(url)) null else name to url
+            }.distinctBy { it.second }.take(5)
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun saveFavoriteRadioStations(stations: List<Pair<String, String>>) {
+        val array = org.json.JSONArray()
+        stations.distinctBy { it.second }.take(5).forEach { (name, url) ->
+            array.put(org.json.JSONObject().put("name", name).put("url", url))
+        }
+        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putString("favorite_radio_stations", array.toString()).apply()
+    }
+
+    private fun toggleFavoriteRadioStation(name: String, url: String): Boolean {
+        val favorites = loadFavoriteRadioStations().toMutableList()
+        val existing = favorites.indexOfFirst { it.second == url }
+        if (existing >= 0) { favorites.removeAt(existing); saveFavoriteRadioStations(favorites); return false }
+        if (favorites.size >= 5) return false
+        favorites.add(name to url)
+        saveFavoriteRadioStations(favorites)
+        return true
+    }
+
+    private fun showFavoriteRadioStations() {
+        val favorites = loadFavoriteRadioStations()
+        if (favorites.isEmpty()) {
+            AlertDialog.Builder(this).setTitle("KEDVENC RÁDIÓK").setMessage("Még nincs mentett kedvenc állomásod. A katalógusban hosszan nyomj egy rádióra a mentéshez.")
+                .setPositiveButton("RENDBEN", null).show()
+            return
+        }
+        val rows = favorites.mapIndexed { index, station -> "${index + 1}.  ${station.first}" }.toMutableList()
+        val list = ListView(this).apply { adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, rows); dividerHeight = dp(1) }
+        val dialog = AlertDialog.Builder(this).setTitle("KEDVENC RÁDIÓK  ${favorites.size}/5").setView(list).setNegativeButton("BEZÁR", null).create()
+        list.setOnItemClickListener { _, _, which, _ -> favorites.getOrNull(which)?.let { startRadioStation(it.first, it.second) }; dialog.dismiss() }
+        list.setOnItemLongClickListener { _, _, which, _ ->
+            favorites.getOrNull(which)?.let { station ->
+                saveFavoriteRadioStations(favorites.filterNot { it.second == station.second })
+                dialog.dismiss()
+                showFavoriteRadioStations()
+            }
+            true
+        }
+        dialog.show()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), -2)
+    }
+
     private fun showRadioStationManager() {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -5232,6 +5286,18 @@ class MainActivity : Activity() {
                 }
             }.start()
         }
+        results.setOnItemLongClickListener { _, _, which, _ ->
+            resultStations.getOrNull(which)?.let { station ->
+                val favorites = loadFavoriteRadioStations()
+                val saved = favorites.any { it.second == station.streamUrl }
+                when {
+                    saved -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELTÁVOLÍTVA A KEDVENCEKBŐL" }
+                    favorites.size >= 5 -> resultLabel.text = "A KEDVENCEK MEGTELTEK  •  MAXIMUM 5"
+                    else -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  ${loadFavoriteRadioStations().size}/5" }
+                }
+            }
+            true
+        }
         results.setOnItemClickListener { _, _, which, _ ->
             resultStations.getOrNull(which)?.let { station ->
                 if (station.uuid.isNotBlank()) {
@@ -5250,11 +5316,11 @@ class MainActivity : Activity() {
             }
         }
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        actions.addView(towerHardwareKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(5) })
-        actions.addView(towerHardwareKey("SAJÁT ADÓK") {
-            dialog.dismiss()
-            showCustomRadioStationsManager()
-        }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(5) })
+        actions.addView(towerHardwareKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(3) })
+        actions.addView(towerHardwareKey("KEDVENCEK ${loadFavoriteRadioStations().size}/5") { dialog.dismiss(); showFavoriteRadioStations() },
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
+        actions.addView(towerHardwareKey("SAJÁT ADÓK") { dialog.dismiss(); showCustomRadioStationsManager() },
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3) })
         panel.addView(actions, LinearLayout.LayoutParams(-1, dp(46)))
         dialog.show()
         dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt(), (resources.displayMetrics.heightPixels * 0.82f).toInt())
