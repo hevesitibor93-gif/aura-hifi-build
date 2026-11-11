@@ -1453,6 +1453,10 @@ class MainActivity : Activity() {
                         typeface = Typeface.create("monospace", Typeface.BOLD)
                     })
                     fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
+                    shell.addView(View(this).apply {
+                        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            intArrayOf(Color.rgb(190, 193, 190), Color.rgb(75, 80, 81), Color.rgb(22, 25, 26)))
+                    }, LinearLayout.LayoutParams(-1, dp(2)))
                     shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(25)))
                     shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(2)) })
                     val coolingGrille = LinearLayout(this).apply {
@@ -1471,6 +1475,28 @@ class MainActivity : Activity() {
                         coolingGrille.addView(slot, LinearLayout.LayoutParams(0, dp(4), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
                     }
                     shell.addView(coolingGrille, LinearLayout.LayoutParams(-1, dp(6)))
+                    val lowerRail = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(3), dp(3), dp(3), 0)
+                    }
+                    repeat(4) {
+                        lowerRail.addView(View(this).apply {
+                            background = GradientDrawable().apply {
+                                shape = GradientDrawable.OVAL
+                                setColor(Color.rgb(20, 23, 24))
+                                setStroke(dp(1), Color.rgb(132, 136, 133))
+                            }
+                        }, LinearLayout.LayoutParams(dp(5), dp(5)).apply {
+                            if (it > 0) marginStart = dp(7)
+                        })
+                    }
+                    lowerRail.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
+                    lowerRail.addView(View(this).apply {
+                        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            intArrayOf(Color.rgb(156, 160, 157), Color.rgb(48, 52, 53)))
+                    }, LinearLayout.LayoutParams(dp(46), dp(2)))
+                    shell.addView(lowerRail, LinearLayout.LayoutParams(-1, dp(9)))
                     return shell
                 }
                 playerPage.orientation = LinearLayout.VERTICAL
