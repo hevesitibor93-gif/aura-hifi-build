@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private val eqProcessor get() = AuraPlaybackService.eqProcessor
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
+    private var radioStatusLabel: TextView? = null
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
@@ -1283,21 +1284,23 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
             })
             radioDeck.addView(tunerDisplay, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(4) })
-            radioDeck.addView(label("STREAM SOURCE  /  STANDBY", 6f, Color.rgb(151, 208, 174)).apply {
+            radioStatusLabel = label("STREAM SOURCE  /  STANDBY", 6f, Color.rgb(151, 208, 174)).apply {
                 gravity = Gravity.CENTER
                 letterSpacing = .08f
                 setPadding(0, dp(4), 0, dp(2))
-            })
+            }
+            radioDeck.addView(radioStatusLabel, LinearLayout.LayoutParams(-1, dp(16)))
             val radioPresets = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
                 setPadding(dp(1), dp(2), dp(1), 0)
             }
-            for (preset in listOf("P1", "P2", "P3", "P4")) {
-                radioPresets.addView(towerHardwareKey(preset) { }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                })
-            }
+            radioPresets.addView(towerHardwareKey("MIX") { startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live") }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
+            radioPresets.addView(towerHardwareKey("DEEJAY") { startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream") }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
             radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
 
             fun towerSideRail(): LinearLayout {
@@ -1862,21 +1865,23 @@ class MainActivity : Activity() {
                 })
                 radioScreen.addView(label("—  —  —  —  —  —  —  —", 8f, Color.rgb(92, 134, 107)).apply { gravity = Gravity.CENTER })
                 radio.addView(radioScreen, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(5) })
-                radio.addView(label("STREAM SOURCE  /  STANDBY", 7f, displayGreen).apply {
+                radioStatusLabel = label("STREAM SOURCE  /  STANDBY", 7f, displayGreen).apply {
                     gravity = Gravity.CENTER
                     letterSpacing = .10f
                     setPadding(0, dp(5), 0, dp(2))
-                })
+                }
+                radio.addView(radioStatusLabel, LinearLayout.LayoutParams(-1, dp(18)))
                 val radioPresets = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
                     setPadding(dp(2), dp(2), dp(2), 0)
                 }
-                for (preset in listOf("PRESET 1", "PRESET 2", "PRESET 3", "PRESET 4")) {
-                    radioPresets.addView(towerHardwareKey(preset) { }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
-                        setMargins(dp(3), 0, dp(3), 0)
-                    })
-                }
+                radioPresets.addView(towerHardwareKey("MIX RÁDIÓ") { startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live") }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                })
+                radioPresets.addView(towerHardwareKey("DEEJAY") { startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream") }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                })
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
                 val towerBottomSpine = portraitMountingSpine(false)
@@ -4717,6 +4722,75 @@ class MainActivity : Activity() {
             handler.postDelayed({
                 if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
             }, delay)
+        }
+    }
+
+    private fun startRadioStation(stationName: String, streamUrl: String) {
+        val exo = player
+        if (exo == null) {
+            toast("A háttérlejátszó még indul. Próbáld újra egy pillanat múlva.")
+            return
+        }
+        try {
+            openPlayerPage?.invoke()
+            releaseAudio()
+            attachVuMeter()
+            trackLabel.text = stationName
+            metadataLabel.text = "MAGYAR INTERNET RÁDIÓ"
+            albumLabel.text = "AURA NETWORK TUNER"
+            radioStatusLabel?.apply {
+                text = "CONNECTING  •  $stationName"
+                setTextColor(Color.rgb(230, 190, 112))
+            }
+            AuraPlaybackService.onPreviousRequested = { toast("Az internetes rádió élő adás.") }
+            AuraPlaybackService.onNextRequested = { toast("Az internetes rádió élő adás.") }
+            val metadata = MediaMetadata.Builder()
+                .setTitle(stationName)
+                .setArtist("MAGYAR INTERNET RÁDIÓ")
+                .setAlbumTitle("AURA NETWORK TUNER")
+                .build()
+            playbackListener?.let { exo.removeListener(it) }
+            val listener = object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_READY -> radioStatusLabel?.apply {
+                            text = "ON AIR  •  $stationName"
+                            setTextColor(Color.rgb(151, 208, 174))
+                        }
+                        Player.STATE_BUFFERING -> radioStatusLabel?.apply {
+                            text = "BUFFERING  •  $stationName"
+                            setTextColor(Color.rgb(230, 190, 112))
+                        }
+                    }
+                }
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    setVuActive(isPlaying)
+                    playButton.text = if (isPlaying) "Ⅱ" else "▶"
+                    vinylView.invalidate()
+                }
+                override fun onPlayerError(error: PlaybackException) {
+                    setVuActive(false)
+                    playButton.text = "▶"
+                    radioStatusLabel?.apply {
+                        text = "STREAM ERROR  •  $stationName"
+                        setTextColor(Color.rgb(255, 125, 105))
+                    }
+                    toast("$stationName nem érhető el: " + (error.message ?: "lejátszási hiba"))
+                }
+            }
+            playbackListener = listener
+            exo.addListener(listener)
+            exo.setMediaItem(MediaItem.Builder().setUri(Uri.parse(streamUrl)).setMediaMetadata(metadata).build())
+            exo.prepare()
+            exo.playWhenReady = true
+        } catch (e: Exception) {
+            setVuActive(false)
+            playButton.text = "▶"
+            radioStatusLabel?.apply {
+                text = "STREAM ERROR  •  $stationName"
+                setTextColor(Color.rgb(255, 125, 105))
+            }
+            toast("Nem sikerült elindítani: " + (e.message ?: "ismeretlen hiba"))
         }
     }
 
