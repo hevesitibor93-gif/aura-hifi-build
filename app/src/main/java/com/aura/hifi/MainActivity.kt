@@ -1274,11 +1274,22 @@ class MainActivity : Activity() {
             }
             radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
 
+            val rackJoints = mutableListOf<View>()
             moduleCards.forEachIndexed { index, card ->
                 rack.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
-                    if (index > 0) marginStart = dp(4)
+                    if (index > 0) marginStart = dp(2)
                     if (index < moduleCards.lastIndex) marginEnd = dp(1)
                 })
+                if (index < moduleCards.lastIndex) {
+                    val joint = View(this).apply {
+                        background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                            intArrayOf(Color.rgb(10, 12, 13), Color.rgb(184, 188, 184), Color.rgb(37, 41, 42), Color.rgb(8, 10, 11)))
+                    }
+                    rackJoints.add(joint)
+                    rack.addView(joint, LinearLayout.LayoutParams(dp(4), -1).apply {
+                        topMargin = dp(3); bottomMargin = dp(3)
+                    })
+                }
             }
             val towerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             fun applyTowerModules() {
@@ -1291,6 +1302,10 @@ class MainActivity : Activity() {
                 if (visibleCount == 0) {
                     towerPrefs.edit().putBoolean("tower_module_music", true).apply()
                     moduleCards[0].visibility = View.VISIBLE
+                }
+                rackJoints.forEachIndexed { index, joint ->
+                    joint.visibility = if (moduleCards[index].visibility == View.VISIBLE &&
+                        moduleCards[index + 1].visibility == View.VISIBLE) View.VISIBLE else View.GONE
                 }
             }
             applyTowerModules()
@@ -1553,6 +1568,15 @@ class MainActivity : Activity() {
                 playerPage.addView(towerTopSpine, LinearLayout.LayoutParams(-1, dp(3)).apply {
                     leftMargin = dp(3); rightMargin = dp(3); bottomMargin = dp(3)
                 })
+                val portraitTowerJoints = mutableListOf<View>()
+                fun portraitTowerJoint(): View {
+                    val joint = View(this).apply {
+                        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            intArrayOf(Color.rgb(9, 11, 12), Color.rgb(177, 181, 178), Color.rgb(42, 46, 47), Color.rgb(8, 10, 11)))
+                    }
+                    portraitTowerJoints.add(joint)
+                    return joint
+                }
 
                 val sourceDeck = component("DIGITAL MUSIC PLAYER", "HIGH RESOLUTION • DIGITAL SOURCE")
                 val screen = LinearLayout(this).apply {
@@ -1595,7 +1619,10 @@ class MainActivity : Activity() {
                 controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
                 sourceDeck.addView(controls, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(1) })
-                playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
+                playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
+                playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
+                    leftMargin = dp(5); rightMargin = dp(5)
+                })
 
                 val amp = component("INTEGRATED AMPLIFIER", "STEREO POWER • TONE CONTROL")
                 val ampFace = LinearLayout(this).apply {
@@ -1622,7 +1649,10 @@ class MainActivity : Activity() {
                 })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(86), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-                playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
+                playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
+                playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
+                    leftMargin = dp(5); rightMargin = dp(5)
+                })
 
                 val cassette = component("CASSETTE DECK", "THREE HEAD • METAL TAPE")
                 val cassetteWindow = LinearLayout(this).apply {
@@ -1664,7 +1694,10 @@ class MainActivity : Activity() {
                     cassetteKeys.addView(face, LinearLayout.LayoutParams(0, dp(31), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
                 }
                 cassette.addView(cassetteKeys, LinearLayout.LayoutParams(-1, dp(37)))
-                playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
+                playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
+                playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
+                    leftMargin = dp(5); rightMargin = dp(5)
+                })
 
                 val radio = component("DIGITAL TUNER", "NETWORK SOURCE • STANDBY")
                 val radioScreen = LinearLayout(this).apply {
@@ -1723,6 +1756,10 @@ class MainActivity : Activity() {
                     if (visibleCount == 0) {
                         portraitTowerPrefs.edit().putBoolean("tower_module_music", true).apply()
                         portraitTowerModules[0].visibility = View.VISIBLE
+                    }
+                    portraitTowerJoints.forEachIndexed { index, joint ->
+                        joint.visibility = if (portraitTowerModules[index].visibility == View.VISIBLE &&
+                            portraitTowerModules[index + 1].visibility == View.VISIBLE) View.VISIBLE else View.GONE
                     }
                 }
                 applyPortraitTowerModules()
