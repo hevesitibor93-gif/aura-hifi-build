@@ -4962,6 +4962,17 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun isValidRadioStreamUrl(value: String): Boolean {
+        return try {
+            val parsed = Uri.parse(value.trim())
+            (parsed.scheme.equals("https", ignoreCase = true) ||
+                parsed.scheme.equals("http", ignoreCase = true)) &&
+                !parsed.host.isNullOrBlank()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun loadCustomRadioStations(): List<Pair<String, String>> {
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val raw = prefs.getString("custom_radio_stations", "[]") ?: "[]"
@@ -4971,7 +4982,7 @@ class MainActivity : Activity() {
                 val item = array.optJSONObject(index) ?: return@mapNotNull null
                 val name = item.optString("name").trim()
                 val url = item.optString("url").trim()
-                if (name.isNotEmpty() && (url.startsWith("https://") || url.startsWith("http://"))) name to url else null
+                if (name.isNotEmpty() && isValidRadioStreamUrl(url)) name to url else null
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -5069,8 +5080,8 @@ class MainActivity : Activity() {
             .setPositiveButton(if (existingStation == null) "MENTÉS" else "MÓDOSÍTÁS") { _, _ ->
                 val name = nameInput.text.toString().trim()
                 val url = urlInput.text.toString().trim()
-                if (name.isBlank() || !(url.startsWith("https://") || url.startsWith("http://"))) {
-                    toast("Adj meg nevet és érvényes http/https stream címet.")
+                if (name.isBlank() || !isValidRadioStreamUrl(url)) {
+                    toast("Adj meg nevet és érvényes, hostnevet tartalmazó http/https stream címet.")
                     return@setPositiveButton
                 }
                 val stations = loadCustomRadioStations().toMutableList()
