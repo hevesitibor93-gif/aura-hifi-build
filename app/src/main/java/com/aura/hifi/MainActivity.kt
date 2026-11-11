@@ -2115,6 +2115,66 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+        // Shared internet radio access for Original and Gold Studio themes.
+        // Tower Edition owns its dedicated hardware tuner above.
+        if (!towerTheme) {
+            val radioGold = goldStudioTheme
+            val radioPanel = LinearLayout(this).apply {
+                orientation = if (landscape) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    if (radioGold) intArrayOf(Color.rgb(38, 32, 23), Color.rgb(13, 16, 21))
+                    else intArrayOf(Color.rgb(35, 42, 91), Color.rgb(17, 25, 57))
+                ).apply {
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), if (radioGold) Color.rgb(139, 111, 68) else Color.rgb(103, 111, 194))
+                }
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+            }
+            val radioInfo = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = if (landscape) Gravity.CENTER else Gravity.CENTER_VERTICAL
+            }
+            radioInfo.addView(label("♫  INTERNET RÁDIÓ", if (landscape) 9f else 10f,
+                if (radioGold) Color.rgb(239, 205, 146) else Color.rgb(202, 194, 255)).apply {
+                typeface = Typeface.DEFAULT_BOLD
+                letterSpacing = .08f
+                gravity = if (landscape) Gravity.CENTER else Gravity.START
+            })
+            radioStatusLabel = label("VÁLASSZ ADÓT", 8f,
+                if (radioGold) Color.rgb(166, 190, 158) else Color.rgb(166, 190, 225)).apply {
+                gravity = if (landscape) Gravity.CENTER else Gravity.START
+                setPadding(0, dp(2), 0, 0)
+                maxLines = 1
+            }
+            radioInfo.addView(radioStatusLabel)
+            if (landscape) {
+                radioPanel.addView(radioInfo, LinearLayout.LayoutParams(-1, 0, 1f))
+                radioPanel.addView(button("MIX RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
+                }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(5) })
+                radioPanel.addView(button("DEEJAY RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
+                }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
+                playerPage.addView(radioPanel, LinearLayout.LayoutParams(dp(126), -1).apply { marginStart = dp(7) })
+            } else {
+                radioPanel.addView(radioInfo, LinearLayout.LayoutParams(0, -1, 1f))
+                val radioButtons = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                }
+                radioButtons.addView(button("MIX RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
+                }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(4) })
+                radioButtons.addView(button("DEEJAY", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                    startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
+                }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginStart = dp(4) })
+                radioPanel.addView(radioButtons, LinearLayout.LayoutParams(0, -1, 1.25f))
+                playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
+            }
+        }
+
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, if (goldStudioTheme) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
