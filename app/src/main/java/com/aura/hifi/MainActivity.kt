@@ -977,6 +977,31 @@ class MainActivity : Activity() {
                     setPadding(dp(7), dp(6), dp(7), dp(7))
                     elevation = dp(4).toFloat()
                 }
+                val topMountStrip = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(2), 0, dp(2), 0)
+                    addView(View(this@MainActivity).apply {
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(Color.rgb(21, 24, 25))
+                            setStroke(dp(1), Color.rgb(170, 175, 171))
+                        }
+                    }, LinearLayout.LayoutParams(dp(4), dp(4)))
+                    addView(View(this@MainActivity), LinearLayout.LayoutParams(0, dp(1), 1f).apply {
+                        marginStart = dp(3); marginEnd = dp(3)
+                    }.also {
+                        // A fine machined seam runs between the recessed fasteners.
+                    })
+                    addView(View(this@MainActivity).apply {
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(Color.rgb(21, 24, 25))
+                            setStroke(dp(1), Color.rgb(170, 175, 171))
+                        }
+                    }, LinearLayout.LayoutParams(dp(4), dp(4)))
+                }
+                shell.addView(topMountStrip, LinearLayout.LayoutParams(-1, dp(5)))
                 val fascia = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
@@ -1505,6 +1530,29 @@ class MainActivity : Activity() {
                         setPadding(dp(9), dp(7), dp(9), dp(8))
                         elevation = dp(5).toFloat()
                     }
+                    val topMountStrip = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(3), 0, dp(3), 0)
+                        addView(View(this@MainActivity).apply {
+                            background = GradientDrawable().apply {
+                                shape = GradientDrawable.OVAL
+                                setColor(Color.rgb(21, 24, 25))
+                                setStroke(dp(1), Color.rgb(170, 175, 171))
+                            }
+                        }, LinearLayout.LayoutParams(dp(5), dp(5)))
+                        addView(View(this@MainActivity), LinearLayout.LayoutParams(0, dp(1), 1f).apply {
+                            marginStart = dp(4); marginEnd = dp(4)
+                        })
+                        addView(View(this@MainActivity).apply {
+                            background = GradientDrawable().apply {
+                                shape = GradientDrawable.OVAL
+                                setColor(Color.rgb(21, 24, 25))
+                                setStroke(dp(1), Color.rgb(170, 175, 171))
+                            }
+                        }, LinearLayout.LayoutParams(dp(5), dp(5)))
+                    }
+                    shell.addView(topMountStrip, LinearLayout.LayoutParams(-1, dp(6)))
                     val fascia = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
