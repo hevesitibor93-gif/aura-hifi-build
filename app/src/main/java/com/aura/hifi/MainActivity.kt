@@ -2182,43 +2182,10 @@ class MainActivity : Activity() {
                     })
                 }
                 applyPortraitTowerModules = {
-                    var visibleCount = 0
-                    portraitTowerModules.forEachIndexed { index, module ->
-                        val visible = portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
-                        module.visibility = if (visible) View.VISIBLE else View.GONE
-                        if (visible) visibleCount++
-                    }
-                    if (visibleCount == 0) {
-                        portraitTowerPrefs.edit().putBoolean("tower_module_music", true).apply()
-                        portraitTowerModules[0].visibility = View.VISIBLE
-                    }
-                    portraitTowerJoints.forEachIndexed { index, joint ->
-                        joint.visibility = if (portraitTowerModules[index].visibility == View.VISIBLE &&
-                            portraitTowerModules[index + 1].visibility == View.VISIBLE) View.VISIBLE else View.GONE
-                    }
-                    refreshPortraitQuickBar()
+                    portraitTowerModules.forEach { it.visibility = View.VISIBLE }
+                    portraitTowerJoints.forEach { it.visibility = View.VISIBLE }
                 }
                 applyPortraitTowerModules()
-                playerPage.addView(portraitQuickBar, 2, LinearLayout.LayoutParams(-1, dp(28)))
-                towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
-                    val selected = BooleanArray(portraitTowerModules.size) { index ->
-                        portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
-                    }
-                    android.app.AlertDialog.Builder(this)
-                        .setTitle("TOWER MODULES")
-                        .setMultiChoiceItems(portraitModuleNames, selected) { dialog, which, checked ->
-                            portraitTowerPrefs.edit().putBoolean("tower_module_" + portraitModuleKeys[which], checked).apply()
-                            val enabledCount = portraitModuleKeys.count { portraitTowerPrefs.getBoolean("tower_module_" + it, true) }
-                            if (enabledCount == 0) {
-                                portraitTowerPrefs.edit().putBoolean("tower_module_music", true).apply()
-                                selected[0] = true
-                                (dialog as? android.app.AlertDialog)?.listView?.setItemChecked(0, true)
-                            }
-                            applyPortraitTowerModules()
-                        }
-                        .setPositiveButton("DONE", null)
-                        .show()
-                }, LinearLayout.LayoutParams(-2, dp(28)).apply { marginStart = dp(5) })
                 technicalLabel.visibility = View.GONE
                 nextTrackLabel.visibility = View.GONE
                 controlStack.visibility = View.GONE
