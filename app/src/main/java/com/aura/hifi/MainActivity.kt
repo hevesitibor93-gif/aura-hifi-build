@@ -91,6 +91,9 @@ class MainActivity : Activity() {
     private var landscapeVuLeftPanel: LinearLayout? = null
     private var landscapeVuRightPanel: LinearLayout? = null
     private var centerAurixVu: VuView? = null
+    private var towerAmpMeterLeft: TowerAnalogMeterView? = null
+    private var towerAmpMeterRight: TowerAnalogMeterView? = null
+    private var towerCassetteMeter: TowerAnalogMeterView? = null
     private var portraitMeterPanel: LinearLayout? = null
     private var portraitDualVuPanel: LinearLayout? = null
     private var portraitLeftVu: VuView? = null
@@ -760,9 +763,11 @@ class MainActivity : Activity() {
 
     private fun setVuActive(value: Boolean) {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
+        towerAmpMeterLeft?.setActive(value); towerAmpMeterRight?.setActive(value); towerCassetteMeter?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
+        towerAmpMeterLeft?.setLevels(left, right); towerAmpMeterRight?.setLevels(left, right); towerCassetteMeter?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); portraitLeftVu?.setStyle(value); portraitRightVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
@@ -1018,7 +1023,7 @@ class MainActivity : Activity() {
         }
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
-        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && !towerTheme
         if (landscape && towerTheme) {
             // Tower Edition landscape: four independently selectable rack modules.
             val champagne = Color.rgb(211, 194, 162)
@@ -1090,9 +1095,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                        intArrayOf(Color.rgb(62, 66, 68), Color.rgb(25, 28, 30))).apply {
-                        cornerRadius = dp(4).toFloat()
-                        setStroke(dp(1), Color.rgb(105, 110, 111))
+                        intArrayOf(Color.rgb(104, 68, 31), Color.rgb(28, 21, 14), Color.rgb(8, 7, 6))).apply {
+                        cornerRadius = dp(3).toFloat()
+                        setStroke(dp(1), Color.rgb(174, 119, 48))
                     }
                     setPadding(dp(6), dp(4), dp(6), dp(4))
                 }
@@ -1686,16 +1691,16 @@ class MainActivity : Activity() {
             landscapeVuRightPanel = null
             if (towerTheme) {
                 // AURA Hi-Fi Tower Edition: independent component faces, visually joined as one stack.
-                val metal = Color.rgb(31, 35, 38)
-                val edge = Color.rgb(142, 147, 148)
-                val champagne = Color.rgb(211, 194, 162)
-                val displayGreen = Color.rgb(151, 208, 174)
+                val metal = Color.rgb(17, 16, 15)
+                val edge = Color.rgb(174, 119, 48)
+                val champagne = Color.rgb(255, 202, 105)
+                val displayGreen = Color.rgb(255, 194, 74)
                 fun component(title: String, subtitle: String): LinearLayout {
                     val shell = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
                         background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                            intArrayOf(Color.rgb(79, 83, 85), metal, Color.rgb(14, 16, 18))).apply {
-                            cornerRadius = dp(9).toFloat()
+                            intArrayOf(Color.rgb(75, 49, 25), Color.rgb(25, 20, 15), Color.rgb(5, 5, 5))).apply {
+                            cornerRadius = dp(7).toFloat()
                             setStroke(dp(2), edge)
                         }
                         setPadding(dp(9), dp(7), dp(9), dp(8))
@@ -1798,9 +1803,9 @@ class MainActivity : Activity() {
                 playerPage.gravity = Gravity.TOP
                 playerPage.setPadding(dp(8), dp(7), dp(8), dp(8))
                 playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(15, 18, 20), Color.rgb(48, 52, 54), Color.rgb(12, 15, 17))).apply {
-                    cornerRadius = dp(12).toFloat()
-                    setStroke(dp(2), Color.rgb(166, 169, 166))
+                    intArrayOf(Color.rgb(72, 43, 20), Color.rgb(17, 13, 10), Color.rgb(4, 4, 4))).apply {
+                    cornerRadius = dp(8).toFloat()
+                    setStroke(dp(2), Color.rgb(207, 145, 54))
                 }
                 val towerBrand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(5), dp(1), dp(5), dp(7)) }
                 towerBrand.addView(label("AURA", 21f, champagne).apply { typeface = Typeface.create("sans-serif-black", Typeface.BOLD); letterSpacing = .18f })
@@ -1847,18 +1852,28 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(Color.rgb(8, 20, 17), Color.rgb(13, 29, 24))).apply {
-                        cornerRadius = dp(5).toFloat()
-                        setStroke(dp(2), Color.rgb(73, 91, 79))
+                        intArrayOf(Color.rgb(5, 5, 4), Color.rgb(24, 15, 7))).apply {
+                        cornerRadius = dp(3).toFloat()
+                        setStroke(dp(2), Color.rgb(185, 120, 39))
                     }
                     setPadding(dp(7), dp(7), dp(7), dp(7))
                 }
-                artFrame.layoutParams = LinearLayout.LayoutParams(dp(76), dp(76))
-                artFrame.background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setStroke(dp(1), champagne); setColor(Color.BLACK) }
+                val sourceDial = TextView(this).apply {
+                    text = "◉\nSRC"; gravity = Gravity.CENTER; textSize = 23f
+                    setTextColor(Color.rgb(255, 205, 112)); typeface = Typeface.DEFAULT_BOLD
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(91, 58, 25), Color.rgb(13, 11, 9), Color.rgb(43, 29, 16))).apply {
+                        shape = GradientDrawable.OVAL; setStroke(dp(2), Color.rgb(208, 145, 55))
+                    }
+                    setOnClickListener { openLibraryPage?.invoke() }
+                }
+                screen.addView(sourceDial, LinearLayout.LayoutParams(dp(49), dp(64)).apply { marginEnd = dp(5) })
+                artFrame.layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
+                artFrame.background = GradientDrawable().apply { cornerRadius = dp(3).toFloat(); setStroke(dp(1), champagne); setColor(Color.BLACK) }
                 artFrame.setPadding(dp(2), dp(2), dp(2), dp(2))
-                (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
-                (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(70); height = dp(70) }
-                screen.addView(artFrame, LinearLayout.LayoutParams(dp(76), dp(76)))
+                (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(58); height = dp(58) }
+                (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(58); height = dp(58) }
+                screen.addView(artFrame, LinearLayout.LayoutParams(dp(64), dp(64)))
                 val displayText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, 0, 0) }
                 displayText.addView(label("NOW PLAYING", 7f, displayGreen).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .12f })
                 trackLabel.gravity = Gravity.START
@@ -1895,9 +1910,10 @@ class MainActivity : Activity() {
                     background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.rgb(14, 16, 17)); setStroke(dp(1), Color.rgb(73, 78, 78)) }
                     setPadding(dp(7), dp(5), dp(7), dp(5))
                 }
-                vu.layoutParams = LinearLayout.LayoutParams(0, dp(47), 1f)
-                ampFace.addView(vu)
-                val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(7), 0, 0, 0) }
+                towerAmpMeterLeft = TowerAnalogMeterView(channel = 0).apply { setActive(player?.isPlaying == true) }
+                towerAmpMeterRight = TowerAnalogMeterView(channel = 1).apply { setActive(player?.isPlaying == true) }
+                ampFace.addView(towerAmpMeterLeft, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginEnd = dp(3) })
+                val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(3), 0, dp(3), 0) }
                 ampInfo.addView(label("MASTER", 7f, champagne).apply { gravity = Gravity.CENTER; letterSpacing = .12f })
                 ampInfo.addView(label("◉", 35f, champagne).apply {
                     gravity = Gravity.CENTER
@@ -1911,8 +1927,9 @@ class MainActivity : Activity() {
                     letterSpacing = .06f
                     setPadding(0, dp(3), 0, 0)
                 })
-                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(86), -1))
-                amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(70), -1))
+                ampFace.addView(towerAmpMeterRight, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginStart = dp(3) })
+                amp.addView(ampFace, LinearLayout.LayoutParams(-1, dp(84)).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
                 playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
                     leftMargin = dp(5); rightMargin = dp(5)
@@ -1923,9 +1940,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
                     background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(Color.rgb(9, 13, 15), Color.rgb(27, 31, 32))).apply {
-                        cornerRadius = dp(6).toFloat()
-                        setStroke(dp(2), Color.rgb(86, 91, 90))
+                        intArrayOf(Color.rgb(7, 6, 5), Color.rgb(45, 27, 12))).apply {
+                        cornerRadius = dp(4).toFloat()
+                        setStroke(dp(2), Color.rgb(195, 128, 44))
                     }
                     setPadding(dp(12), dp(8), dp(12), dp(8))
                 }
@@ -1944,6 +1961,8 @@ class MainActivity : Activity() {
                     setPadding(0, dp(3), 0, dp(1))
                 }
                 cassette.addView(towerTapeCounterLabel)
+                towerCassetteMeter = TowerAnalogMeterView(dualRow = true).apply { setActive(player?.isPlaying == true) }
+                cassette.addView(towerCassetteMeter, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(2) })
                 towerTapeStatusLabel = label("TRANSPORT  /  STOPPED", 7f, displayGreen).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.create("monospace", Typeface.BOLD)
@@ -1976,9 +1995,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
                     background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(Color.rgb(5, 17, 15), Color.rgb(12, 31, 25))).apply {
-                        cornerRadius = dp(5).toFloat()
-                        setStroke(dp(1), Color.rgb(73, 105, 83))
+                        intArrayOf(Color.rgb(3, 4, 5), Color.rgb(18, 12, 7))).apply {
+                        cornerRadius = dp(3).toFloat()
+                        setStroke(dp(1), Color.rgb(174, 111, 36))
                     }
                     setPadding(dp(8), dp(6), dp(8), dp(6))
                 }
@@ -2011,6 +2030,7 @@ class MainActivity : Activity() {
                 val radioPresets = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
+                    visibility = View.GONE
                     setPadding(dp(2), dp(2), dp(2), 0)
                 }
                 radioPresets.addView(towerHardwareKey("MIX RÁDIÓ") { startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live") }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
@@ -2023,6 +2043,31 @@ class MainActivity : Activity() {
                     setMargins(dp(3), 0, dp(3), 0)
                 })
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
+                val tunerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(2), dp(3), 0) }
+                tunerRow.addView(label("TUNING", 7f, champagne).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .10f },
+                    LinearLayout.LayoutParams(0, -1, 1f))
+                val tuningDial = TextView(this).apply {
+                    text = "◉"; textSize = 29f; gravity = Gravity.CENTER; setTextColor(champagne)
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(103, 66, 27), Color.rgb(13, 11, 9), Color.rgb(55, 35, 17))).apply {
+                        shape = GradientDrawable.OVAL; setStroke(dp(2), Color.rgb(204, 139, 47))
+                    }
+                    setOnClickListener { showRadioStationManager() }
+                }
+                tunerRow.addView(tuningDial, LinearLayout.LayoutParams(dp(43), dp(43)))
+                val presetRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+                listOf("1", "2", "3", "4", "5").forEachIndexed { index, number ->
+                    val action: () -> Unit = when (index) {
+                        0 -> ({ startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live") })
+                        1 -> ({ startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream") })
+                        else -> ({ showRadioStationManager() })
+                    }
+                    presetRow.addView(towerHardwareKey(number, action), LinearLayout.LayoutParams(0, dp(25), 1f).apply {
+                        setMargins(dp(2), 0, dp(2), 0)
+                    })
+                }
+                radio.addView(tunerRow, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(2) })
+                radio.addView(presetRow, LinearLayout.LayoutParams(-1, dp(27)))
 
                 // Tap an open area of a module to enter its dedicated controls.
                 // Child transport/preset keys retain their own click handlers.
@@ -3535,7 +3580,16 @@ class MainActivity : Activity() {
         setVuBrightness(vuPrefs.getInt("vu_brightness", 80))
         setVuOverallScale(vuPrefs.getInt("vu_overall_scale", 100))
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)); background = rounded(if (goldStudioTheme) Color.rgb(19, 17, 13) else Color.rgb(16, 18, 22), 16); elevation = dp(7).toFloat() }
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            setPadding(dp(if (towerTheme) 3 else 5), dp(4), dp(if (towerTheme) 3 else 5), dp(4))
+            background = rounded(if (towerTheme || goldStudioTheme) Color.rgb(7, 6, 5) else Color.rgb(16, 18, 22), if (towerTheme) 7 else 16)
+            elevation = dp(7).toFloat()
+            if (towerTheme) setBackground(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(49, 31, 16), Color.rgb(5, 5, 5))).apply {
+                cornerRadius = dp(7).toFloat(); setStroke(dp(1), Color.rgb(189, 126, 43))
+            })
+        }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int, resetLibrary: Boolean = true) {
             activePageIndex = index
@@ -3629,11 +3683,55 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        if (towerTheme) {
+            val towerNav = listOf(
+                "⌂\nHOME" to { showPage(0, false) },
+                "♫\nLIBRARY" to { showPage(1) },
+                "★\nFAVOURITES" to { showPage(1); showLibraryGroups("Kedvencek") },
+                "◉\nVU" to { showPage(4, false) },
+                "♧\nRADIO" to { showPage(0, false); showRadioStationManager() },
+                "☷\nPLAYLIST" to { showPage(1, false); showPlaylists() },
+                "•••\nMORE" to {
+                    val popup = PopupMenu(this, nav)
+                    popup.menu.add("EQUALIZER").setOnMenuItemClickListener { showPage(2); true }
+                    popup.menu.add("SOUND ENGINE").setOnMenuItemClickListener { showPage(5); true }
+                    popup.menu.add("SETTINGS").setOnMenuItemClickListener { showPage(3); true }
+                    popup.show()
+                }
+            )
+            towerNav.forEachIndexed { index, item ->
+                val b = button(item.first, Color.rgb(12, 10, 8), Color.rgb(245, 194, 103)) { item.second() }
+                b.textSize = if (index == 3) 9f else 7f; b.maxLines = 2; b.setLineSpacing(0f, .88f); b.letterSpacing = .02f
+                b.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    if (index == 3) intArrayOf(Color.rgb(104, 61, 18), Color.rgb(12, 8, 5))
+                    else intArrayOf(Color.rgb(38, 25, 14), Color.rgb(7, 7, 7))).apply {
+                    cornerRadius = dp(if (index == 3) 24 else 4).toFloat()
+                    setStroke(dp(1), if (index == 3) Color.rgb(255, 190, 75) else Color.rgb(127, 82, 31))
+                }
+                navButtons.add(b)
+                nav.addView(b, LinearLayout.LayoutParams(0, dp(if (index == 3) 52 else 48), if (index == 3) 1.25f else 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }
+        } else {
+            listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (towerTheme) 66 else 58)).apply { topMargin = dp(if (towerTheme) 4 else 8) })
         showPage(0)
         setContentView(root)
+        if (towerTheme && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            pageScrolls[0].post {
+                val availableHeight = pageScrolls[0].height
+                val availableWidth = pageScrolls[0].width
+                val naturalHeight = playerPage.height
+                if (availableHeight > 0 && naturalHeight > availableHeight) {
+                    val factor = (availableHeight.toFloat() / naturalHeight.toFloat()).coerceIn(0.45f, 1f)
+                    playerPage.pivotX = 0f; playerPage.pivotY = 0f
+                    playerPage.scaleX = factor; playerPage.scaleY = factor
+                    playerPage.translationX = ((availableWidth - playerPage.width * factor) / 2f).coerceAtLeast(0f)
+                    playerPage.layoutParams = playerPage.layoutParams.apply { height = (naturalHeight * factor).toInt() }
+                }
+            }
+        }
     }
 
     private fun applyArtworkMode() {
@@ -5974,6 +6072,71 @@ class MainActivity : Activity() {
                 paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
                 c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(1).toFloat(),dp(1).toFloat(),paint)
             }
+        }
+    }
+
+    private inner class TowerAnalogMeterView(private val dualRow: Boolean = false, private val channel: Int = -1) : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var leftLevel = 0f
+        private var rightLevel = 0f
+        private var active = false
+        fun setActive(value: Boolean) { active = value; invalidate() }
+        fun setLevels(left: Float, right: Float) { leftLevel = left.coerceIn(0f, 1f); rightLevel = right.coerceIn(0f, 1f); invalidate() }
+        private fun drawText(canvas: Canvas, value: String, x: Float, y: Float, size: Float, color: Int) {
+            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = color; paint.textSize = size
+            paint.typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD); paint.textAlign = Paint.Align.CENTER
+            canvas.drawText(value, x, y, paint)
+        }
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat(); val h = height.toFloat()
+            if (w <= 0f || h <= 0f) return
+            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = Color.rgb(7, 6, 5)
+            canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(4).toFloat(), dp(4).toFloat(), paint)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(181, 119, 39)
+            canvas.drawRoundRect(RectF(dp(1).toFloat(), dp(1).toFloat(), w-dp(1).toFloat(), h-dp(1).toFloat()), dp(4).toFloat(), dp(4).toFloat(), paint)
+            if (dualRow) {
+                for (row in 0..1) {
+                    val cy = h * if (row == 0) .34f else .73f
+                    val x0 = w * .15f; val x1 = w * .94f
+                    drawText(canvas, if (row == 0) "L" else "R", w*.08f, cy+dp(3), dp(8).toFloat(), Color.rgb(255, 204, 112))
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(196, 151, 82)
+                    canvas.drawLine(x0, cy, x1, cy, paint)
+                    for (i in 0..20) {
+                        val x = x0 + (x1-x0)*i/20f
+                        paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
+                        paint.color = if (i >= 17) Color.rgb(218, 65, 35) else Color.rgb(244, 190, 95)
+                        canvas.drawLine(x, cy-dp(if (i%5==0) 5 else 3), x, cy+dp(3), paint)
+                    }
+                    val level = if (row == 0) leftLevel else rightLevel
+                    val nx = x0 + (x1-x0)*level
+                    paint.strokeWidth = dp(2).toFloat(); paint.color = Color.rgb(255, 225, 155)
+                    canvas.drawLine(nx, cy-dp(8), nx, cy+dp(5), paint)
+                }
+                return
+            }
+            paint.style = Paint.Style.FILL
+            paint.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, Color.rgb(255, 226, 143), Color.rgb(190, 111, 27), android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(RectF(dp(4).toFloat(), dp(3).toFloat(), w-dp(4).toFloat(), h-dp(3).toFloat()), dp(3).toFloat(), dp(3).toFloat(), paint)
+            paint.shader = null
+            val cx = w*.5f; val cy = h*.78f; val radius = minOf(w*.43f, h*.72f)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(69, 43, 18)
+            canvas.drawArc(RectF(cx-radius, cy-radius, cx+radius, cy+radius), 205f, 130f, false, paint)
+            for (i in 0..20) {
+                val angle = Math.toRadians(205.0 + i*6.5)
+                val inner = radius*.78f; val outer = radius*.94f
+                paint.color = if (i >= 17) Color.rgb(180, 38, 20) else Color.rgb(65, 48, 24)
+                paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
+                canvas.drawLine(cx+kotlin.math.cos(angle).toFloat()*inner, cy+kotlin.math.sin(angle).toFloat()*inner,
+                    cx+kotlin.math.cos(angle).toFloat()*outer, cy+kotlin.math.sin(angle).toFloat()*outer, paint)
+            }
+            drawText(canvas, "-20    -10     0     +3", cx, h*.40f, dp(7).toFloat(), Color.rgb(75, 48, 20))
+            drawText(canvas, "VU", cx, h*.67f, dp(13).toFloat(), Color.BLACK)
+            val level = if (channel == 0) leftLevel else if (channel == 1) rightLevel else (leftLevel+rightLevel)*.5f
+            val angle = Math.toRadians(205.0 + level*130.0)
+            paint.color = Color.rgb(35, 25, 15); paint.strokeWidth = dp(2).toFloat()
+            canvas.drawLine(cx, cy, cx+kotlin.math.cos(angle).toFloat()*radius*.78f, cy+kotlin.math.sin(angle).toFloat()*radius*.78f, paint)
+            paint.style = Paint.Style.FILL; paint.color = Color.rgb(48, 34, 19); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
         }
     }
 
