@@ -1161,6 +1161,7 @@ class MainActivity : Activity() {
                 cassetteWindow.addView(label("AURA\nMETAL  •  90", 8f, Color.rgb(204, 207, 196)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, dp(53), 1f))
                 cassetteWindow.addView(reel(), LinearLayout.LayoutParams(dp(53), dp(53)))
                 cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                (controls.parent as? ViewGroup)?.removeView(controls)
                 cassette.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                 playerPage.addView(cassette, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
 
