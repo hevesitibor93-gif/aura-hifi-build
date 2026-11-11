@@ -1546,6 +1546,13 @@ class MainActivity : Activity() {
                 towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                 addGoldHeaderActions(towerBrand)
                 playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
+                val towerTopSpine = View(this).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.rgb(204, 207, 203), Color.rgb(83, 88, 88), Color.rgb(28, 31, 32)))
+                }
+                playerPage.addView(towerTopSpine, LinearLayout.LayoutParams(-1, dp(3)).apply {
+                    leftMargin = dp(3); rightMargin = dp(3); bottomMargin = dp(3)
+                })
 
                 val sourceDeck = component("DIGITAL MUSIC PLAYER", "HIGH RESOLUTION • DIGITAL SOURCE")
                 val screen = LinearLayout(this).apply {
@@ -1695,6 +1702,13 @@ class MainActivity : Activity() {
                 }
                 radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
+                val towerBottomSpine = View(this).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.rgb(24, 27, 28), Color.rgb(112, 117, 116), Color.rgb(190, 193, 190)))
+                }
+                playerPage.addView(towerBottomSpine, LinearLayout.LayoutParams(-1, dp(4)).apply {
+                    leftMargin = dp(3); rightMargin = dp(3); topMargin = dp(3)
+                })
                 val portraitTowerModules = listOf(sourceDeck, amp, cassette, radio)
                 val portraitModuleKeys = listOf("music", "amp", "cassette", "radio")
                 val portraitModuleNames = arrayOf("MUSIC PLAYER", "AMPLIFIER", "CASSETTE DECK", "INTERNET RADIO")
