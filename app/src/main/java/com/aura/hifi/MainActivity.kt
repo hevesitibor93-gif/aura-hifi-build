@@ -1139,6 +1139,21 @@ class MainActivity : Activity() {
                 letterSpacing = .04f
                 setPadding(0, dp(3), 0, dp(1))
             })
+            // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
+            val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(2), dp(3), dp(2), 0) }
+            for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
+                val face = TextView(this).apply {
+                    text = key; gravity = Gravity.CENTER; textSize = 6f
+                    typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                    setTextColor(Color.rgb(211, 194, 162))
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(83, 87, 88), Color.rgb(24, 27, 29))).apply {
+                        cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(145, 149, 148))
+                    }
+                    elevation = dp(2).toFloat()
+                }
+                cassetteKeys.addView(face, LinearLayout.LayoutParams(0, dp(24), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }
+            cassetteDeck.addView(cassetteKeys, LinearLayout.LayoutParams(-1, dp(29)))
 
             val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  ONLINE")
             val tunerDisplay = LinearLayout(this).apply {
@@ -1480,6 +1495,21 @@ class MainActivity : Activity() {
                     letterSpacing = .04f
                     setPadding(0, dp(3), 0, dp(1))
                 })
+                // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
+                val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(4), dp(5), 0) }
+                for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
+                    val face = TextView(this).apply {
+                        text = key; gravity = Gravity.CENTER; textSize = 8f
+                        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                        setTextColor(Color.rgb(211, 194, 162))
+                        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(83, 87, 88), Color.rgb(24, 27, 29))).apply {
+                            cornerRadius = dp(4).toFloat(); setStroke(dp(1), Color.rgb(145, 149, 148))
+                        }
+                        elevation = dp(2).toFloat()
+                    }
+                    cassetteKeys.addView(face, LinearLayout.LayoutParams(0, dp(31), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+                }
+                cassette.addView(cassetteKeys, LinearLayout.LayoutParams(-1, dp(37)))
                 playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
