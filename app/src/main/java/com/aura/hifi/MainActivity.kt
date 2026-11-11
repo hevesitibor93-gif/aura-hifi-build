@@ -3746,7 +3746,7 @@ class MainActivity : Activity() {
                 clipChildren = true; clipToPadding = true
             }
             towerFitFrame.addView(playerPage, android.widget.FrameLayout.LayoutParams(-1, -2))
-            pageScrolls[0].addView(towerFitFrame, ScrollView.LayoutParams(-1, -2))
+            pageScrolls[0].addView(towerFitFrame, android.widget.FrameLayout.LayoutParams(-1, -2))
             pageScrolls[0].post {
                 val availableHeight = pageScrolls[0].height
                 val availableWidth = pageScrolls[0].width
