@@ -5143,15 +5143,17 @@ class MainActivity : Activity() {
             playbackListener?.let { exo.removeListener(it) }
             val listener = object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    when (playbackState) {
-                        Player.STATE_READY -> radioStatusLabel?.apply {
-                            val onAir = exo.playWhenReady
-                            text = if (onAir) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
-                            setTextColor(if (onAir) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
-                        }
-                        Player.STATE_BUFFERING -> radioStatusLabel?.apply {
-                            text = "BUFFERING  •  $stationName"
-                            setTextColor(Color.rgb(230, 190, 112))
+                    if (!radioStreamError) {
+                        when (playbackState) {
+                            Player.STATE_READY -> radioStatusLabel?.apply {
+                                val onAir = exo.playWhenReady
+                                text = if (onAir) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
+                                setTextColor(if (onAir) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                            }
+                            Player.STATE_BUFFERING -> radioStatusLabel?.apply {
+                                text = "BUFFERING  •  $stationName"
+                                setTextColor(Color.rgb(230, 190, 112))
+                            }
                         }
                     }
                     updateProgress()
@@ -5160,9 +5162,11 @@ class MainActivity : Activity() {
                     setVuActive(isPlaying)
                     playButton.text = if (isPlaying) "Ⅱ" else "▶"
                     vinylView.invalidate()
-                    radioStatusLabel?.apply {
-                        text = if (isPlaying) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
-                        setTextColor(if (isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                    if (!radioStreamError) {
+                        radioStatusLabel?.apply {
+                            text = if (isPlaying) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
+                            setTextColor(if (isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                        }
                     }
                     updateProgress()
                 }
