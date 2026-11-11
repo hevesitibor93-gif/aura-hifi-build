@@ -1924,6 +1924,12 @@ class MainActivity : Activity() {
                     background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.rgb(14, 16, 17)); setStroke(dp(1), Color.rgb(73, 78, 78)) }
                     setPadding(dp(7), dp(5), dp(7), dp(5))
                 }
+                val bassTrebleColumn = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(0, dp(2), dp(3), dp(2)) }
+                listOf("BASS", "TREBLE").forEach { tone ->
+                    bassTrebleColumn.addView(towerHardwareKey(tone) { openSoundEnginePage?.invoke() },
+                        LinearLayout.LayoutParams(dp(43), dp(25)).apply { topMargin = dp(3); bottomMargin = dp(3) })
+                }
+                ampFace.addView(bassTrebleColumn, LinearLayout.LayoutParams(dp(47), -1))
                 towerAmpMeterLeft = TowerAnalogMeterView(channel = 0).apply { setActive(player?.isPlaying == true) }
                 towerAmpMeterRight = TowerAnalogMeterView(channel = 1).apply { setActive(player?.isPlaying == true) }
                 ampFace.addView(towerAmpMeterLeft, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginEnd = dp(3) })
@@ -1934,7 +1940,8 @@ class MainActivity : Activity() {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(34, 36, 36)); setStroke(dp(2), Color.rgb(133, 119, 91)) }
                     setOnClickListener { openSoundEnginePage?.invoke() }
                 }, LinearLayout.LayoutParams(dp(48), dp(48)))
-                ampInfo.addView(towerHardwareKey("TONE / EQ") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
+                ampInfo.addView(towerHardwareKey("TONE / EQ") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(68), dp(25)).apply { topMargin = dp(2) })
+                ampInfo.addView(towerHardwareKey("BALANCE") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(68), dp(22)).apply { topMargin = dp(2) })
                 ampInfo.addView(label("OUTPUT  A  /  B", 6f, Color.rgb(151, 160, 153)).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.DEFAULT_BOLD
@@ -1983,6 +1990,36 @@ class MainActivity : Activity() {
                     letterSpacing = .06f
                 }
                 cassette.addView(towerTapeStatusLabel, LinearLayout.LayoutParams(-1, dp(14)))
+                val tapeTypeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(2), dp(3), 0) }
+                tapeTypeRow.addView(label("TAPE SELECT", 7f, champagne).apply { typeface = Typeface.DEFAULT_BOLD },
+                    LinearLayout.LayoutParams(0, dp(24), 1f))
+                val tapeTypes = listOf("NORMAL", "CrO₂", "METAL")
+                val tapeButtons = mutableListOf<TextView>()
+                val tapePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+                var activeTapeType = tapePrefs.getString("tower_tape_type", "METAL") ?: "METAL"
+                fun refreshTapeType() {
+                    tapeButtons.forEachIndexed { index, key ->
+                        val selected = tapeTypes[index] == activeTapeType
+                        key.setTextColor(if (selected) Color.rgb(255, 210, 120) else Color.rgb(178, 157, 124))
+                        key.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                            if (selected) intArrayOf(Color.rgb(116, 72, 24), Color.rgb(21, 13, 7))
+                            else intArrayOf(Color.rgb(42, 31, 20), Color.rgb(9, 8, 7))).apply {
+                            cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(143, 91, 35))
+                        }
+                    }
+                    towerTapeCounterLabel?.text = "TAPE COUNTER   00:00   •   $activeTapeType"
+                }
+                tapeTypes.forEach { type ->
+                    val key = towerHardwareKey(type) {
+                        activeTapeType = type
+                        tapePrefs.edit().putString("tower_tape_type", type).apply()
+                        refreshTapeType()
+                    }
+                    tapeButtons.add(key)
+                    tapeTypeRow.addView(key, LinearLayout.LayoutParams(0, dp(23), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+                }
+                cassette.addView(tapeTypeRow, LinearLayout.LayoutParams(-1, dp(26)))
+                refreshTapeType()
                 // Mechanical cassette transport keys are wired to the shared playback engine.
                 val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(4), dp(5), 0) }
                 for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
