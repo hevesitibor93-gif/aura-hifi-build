@@ -1351,7 +1351,7 @@ class MainActivity : Activity() {
                 screen.addView(displayText, LinearLayout.LayoutParams(0, -1, 1f))
                 sourceDeck.addView(screen, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 sourceDeck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(17)).apply { topMargin = dp(3) })
-                playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+                playerPage.addView(sourceDeck, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val amp = component("INTEGRATED AMPLIFIER", "STEREO POWER • TONE CONTROL")
                 val ampFace = LinearLayout(this).apply {
@@ -1368,7 +1368,7 @@ class MainActivity : Activity() {
                 ampInfo.addView(button("EQ", Color.rgb(65, 53, 34), champagne) { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(55), dp(27)).apply { topMargin = dp(4) })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(66), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-                playerPage.addView(amp, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+                playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val cassette = component("CASSETTE DECK", "THREE HEAD • METAL TAPE")
                 val cassetteWindow = LinearLayout(this).apply {
@@ -1391,7 +1391,7 @@ class MainActivity : Activity() {
                 cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 (controls.parent as? ViewGroup)?.removeView(controls)
                 cassette.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-                playerPage.addView(cassette, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+                playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
                 val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
                 radio.addView(label("ONLINE RADIO  /  READY TO CONNECT", 9f, displayGreen).apply {
@@ -1399,7 +1399,37 @@ class MainActivity : Activity() {
                     background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setColor(Color.rgb(8, 19, 16)); setStroke(dp(1), Color.rgb(67, 86, 73)) }
                     setPadding(dp(8), dp(9), dp(8), dp(9))
                 }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-                playerPage.addView(radio, LinearLayout.LayoutParams(-1, -2))
+                playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
+                val portraitTowerModules = listOf(sourceDeck, amp, cassette, radio)
+                val portraitModuleKeys = listOf("music", "amp", "cassette", "radio")
+                val portraitModuleNames = arrayOf("MUSIC PLAYER", "AMPLIFIER", "CASSETTE DECK", "INTERNET RADIO")
+                val portraitTowerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+                fun applyPortraitTowerModules() {
+                    var visibleCount = 0
+                    portraitTowerModules.forEachIndexed { index, module ->
+                        val visible = portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
+                        module.visibility = if (visible) View.VISIBLE else View.GONE
+                        if (visible) visibleCount++
+                    }
+                    if (visibleCount == 0) {
+                        portraitTowerPrefs.edit().putBoolean("tower_module_music", true).apply()
+                        portraitTowerModules[0].visibility = View.VISIBLE
+                    }
+                }
+                applyPortraitTowerModules()
+                towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
+                    val selected = BooleanArray(portraitTowerModules.size) { index ->
+                        portraitTowerPrefs.getBoolean("tower_module_" + portraitModuleKeys[index], true)
+                    }
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("TOWER MODULES")
+                        .setMultiChoiceItems(portraitModuleNames, selected) { _, which, checked ->
+                            portraitTowerPrefs.edit().putBoolean("tower_module_" + portraitModuleKeys[which], checked).apply()
+                            applyPortraitTowerModules()
+                        }
+                        .setPositiveButton("DONE", null)
+                        .show()
+                }, LinearLayout.LayoutParams(-2, dp(28)).apply { marginStart = dp(5) })
                 technicalLabel.visibility = View.GONE
                 nextTrackLabel.visibility = View.GONE
                 controlStack.visibility = View.GONE
