@@ -49,6 +49,7 @@ class MainActivity : Activity() {
     private var radioStatusLabel: TextView? = null
     private var towerRadioStationDisplay: TextView? = null
     private var activeRadioStationName: String? = null
+    private var towerTapeCounterLabel: TextView? = null
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
@@ -1243,12 +1244,13 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(0, dp(43), 1f))
             tapeWindow.addView(tapeReel(), LinearLayout.LayoutParams(dp(43), dp(43)))
             cassetteDeck.addView(tapeWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-            cassetteDeck.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 6f, champagne).apply {
+            towerTapeCounterLabel = label("TAPE COUNTER   00:00   •   METAL / CrO₂", 6f, champagne).apply {
                 gravity = Gravity.CENTER
                 typeface = Typeface.create("monospace", Typeface.BOLD)
                 letterSpacing = .04f
                 setPadding(0, dp(3), 0, dp(1))
-            })
+            }
+            cassetteDeck.addView(towerTapeCounterLabel)
             // Mechanical cassette transport keys are wired to the shared playback engine.
             val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(2), dp(3), dp(2), 0) }
             for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
@@ -1838,12 +1840,13 @@ class MainActivity : Activity() {
                 cassetteWindow.addView(label("AURA\nMETAL  •  90", 8f, Color.rgb(204, 207, 196)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, dp(53), 1f))
                 cassetteWindow.addView(reel(), LinearLayout.LayoutParams(dp(53), dp(53)))
                 cassette.addView(cassetteWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-                cassette.addView(label("TAPE COUNTER   00:00   •   METAL / CrO₂", 7f, champagne).apply {
+                towerTapeCounterLabel = label("TAPE COUNTER   00:00   •   METAL / CrO₂", 7f, champagne).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.create("monospace", Typeface.BOLD)
                     letterSpacing = .04f
                     setPadding(0, dp(3), 0, dp(1))
-                })
+                }
+                cassette.addView(towerTapeCounterLabel)
                 // Decorative mechanical transport keys: visual detail only, not wired to digital playback.
                 val cassetteKeys = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(5), dp(4), dp(5), 0) }
                 for (key in listOf("REW", "PLAY", "STOP", "FF", "EJECT")) {
@@ -5654,6 +5657,7 @@ class MainActivity : Activity() {
         val p = player ?: return
         try {
             val duration = p.duration; val position = p.currentPosition
+            towerTapeCounterLabel?.text = "TAPE COUNTER   ${formatTime(position)}   •   METAL / CrO₂"
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
             vinylView.invalidate()
             val timeText = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
