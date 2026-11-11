@@ -1119,6 +1119,27 @@ class MainActivity : Activity() {
                 letterSpacing = .10f
                 setPadding(0, dp(3), 0, dp(2))
             })
+            val speakerOutputStrip = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(3).toFloat()
+                    setColor(Color.rgb(9, 11, 12))
+                    setStroke(dp(1), Color.rgb(65, 71, 70))
+                }
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+            }
+            speakerOutputStrip.addView(label("SPEAKER OUT", 6f, Color.rgb(145, 153, 149)).apply {
+                typeface = Typeface.DEFAULT_BOLD
+                letterSpacing = .08f
+            }, LinearLayout.LayoutParams(0, -1, 1f))
+            for (channel in listOf("A", "B")) {
+                speakerOutputStrip.addView(label("●  $channel", 6f, if (channel == "A") displayGreen else champagne).apply {
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(dp(31), -1))
+            }
+            ampDeck.addView(speakerOutputStrip, LinearLayout.LayoutParams(-1, dp(18)).apply { topMargin = dp(2) })
             ampDeck.addView(towerHardwareKey("DSP  /  TONE CONTROL") {
                 openSoundEnginePage?.invoke()
             }, LinearLayout.LayoutParams(-1, dp(34)))
@@ -1171,7 +1192,7 @@ class MainActivity : Activity() {
             }
             cassetteDeck.addView(cassetteKeys, LinearLayout.LayoutParams(-1, dp(29)))
 
-            val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  ONLINE")
+            val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  STANDBY")
             val tunerDisplay = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -1509,6 +1530,12 @@ class MainActivity : Activity() {
                     setOnClickListener { openSoundEnginePage?.invoke() }
                 }, LinearLayout.LayoutParams(dp(48), dp(48)))
                 ampInfo.addView(towerHardwareKey("TONE / EQ") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(72), dp(29)).apply { topMargin = dp(3) })
+                ampInfo.addView(label("OUTPUT  A  /  B", 6f, Color.rgb(151, 160, 153)).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = .06f
+                    setPadding(0, dp(3), 0, 0)
+                })
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(86), -1))
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
@@ -1555,7 +1582,7 @@ class MainActivity : Activity() {
                 cassette.addView(cassetteKeys, LinearLayout.LayoutParams(-1, dp(37)))
                 playerPage.addView(cassette, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(3) })
 
-                val radio = component("DIGITAL TUNER", "INTERNET RADIO • NETWORK SOURCE")
+                val radio = component("DIGITAL TUNER", "NETWORK SOURCE • STANDBY")
                 val radioScreen = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
