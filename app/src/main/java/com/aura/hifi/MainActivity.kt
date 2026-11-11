@@ -1001,8 +1001,24 @@ class MainActivity : Activity() {
                 shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(23)))
                 shell.addView(label(subtitle, 6f, Color.rgb(143, 149, 148)).apply {
                     letterSpacing = .08f
-                    setPadding(dp(1), dp(3), 0, dp(3))
+                    setPadding(dp(1), dp(3), 0, dp(2))
                 })
+                val coolingGrille = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(2), 0, dp(2), dp(2))
+                }
+                repeat(7) {
+                    val slot = View(this).apply {
+                        background = GradientDrawable().apply {
+                            cornerRadius = dp(1).toFloat()
+                            setColor(Color.rgb(9, 11, 12))
+                            setStroke(dp(1), Color.rgb(72, 76, 76))
+                        }
+                    }
+                    coolingGrille.addView(slot, LinearLayout.LayoutParams(0, dp(3), 1f).apply { setMargins(dp(1), 0, dp(1), 0) })
+                }
+                shell.addView(coolingGrille, LinearLayout.LayoutParams(-1, dp(5)))
                 moduleCards.add(shell)
                 return shell
             }
@@ -1184,6 +1200,17 @@ class MainActivity : Activity() {
                 letterSpacing = .08f
                 setPadding(0, dp(4), 0, dp(2))
             })
+            val radioPresets = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(dp(1), dp(2), dp(1), 0)
+            }
+            for (preset in listOf("P1", "P2", "P3", "P4")) {
+                radioPresets.addView(towerHardwareKey(preset) { }, LinearLayout.LayoutParams(0, dp(22), 1f).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                })
+            }
+            radioDeck.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(24)))
 
             moduleCards.forEachIndexed { index, card ->
                 rack.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
@@ -1388,7 +1415,23 @@ class MainActivity : Activity() {
                     fascia.addView(label(title, 8f, Color.rgb(196, 199, 194)).apply { typeface = Typeface.DEFAULT_BOLD; letterSpacing = .08f })
                     fascia.addView(label("  ●", 5f, champagne).apply { gravity = Gravity.CENTER })
                     shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(25)))
-                    shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(3)) })
+                    shell.addView(label(subtitle, 7f, Color.rgb(143, 149, 148)).apply { letterSpacing = .12f; setPadding(dp(2), dp(4), 0, dp(2)) })
+                    val coolingGrille = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(2), 0, dp(2), dp(2))
+                    }
+                    repeat(9) {
+                        val slot = View(this).apply {
+                            background = GradientDrawable().apply {
+                                cornerRadius = dp(1).toFloat()
+                                setColor(Color.rgb(9, 11, 12))
+                                setStroke(dp(1), Color.rgb(72, 76, 76))
+                            }
+                        }
+                        coolingGrille.addView(slot, LinearLayout.LayoutParams(0, dp(4), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+                    }
+                    shell.addView(coolingGrille, LinearLayout.LayoutParams(-1, dp(6)))
                     return shell
                 }
                 playerPage.orientation = LinearLayout.VERTICAL
@@ -1536,6 +1579,17 @@ class MainActivity : Activity() {
                     letterSpacing = .10f
                     setPadding(0, dp(5), 0, dp(2))
                 })
+                val radioPresets = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(2), dp(2), dp(2), 0)
+                }
+                for (preset in listOf("PRESET 1", "PRESET 2", "PRESET 3", "PRESET 4")) {
+                    radioPresets.addView(towerHardwareKey(preset) { }, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
+                        setMargins(dp(3), 0, dp(3), 0)
+                    })
+                }
+                radio.addView(radioPresets, LinearLayout.LayoutParams(-1, dp(30)))
                 playerPage.addView(radio, LinearLayout.LayoutParams(-1, 0, 1f))
                 val portraitTowerModules = listOf(sourceDeck, amp, cassette, radio)
                 val portraitModuleKeys = listOf("music", "amp", "cassette", "radio")
