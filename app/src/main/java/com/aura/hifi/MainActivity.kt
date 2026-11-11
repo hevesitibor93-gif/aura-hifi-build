@@ -5188,12 +5188,32 @@ class MainActivity : Activity() {
         dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), -2)
     }
 
+    private fun radioManagerKey(title: String, action: () -> Unit): TextView = TextView(this).apply {
+        text = title
+        textSize = 8f
+        gravity = Gravity.CENTER
+        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        letterSpacing = .08f
+        setTextColor(Color.rgb(231, 213, 174))
+        setPadding(dp(7), dp(4), dp(7), dp(4))
+        background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.rgb(91, 94, 91), Color.rgb(39, 42, 42), Color.rgb(17, 19, 20))).apply {
+            cornerRadius = dp(4).toFloat()
+            setStroke(dp(1), Color.rgb(133, 128, 111))
+        }
+        elevation = dp(2).toFloat()
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { performAuraHaptic(this); action() }
+        applyPremiumPressEffect(this)
+    }
+
     private fun showRadioStationManager() {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(8), dp(16), dp(8))
         }
-        val stationSearch = EditText(this).apply { hint = "Állomás neve / kulcsszó"; singleLine = true }
+        val stationSearch = EditText(this).apply { hint = "Állomás neve / kulcsszó"; isSingleLine = true }
         val countrySearch = EditText(this).apply { hint = "Ország (pl. Hungary, Germany)"; singleLine = true }
         val genreSearch = EditText(this).apply { hint = "Műfaj (pl. rock, dance, jazz)"; singleLine = true }
         listOf(stationSearch, countrySearch, genreSearch).forEach { field ->
@@ -5316,10 +5336,10 @@ class MainActivity : Activity() {
             }
         }
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        actions.addView(towerHardwareKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(3) })
-        actions.addView(towerHardwareKey("KEDVENCEK ${loadFavoriteRadioStations().size}/5") { dialog.dismiss(); showFavoriteRadioStations() },
+        actions.addView(radioManagerKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(3) })
+        actions.addView(radioManagerKey("KEDVENCEK ${loadFavoriteRadioStations().size}/5") { dialog.dismiss(); showFavoriteRadioStations() },
             LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
-        actions.addView(towerHardwareKey("SAJÁT ADÓK") { dialog.dismiss(); showCustomRadioStationsManager() },
+        actions.addView(radioManagerKey("SAJÁT ADÓK") { dialog.dismiss(); showCustomRadioStationsManager() },
             LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3) })
         panel.addView(actions, LinearLayout.LayoutParams(-1, dp(46)))
         dialog.show()
