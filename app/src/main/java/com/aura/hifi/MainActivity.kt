@@ -4835,7 +4835,7 @@ class MainActivity : Activity() {
         }
         val nameInput = EditText(this).apply {
             hint = "Állomás neve"
-            singleLine = true
+            isSingleLine = true
         }
         val urlInput = EditText(this).apply {
             hint = "Stream URL (https://...)"
