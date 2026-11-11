@@ -1060,7 +1060,13 @@ class MainActivity : Activity() {
             val rack = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                setPadding(0, dp(2), 0, 0)
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(118, 122, 122), Color.rgb(37, 41, 43), Color.rgb(12, 15, 17))).apply {
+                    cornerRadius = dp(9).toFloat()
+                    setStroke(dp(2), Color.rgb(155, 160, 158))
+                }
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                elevation = dp(3).toFloat()
             }
 
             val musicDeck = towerModule("DIGITAL SOURCE", "HIGH RESOLUTION  •  NOW PLAYING")
@@ -1270,7 +1276,8 @@ class MainActivity : Activity() {
 
             moduleCards.forEachIndexed { index, card ->
                 rack.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
-                    if (index > 0) marginStart = dp(5)
+                    if (index > 0) marginStart = dp(4)
+                    if (index < moduleCards.lastIndex) marginEnd = dp(1)
                 })
             }
             val towerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
