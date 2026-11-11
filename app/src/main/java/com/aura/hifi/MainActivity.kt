@@ -5123,7 +5123,145 @@ class MainActivity : Activity() {
             .putString("custom_radio_stations", array.toString()).apply()
     }
 
+    private data class OnlineRadioStation(
+        val name: String,
+        val streamUrl: String,
+        val country: String,
+        val language: String,
+        val tags: String,
+        val codec: String,
+        val bitrate: Int,
+        val uuid: String
+    )
+
     private fun showRadioStationManager() {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        val stationSearch = EditText(this).apply { hint = "Állomás neve / kulcsszó"; singleLine = true }
+        val countrySearch = EditText(this).apply { hint = "Ország (pl. Hungary, Germany)"; singleLine = true }
+        val genreSearch = EditText(this).apply { hint = "Műfaj (pl. rock, dance, jazz)"; singleLine = true }
+        listOf(stationSearch, countrySearch, genreSearch).forEach { field ->
+            field.setTextColor(Color.WHITE)
+            field.setHintTextColor(Color.LTGRAY)
+            panel.addView(field, LinearLayout.LayoutParams(-1, dp(46)))
+        }
+        val resultLabel = TextView(this).apply {
+            text = "ONLINE RÁDIÓKATALÓGUS  •  Radio Browser"
+            setTextColor(Color.rgb(220, 178, 104))
+            textSize = 11f
+            setPadding(0, dp(8), 0, dp(5))
+        }
+        panel.addView(resultLabel)
+        val results = ListView(this).apply { dividerHeight = dp(1) }
+        val resultNames = mutableListOf<String>()
+        val resultStations = mutableListOf<OnlineRadioStation>()
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, resultNames)
+        results.adapter = adapter
+        panel.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("AURA  /  INTERNET RADIO")
+            .setView(panel)
+            .setNegativeButton("BEZÁR", null)
+            .create()
+        fun searchStations() {
+            val name = stationSearch.text.toString().trim()
+            val country = countrySearch.text.toString().trim()
+            val genre = genreSearch.text.toString().trim()
+            resultLabel.text = "KERESÉS…"
+            resultNames.clear(); resultStations.clear(); adapter.notifyDataSetChanged()
+            Thread {
+                var found = emptyList<OnlineRadioStation>()
+                var error: String? = null
+                try {
+                    val query = buildList {
+                        if (name.isNotBlank()) add("name=" + java.net.URLEncoder.encode(name, "UTF-8"))
+                        if (country.isNotBlank()) add("country=" + java.net.URLEncoder.encode(country, "UTF-8"))
+                        if (genre.isNotBlank()) add("tag=" + java.net.URLEncoder.encode(genre, "UTF-8"))
+                        add("hidebroken=true")
+                        add("order=clickcount")
+                        add("reverse=true")
+                        add("limit=100")
+                    }.joinToString("&")
+                    val endpoint = "https://de1.api.radio-browser.info/json/stations/search?$query"
+                    val connection = (java.net.URL(endpoint).openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 10000
+                        readTimeout = 12000
+                        requestMethod = "GET"
+                        setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                        setRequestProperty("Accept", "application/json")
+                    }
+                    try {
+                        val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                        val array = org.json.JSONArray(body)
+                        found = (0 until array.length()).mapNotNull { index ->
+                            val item = array.optJSONObject(index) ?: return@mapNotNull null
+                            val stationName = item.optString("name").trim()
+                            val stream = item.optString("url_resolved").ifBlank { item.optString("url") }.trim()
+                            if (stationName.isBlank() || !isValidRadioStreamUrl(stream)) return@mapNotNull null
+                            OnlineRadioStation(
+                                stationName, stream,
+                                item.optString("country").ifBlank { "Unknown" },
+                                item.optString("language"),
+                                item.optString("tags"),
+                                item.optString("codec"),
+                                item.optInt("bitrate", 0),
+                                item.optString("stationuuid")
+                            )
+                        }
+                    } finally { connection.disconnect() }
+                } catch (e: Exception) {
+                    error = e.localizedMessage ?: "Hálózati hiba"
+                }
+                handler.post {
+                    if (!dialog.isShowing) return@post
+                    resultStations.clear(); resultStations.addAll(found)
+                    resultNames.clear()
+                    resultNames.addAll(found.map { station ->
+                        val details = listOf(station.country, station.tags.split(",").take(2).joinToString(" / "), if (station.bitrate > 0) "${station.bitrate} kbps" else station.codec)
+                            .filter { it.isNotBlank() && it != "Unknown" }.joinToString("  •  ")
+                        if (details.isBlank()) station.name else "${station.name}\n$details"
+                    })
+                    adapter.notifyDataSetChanged()
+                    resultLabel.text = when {
+                        error != null -> "NEM SIKERÜLT BETÖLTENI: $error"
+                        found.isEmpty() -> "NINCS TALÁLAT  •  MÓDOSÍTSD A SZŰRŐKET"
+                        else -> "${found.size} ÁLLOMÁS  •  VÁLASSZ A LEJÁTSZÁSHOZ"
+                    }
+                }
+            }.start()
+        }
+        results.setOnItemClickListener { _, _, which, _ ->
+            resultStations.getOrNull(which)?.let { station ->
+                if (station.uuid.isNotBlank()) {
+                    Thread {
+                        try {
+                            val click = java.net.URL("https://de1.api.radio-browser.info/json/url/${station.uuid}")
+                                .openConnection() as java.net.HttpURLConnection
+                            click.connectTimeout = 5000; click.readTimeout = 5000
+                            click.setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                            click.inputStream.close(); click.disconnect()
+                        } catch (_: Exception) {}
+                    }.start()
+                }
+                startRadioStation(station.name, station.streamUrl)
+                dialog.dismiss()
+            }
+        }
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        actions.addView(towerHardwareKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(5) })
+        actions.addView(towerHardwareKey("SAJÁT ADÓK") {
+            dialog.dismiss()
+            showCustomRadioStationsManager()
+        }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(5) })
+        panel.addView(actions, LinearLayout.LayoutParams(-1, dp(46)))
+        dialog.show()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt(), (resources.displayMetrics.heightPixels * 0.82f).toInt())
+        searchStations()
+    }
+
+    private fun showCustomRadioStationsManager() {
         val stations = loadCustomRadioStations()
         val entries = stations.map { station ->
             val host = Uri.parse(station.second).host ?: "INTERNET STREAM"
