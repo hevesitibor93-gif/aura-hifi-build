@@ -912,7 +912,235 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        if (landscape) {
+        if (landscape && towerTheme) {
+            // Tower Edition landscape: four independently selectable rack modules.
+            val champagne = Color.rgb(222, 190, 127)
+            val displayGreen = Color.rgb(151, 208, 174)
+            playerPage.orientation = LinearLayout.VERTICAL
+            playerPage.gravity = Gravity.TOP
+            playerPage.setPadding(dp(9), dp(6), dp(9), dp(7))
+            playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(4, 6, 8), Color.rgb(27, 30, 32), Color.rgb(5, 7, 9))).apply {
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(2), Color.rgb(91, 97, 99))
+            }
+            val towerBrand = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(5), 0, dp(5), dp(5))
+            }
+            towerBrand.addView(label("AURA", 19f, champagne).apply {
+                typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+                letterSpacing = .18f
+            })
+            towerBrand.addView(label("  HI-FI TOWER  /  LANDSCAPE", 8f, Color.rgb(151, 157, 156)).apply {
+                typeface = Typeface.DEFAULT_BOLD
+                letterSpacing = .10f
+            })
+            towerBrand.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+            addGoldHeaderActions(towerBrand)
+            val moduleNames = arrayOf("MUSIC PLAYER", "AMPLIFIER", "CASSETTE DECK", "INTERNET RADIO")
+            val moduleKeys = arrayOf("music", "amp", "cassette", "radio")
+            val moduleCards = mutableListOf<LinearLayout>()
+            fun towerModule(title: String, subtitle: String): LinearLayout {
+                val shell = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.TOP
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(57, 61, 63), Color.rgb(22, 25, 27), Color.rgb(10, 12, 14))).apply {
+                        cornerRadius = dp(8).toFloat()
+                        setStroke(dp(2), Color.rgb(105, 111, 113))
+                    }
+                    setPadding(dp(7), dp(6), dp(7), dp(7))
+                    elevation = dp(4).toFloat()
+                }
+                val fascia = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(Color.rgb(42, 46, 48), Color.rgb(17, 20, 22))).apply {
+                        cornerRadius = dp(4).toFloat()
+                        setStroke(dp(1), Color.rgb(76, 81, 83))
+                    }
+                    setPadding(dp(6), dp(4), dp(6), dp(4))
+                }
+                fascia.addView(label("AURA", 9f, champagne).apply {
+                    typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+                    letterSpacing = .12f
+                })
+                fascia.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                fascia.addView(label(title, 7f, Color.rgb(205, 208, 203)).apply {
+                    typeface = Typeface.DEFAULT_BOLD
+                })
+                shell.addView(fascia, LinearLayout.LayoutParams(-1, dp(23)))
+                shell.addView(label(subtitle, 6f, Color.rgb(143, 149, 148)).apply {
+                    letterSpacing = .08f
+                    setPadding(dp(1), dp(3), 0, dp(3))
+                })
+                moduleCards.add(shell)
+                return shell
+            }
+            val rack = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(2), 0, 0)
+            }
+
+            val musicDeck = towerModule("DIGITAL SOURCE", "HIGH RESOLUTION  •  NOW PLAYING")
+            artFrame.visibility = View.VISIBLE
+            artFrame.layoutParams = LinearLayout.LayoutParams(dp(78), dp(78))
+            artFrame.background = GradientDrawable().apply {
+                cornerRadius = dp(4).toFloat()
+                setStroke(dp(1), champagne)
+                setColor(Color.BLACK)
+            }
+            artFrame.setPadding(dp(2), dp(2), dp(2), dp(2))
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(72); height = dp(72) }
+            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(72); height = dp(72) }
+            val musicHero = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(5).toFloat()
+                    setColor(Color.rgb(8, 20, 17))
+                    setStroke(dp(1), Color.rgb(73, 91, 79))
+                }
+                setPadding(dp(5), dp(5), dp(5), dp(5))
+            }
+            musicHero.addView(artFrame, LinearLayout.LayoutParams(dp(78), dp(78)))
+            val musicText = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(6), 0, 0, 0)
+            }
+            musicText.addView(label("NOW PLAYING", 6f, displayGreen).apply { typeface = Typeface.DEFAULT_BOLD })
+            trackLabel.gravity = Gravity.START
+            trackLabel.textSize = 12f
+            trackLabel.maxLines = 2
+            trackLabel.setTextColor(Color.rgb(218, 235, 218))
+            musicText.addView(trackLabel)
+            metadataLabel.gravity = Gravity.START
+            metadataLabel.textSize = 8f
+            musicText.addView(metadataLabel)
+            albumLabel.gravity = Gravity.START
+            albumLabel.textSize = 7f
+            musicText.addView(albumLabel)
+            musicHero.addView(musicText, LinearLayout.LayoutParams(0, -1, 1f))
+            musicDeck.addView(musicHero, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(3) })
+            seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(16)).apply { topMargin = dp(2) }
+            musicDeck.addView(seekBar)
+            timeLabel.gravity = Gravity.END
+            timeLabel.textSize = 8f
+            musicDeck.addView(timeLabel)
+
+            val ampDeck = towerModule("INTEGRATED AMP", "STEREO POWER  •  TONE")
+            vu.visibility = View.VISIBLE
+            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(48))
+            ampDeck.addView(vu, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
+            ampDeck.addView(label("MASTER VOLUME  /  STEREO", 7f, champagne).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(0, dp(5), 0, dp(4))
+            })
+            ampDeck.addView(button("OPEN SOUND ENGINE  ⚙", Color.rgb(65, 53, 34), champagne) {
+                openSoundEnginePage?.invoke()
+            }, LinearLayout.LayoutParams(-1, dp(34)))
+
+            val cassetteDeck = towerModule("THREE HEAD", "METAL TAPE  •  DECK")
+            val tapeWindow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(8, 12, 14), Color.rgb(28, 32, 33))).apply {
+                    cornerRadius = dp(5).toFloat()
+                    setStroke(dp(1), Color.rgb(86, 91, 90))
+                }
+                setPadding(dp(5), dp(5), dp(5), dp(5))
+            }
+            fun tapeReel() = label("◉", 29f, champagne).apply {
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.rgb(29, 32, 32))
+                    setStroke(dp(2), Color.rgb(126, 130, 125))
+                }
+            }
+            tapeWindow.addView(tapeReel(), LinearLayout.LayoutParams(dp(43), dp(43)))
+            tapeWindow.addView(label("AURA\nMETAL  •  90", 7f, Color.rgb(204, 207, 196)).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+            }, LinearLayout.LayoutParams(0, dp(43), 1f))
+            tapeWindow.addView(tapeReel(), LinearLayout.LayoutParams(dp(43), dp(43)))
+            cassetteDeck.addView(tapeWindow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            (controls.parent as? ViewGroup)?.removeView(controls)
+            controls.setPadding(0, dp(2), 0, 0)
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(7) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(7) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(34), dp(34))
+            cassetteDeck.addView(controls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+            (transportExtras.parent as? ViewGroup)?.removeView(transportExtras)
+            transportExtras.setPadding(0, 0, 0, 0)
+            cassetteDeck.addView(transportExtras, LinearLayout.LayoutParams(-1, dp(31)))
+
+            val radioDeck = towerModule("DIGITAL TUNER", "NETWORK SOURCE  •  ONLINE")
+            radioDeck.addView(label("ONLINE RADIO", 10f, displayGreen).apply {
+                gravity = Gravity.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(4).toFloat()
+                    setColor(Color.rgb(8, 19, 16))
+                    setStroke(dp(1), Color.rgb(67, 86, 73))
+                }
+                setPadding(dp(5), dp(10), dp(5), dp(10))
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            radioDeck.addView(label("READY TO CONNECT", 7f, Color.rgb(151, 208, 174)).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(5), 0, dp(3))
+            })
+
+            moduleCards.forEachIndexed { index, card ->
+                rack.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
+                    if (index > 0) marginStart = dp(5)
+                })
+            }
+            val towerPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            fun applyTowerModules() {
+                var visibleCount = 0
+                moduleCards.forEachIndexed { index, card ->
+                    val visible = towerPrefs.getBoolean("tower_module_" + moduleKeys[index], true)
+                    card.visibility = if (visible) View.VISIBLE else View.GONE
+                    if (visible) visibleCount++
+                }
+                if (visibleCount == 0) {
+                    towerPrefs.edit().putBoolean("tower_module_music", true).apply()
+                    moduleCards[0].visibility = View.VISIBLE
+                }
+            }
+            applyTowerModules()
+            towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
+                val selected = BooleanArray(moduleCards.size) { index ->
+                    towerPrefs.getBoolean("tower_module_" + moduleKeys[index], true)
+                }
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("TOWER MODULES")
+                    .setMultiChoiceItems(moduleNames, selected) { _, which, checked ->
+                        towerPrefs.edit().putBoolean("tower_module_" + moduleKeys[which], checked).apply()
+                        applyTowerModules()
+                    }
+                    .setPositiveButton("DONE", null)
+                    .show()
+            }, LinearLayout.LayoutParams(-2, dp(30)).apply { marginStart = dp(5) })
+            playerPage.addView(towerBrand, LinearLayout.LayoutParams(-1, dp(34)))
+            playerPage.addView(rack, LinearLayout.LayoutParams(-1, 0, 1f))
+            technicalLabel.visibility = View.GONE
+            nextTrackLabel.visibility = View.GONE
+            controlStack.visibility = View.GONE
+            transportExtras.visibility = View.VISIBLE
+            original.forEachIndexed { i, child ->
+                if (i in 11..15) eqPage.addView(child)
+                else if (i > 15) settingsPage.addView(child)
+            }
+        } else if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
