@@ -336,6 +336,22 @@ class MainActivity : Activity() {
         playbackListener?.let { exo.removeListener(it) }
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
+                activeRadioStationName?.let { stationName ->
+                    radioStatusLabel?.apply {
+                        text = when (playbackState) {
+                            Player.STATE_BUFFERING -> "BUFFERING  •  $stationName"
+                            Player.STATE_READY -> if (exo.isPlaying) "ON AIR  •  $stationName" else if (!exo.playWhenReady) "PAUSED  •  $stationName" else "CONNECTING  •  $stationName"
+                            Player.STATE_ENDED -> "ENDED  •  $stationName"
+                            else -> if (!exo.playWhenReady) "PAUSED  •  $stationName" else "CONNECTING  •  $stationName"
+                        }
+                        setTextColor(when (playbackState) {
+                            Player.STATE_BUFFERING -> Color.rgb(230, 190, 112)
+                            Player.STATE_READY -> if (exo.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190)
+                            Player.STATE_ENDED -> Color.rgb(190, 190, 190)
+                            else -> Color.rgb(230, 190, 112)
+                        })
+                    }
+                }
                 if (playbackState == Player.STATE_READY) updateProgress()
                 if (playbackState == Player.STATE_ENDED) {
                     setVuActive(false)
@@ -347,6 +363,12 @@ class MainActivity : Activity() {
                 setVuActive(isPlaying)
                 playButton.text = if (isPlaying) "Ⅱ" else "▶"
                 vinylView.invalidate()
+                activeRadioStationName?.let { stationName ->
+                    radioStatusLabel?.apply {
+                        text = if (isPlaying) "ON AIR  •  $stationName" else "PAUSED  •  $stationName"
+                        setTextColor(if (isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
+                    }
+                }
                 if (isPlaying) {
                     handler.removeCallbacks(progressTask)
                     handler.post(progressTask)
@@ -354,6 +376,21 @@ class MainActivity : Activity() {
                     handler.removeCallbacks(progressTask)
                     updateProgress()
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                activeRadioStationName?.let { stationName ->
+                    radioStatusLabel?.apply {
+                        text = "STREAM ERROR  •  $stationName"
+                        setTextColor(Color.rgb(255, 125, 105))
+                    }
+                    towerTapeStatusLabel?.apply {
+                        text = "TRANSPORT  /  ERROR"
+                        setTextColor(Color.rgb(255, 125, 105))
+                    }
+                }
+                setVuActive(false)
+                playButton.text = "▶"
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
