@@ -950,7 +950,7 @@ class MainActivity : Activity() {
         }
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
-        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && !towerTheme
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
          if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -2921,7 +2921,7 @@ class MainActivity : Activity() {
                         addView(libraryArtworkView(song, 48), LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(10) })
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
                         details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.artist, 10f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         addView(details, LinearLayout.LayoutParams(0, -2, 1f))
                         setOnClickListener { playFrom(index, song) }
