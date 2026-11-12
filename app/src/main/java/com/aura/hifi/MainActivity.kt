@@ -1139,7 +1139,7 @@ class MainActivity : Activity() {
         for (slot in 0..4) {
             val favoriteButton = radioManagerKey("FAV ${slot + 1}") {
                 val station = loadFavoriteRadioStations().getOrNull(slot)
-                if (station != null) startRadioStation(station.first, station.second)
+                if (station != null && station.second.isNotBlank()) startRadioStation(station.first, station.second)
                 else toast("Ez a memóriahely még üres.")
             }
             favoriteButton.textSize = 8f
@@ -3798,7 +3798,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadFavoriteRadioStations(): List<Pair<String, String>> =
-        fixedRadioStations + loadCustomFavoriteSlots().filterNotNull()
+        fixedRadioStations + loadCustomFavoriteSlots().map { it ?: ("" to "") }
 
     private fun saveCustomFavoriteSlots(slots: List<Pair<String, String>?>) {
         val array = org.json.JSONArray()
@@ -3846,7 +3846,7 @@ class MainActivity : Activity() {
         val list = ListView(this).apply { adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, rows); dividerHeight = dp(1) }
         val dialog = AlertDialog.Builder(this).setTitle("KEDVENC MEMÓRIAHELYEK").setView(list).setNegativeButton("BEZÁR", null).create()
         list.setOnItemClickListener { _, _, which, _ ->
-            loadFavoriteRadioStations().getOrNull(which)?.let { startRadioStation(it.first, it.second); dialog.dismiss() }
+            loadFavoriteRadioStations().getOrNull(which)?.takeIf { it.second.isNotBlank() }?.let { startRadioStation(it.first, it.second); dialog.dismiss() }
         }
         list.setOnItemLongClickListener { _, _, which, _ ->
             if (which < 2) toast("Az első két memóriahely fix, nem törölhető.")
