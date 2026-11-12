@@ -50,6 +50,7 @@ class MainActivity : Activity() {
     private var radioSongTitleLabel: TextView? = null
     private var tunerNextTrackLabel: TextView? = null
     private var tunerPowerButton: TextView? = null
+    private val favoriteRadioButtons = mutableListOf<TextView>()
     private var savedLocalTrackUri: Uri? = null
     private var tunerPowered = false
     private var activeRadioStationName: String? = null
@@ -1151,6 +1152,7 @@ class MainActivity : Activity() {
         }
         radioPanel.addView(tunerNextTrackLabel, LinearLayout.LayoutParams(-1, dp(15)))
         val favoriteRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        favoriteRadioButtons.clear()
         for (slot in 0..4) {
             val favoriteButton = radioManagerKey("FAV ${slot + 1}") {
                 val station = loadFavoriteRadioStations().getOrNull(slot)
@@ -1158,6 +1160,7 @@ class MainActivity : Activity() {
                 else toast("Ez a memóriahely még üres.")
             }
             favoriteButton.textSize = 8f
+            favoriteRadioButtons.add(favoriteButton)
             val savedStation = loadFavoriteRadioStations().getOrNull(slot)
             if (savedStation != null && savedStation.second.isNotBlank()) {
                 favoriteButton.background = favoriteButtonBackground(savedStation.second, slot)
@@ -3881,6 +3884,25 @@ class MainActivity : Activity() {
         prefs.edit().putString("favorite_radio_slots_v2", array.toString())
             .putString("favorite_radio_color_map", colors.toString())
             .putInt("favorite_radio_color_next", nextCandidate).apply()
+        refreshFavoriteRadioButtons()
+    }
+
+    private fun refreshFavoriteRadioButtons() {
+        val stations = loadFavoriteRadioStations()
+        favoriteRadioButtons.forEachIndexed { slot, button ->
+            val station = stations.getOrNull(slot)
+            if (station != null && station.second.isNotBlank()) {
+                button.background = favoriteButtonBackground(station.second, slot)
+                button.setTextColor(if ((favoriteColorIndex(station.second) ?: slot) % 2 == 0) Color.rgb(28, 28, 28) else Color.WHITE)
+            } else {
+                button.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(91, 94, 91), Color.rgb(39, 42, 42), Color.rgb(17, 19, 20))).apply {
+                    cornerRadius = dp(4).toFloat()
+                    setStroke(dp(1), Color.rgb(133, 128, 111))
+                }
+                button.setTextColor(Color.rgb(231, 213, 174))
+            }
+        }
     }
     private fun showFavoriteSlotPicker(name: String, url: String) {
         if (fixedRadioStations.any { it.second == url }) {
