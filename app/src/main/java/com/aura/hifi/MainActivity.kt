@@ -829,7 +829,6 @@ class MainActivity : Activity() {
         val brand = TextView(this).apply { text = "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
         val hi = TextView(this).apply { text = "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        if (false) addGoldHeaderActions(header)
         body.addView(header)
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
@@ -1155,14 +1154,14 @@ class MainActivity : Activity() {
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, if (false) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
-        songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, if (false) Color.rgb(242, 218, 177) else Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
+        songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
+        songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                if (false) intArrayOf(Color.rgb(35, 32, 27), Color.rgb(17, 20, 25)) else intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))
-            ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), if (false) Color.rgb(139, 111, 68) else Color.rgb(126, 113, 221)) }
+                intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))
+            ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(126, 113, 221)) }
             setPadding(dp(18), dp(4), dp(18), dp(4))
         }
         songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(if (landscapeLibrary) 38 else 48)).apply { bottomMargin = dp(if (landscapeLibrary) 6 else 14) })
@@ -1171,13 +1170,12 @@ class MainActivity : Activity() {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    if (false) intArrayOf(Color.rgb(91, 66, 31), Color.rgb(48, 39, 27), Color.rgb(17, 20, 25))
-                    else intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
-                ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), if (false) Color.rgb(194, 151, 82) else Color.argb(220, 235, 190, 105)) }
+                    intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
+                ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.argb(220, 235, 190, 105)) }
                 setPadding(dp(5), dp(if (landscapeLibrary) 5 else 12), dp(5), dp(if (landscapeLibrary) 5 else 12)); isClickable = true; isFocusable = true
                 addView(label(icon, if (landscapeLibrary) 18f else 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
                 addView(label(title, if (landscapeLibrary) 10f else 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                addView(label(subtitle, if (landscapeLibrary) 8f else 9f, if (false) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
+                addView(label(subtitle, if (landscapeLibrary) 8f else 9f, Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
                 setOnClickListener { performAuraHaptic(this); action() }
                 applyPremiumPressEffect(this)
             }
@@ -1232,11 +1230,11 @@ class MainActivity : Activity() {
         sortRow.addView(sortSpinner, LinearLayout.LayoutParams(0, dp(42), 1f))
         val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
         recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
-        recentHeader.addView(button("↻ Frissítés", if (false) Color.rgb(91, 67, 31) else Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
+        recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                if (false) intArrayOf(Color.rgb(28, 27, 25), Color.rgb(13, 16, 21)) else intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))
-            ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), if (false) Color.rgb(112, 91, 61) else Color.rgb(93, 102, 183)) }
+                intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))
+            ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }
             setPadding(dp(9), dp(6), dp(9), dp(6))
         }
         libraryContainer.visibility = View.GONE
@@ -2343,81 +2341,10 @@ class MainActivity : Activity() {
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
-            setPadding(dp(if (false) 3 else 5), dp(4), dp(if (false) 3 else 5), dp(4))
-            background = rounded(if (false || false) Color.rgb(7, 6, 5) else Color.rgb(16, 18, 22), if (false) 7 else 16)
+            setPadding(dp(5), dp(4), dp(5), dp(4))
+            background = rounded(if (false || false) Color.rgb(7, 6, 5) else Color.rgb(16, 18, 22), 16)
             elevation = dp(7).toFloat()
-            if (false) setBackground(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(49, 31, 16), Color.rgb(5, 5, 5))).apply {
-                cornerRadius = dp(7).toFloat(); setStroke(dp(1), Color.rgb(189, 126, 43))
-            })
-        }
-        val navButtons = mutableListOf<Button>()
-        fun showPage(index: Int, resetLibrary: Boolean = true) {
-            activePageIndex = index
-            pageScrolls.forEachIndexed { i, v -> v.visibility = if (i == index) View.VISIBLE else View.GONE }
-            if (index == 1 && resetLibrary) {
-                showLibraryHome()
-                pageScrolls[1].post { pageScrolls[1].scrollTo(0, 0) }
-            }
-            navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) Color.rgb(245, 211, 151) else Color.rgb(160, 160, 158)); b.background = rounded(if (selected) Color.rgb(57, 46, 30) else Color.rgb(26, 28, 31), 12) }
-        }
-        
-        
-        settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
-            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
-        val soundBackButton = button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }
-        if (landscape && soundPage.childCount == 13) {
-            val soundItems = (0 until soundPage.childCount).map { soundPage.getChildAt(it) }
-            soundPage.removeAllViews()
-            soundPage.orientation = LinearLayout.HORIZONTAL
-            val controlDeck = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(4), dp(3), dp(6), dp(3))
-                background = rounded(Color.rgb(15, 18, 23), 14)
-            }
-            val engineDeck = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(6), dp(3), dp(4), dp(3))
-            }
-            controlDeck.addView(soundBackButton, LinearLayout.LayoutParams(-1, dp(32)).apply { bottomMargin = dp(4) })
-            controlDeck.addView(soundItems[0], LinearLayout.LayoutParams(-1, dp(14)))
-            controlDeck.addView(soundItems[1], LinearLayout.LayoutParams(-1, dp(22)))
-            controlDeck.addView(soundItems[2], LinearLayout.LayoutParams(-1, dp(25)))
-            controlDeck.addView(soundItems[3], LinearLayout.LayoutParams(-1, dp(14)))
-            controlDeck.addView(soundItems[4], LinearLayout.LayoutParams(-1, dp(26)))
-            val outputRowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val outputRowTwo = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            val outputButtons = listOf(soundItems[5], soundItems[6], soundItems[7], soundItems[8])
-            (outputButtons[0] as Button).apply { text = "♫  KIMENET"; textSize = 9f; contentDescription = "Kimeneti eszköz / profil kiválasztása" }
-            (outputButtons[1] as Button).apply { text = "💾  ESZKÖZ MENTÉSE"; textSize = 9f; contentDescription = "Aktív eszközprofil mentése" }
-            (outputButtons[2] as Button).apply { text = "💾  ALAP MENTÉSE"; textSize = 9f; contentDescription = "Alapbeállítás mentése" }
-            (outputButtons[3] as Button).apply { text = "↺  ALAPÉRTÉK"; textSize = 9f; contentDescription = "Aktív eszköz visszaállítása az alapbeállításokra" }
-            outputRowOne.addView(outputButtons[0], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
-            outputRowOne.addView(outputButtons[1], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
-            outputRowTwo.addView(outputButtons[2], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
-            outputRowTwo.addView(outputButtons[3], LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
-            controlDeck.addView(outputRowOne, LinearLayout.LayoutParams(-1, dp(38)))
-            controlDeck.addView(outputRowTwo, LinearLayout.LayoutParams(-1, dp(38)))
-            controlDeck.addView(soundItems[9], LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(4) })
-            engineDeck.addView(soundItems[10], LinearLayout.LayoutParams(-1, dp(24)))
-            engineDeck.addView(soundItems[11], LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(4) })
-            engineDeck.addView(soundItems[12], LinearLayout.LayoutParams(-1, 0, 1f))
-            soundPage.addView(controlDeck, LinearLayout.LayoutParams(0, -1, 0.43f).apply { marginEnd = dp(4) })
-            soundPage.addView(engineDeck, LinearLayout.LayoutParams(0, -1, 0.57f))
-        } else {
-            soundPage.addView(soundBackButton, LinearLayout.LayoutParams(-1, dp(40)).apply { bottomMargin = dp(12) })
-        }
-
-        var vuSettingsReturnToCategory = false
-        vuSettingsMenuButton.setOnClickListener {
-            vuSettingsReturnToCategory = true
-            showPage(4)
-        }
-        vuSettingsBackButton.setOnClickListener {
-            if (vuSettingsReturnToCategory) {
-                showPage(3)
-                showSettingsCategory(vuAppearanceSettingsPage)
-            } else {
+            {
                 showPage(0, false)
             }
         }
@@ -2437,7 +2364,7 @@ class MainActivity : Activity() {
             listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (false) 66 else 58)).apply { topMargin = dp(if (false) 4 else 8) })
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
         showPage(0)
         setContentView(root)
         
@@ -2866,10 +2793,7 @@ class MainActivity : Activity() {
     private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
         val ordered = sortLibrarySongs(songs, scope, allowManual)
         val viewMode = listViewMode(scope)
-        val tileBackground = if (false) GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(39, 35, 29), Color.rgb(19, 21, 25))).apply {
-            cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(112, 91, 61))
-        } else rounded(Color.rgb(27, 32, 48), 12)
+        val tileBackground = rounded(Color.rgb(27, 32, 48), 12)
         fun playFrom(index: Int, song: LibrarySong) {
             queue.clear()
             queue.addAll(ordered.map { it.uri })
@@ -2897,7 +2821,7 @@ class MainActivity : Activity() {
                             setPadding(dp(6), dp(if (landscape) 6 else 10), dp(6), dp(6))
                             addView(libraryArtworkView(song, coverSize), LinearLayout.LayoutParams(-1, dp(coverSize)).apply { bottomMargin = dp(6) })
                             addView(label(song.title, if (landscape) 10f else 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
-                            addView(label(song.artist, 9f, if (false) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                            addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
@@ -2940,8 +2864,8 @@ class MainActivity : Activity() {
                         addView(libraryArtworkView(song, 48), LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(10) })
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
                         details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.artist, 10f, if (false) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.album, 9f, if (false) Color.rgb(145, 139, 126) else Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         addView(details, LinearLayout.LayoutParams(0, -2, 1f))
                         setOnClickListener { playFrom(index, song) }
                     }
