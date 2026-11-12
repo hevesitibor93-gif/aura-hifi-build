@@ -982,7 +982,9 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-         if (landscape) {
+        var landscapeHeadUnit: LinearLayout? = null
+        var landscapeBrandHeader: View? = null
+        if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
@@ -999,6 +1001,7 @@ class MainActivity : Activity() {
                     intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
+            landscapeHeadUnit = headUnit
             val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
             val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; "circular", "aurix" -> 72; else -> 54 }
             val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
@@ -1073,6 +1076,7 @@ class MainActivity : Activity() {
             controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
             // Fekvő nézet: széles, arany AURIX VU középen, alatta jól olvasható cím.
             val headerView = headUnit.getChildAt(0)
+            landscapeBrandHeader = headerView
             headUnit.removeAllViews()
             headUnit.addView(headerView, LinearLayout.LayoutParams(-1, dp(25)))
             centerAurixVu = VuView(false).apply {
@@ -1177,7 +1181,27 @@ class MainActivity : Activity() {
         val tunerColumn = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         tunerColumn.addView(radioPanel, LinearLayout.LayoutParams(-1, -2))
         tunerColumn.addView(tunerControls, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(4) })
-        playerPage.addView(tunerColumn, if (landscape) LinearLayout.LayoutParams(dp(150), -1).apply { marginStart = dp(7) } else LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(2) })
+        if (landscape) {
+            // In landscape, the tuner becomes part of the player's header instead of a separate card.
+            radioPanel.removeView(tunerDisplay)
+            radioPanel.removeView(favoriteRow)
+            tunerColumn.removeView(tunerControls)
+            (tunerControls.getChildAt(0) as? TextView)?.apply { text = "KERESÉS"; textSize = 8f }
+            (tunerControls.getChildAt(1) as? TextView)?.apply { text = "TUNER KI"; textSize = 8f }
+            val landscapeRadioBar = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 0, 0, 0)
+            }
+            landscapeRadioBar.addView(tunerDisplay, LinearLayout.LayoutParams(0, dp(34), 1.15f).apply { marginEnd = dp(4) })
+            landscapeRadioBar.addView(favoriteRow, LinearLayout.LayoutParams(0, dp(30), 2.25f).apply { marginEnd = dp(4) })
+            landscapeRadioBar.addView(tunerControls, LinearLayout.LayoutParams(0, dp(31), 1.45f))
+            landscapeBrandHeader?.visibility = View.GONE
+            landscapeHeadUnit?.addView(landscapeRadioBar, 0, LinearLayout.LayoutParams(-1, dp(38)))
+            tunerColumn.visibility = View.GONE
+        } else {
+            playerPage.addView(tunerColumn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(2) })
+        }
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -2368,7 +2392,7 @@ class MainActivity : Activity() {
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
-            setPadding(dp(5), dp(4), dp(5), dp(4))
+            setPadding(dp(5), dp(if (landscape) 1 else 4), dp(5), dp(if (landscape) 1 else 4))
             background = rounded(Color.rgb(16, 18, 22), 16)
             elevation = dp(7).toFloat()
         }
@@ -2452,9 +2476,9 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
         setContentView(root)
         
