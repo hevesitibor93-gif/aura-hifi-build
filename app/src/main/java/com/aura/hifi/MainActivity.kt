@@ -338,6 +338,15 @@ class MainActivity : Activity() {
 
         playbackListener?.let { exo.removeListener(it) }
         val listener = object : Player.Listener {
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                if (activeRadioStationName != null) {
+                    val title = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() && !it.equals(activeRadioStationName, true) }
+                    val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
+                    val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
+                    metadataLabel.text = display
+                    radioSongTitleLabel?.text = display
+                }
+            }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (!radioStreamError) activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
@@ -1120,10 +1129,10 @@ class MainActivity : Activity() {
         radioPanel.addView(tunerDisplay, LinearLayout.LayoutParams(-1, dp(49)).apply { topMargin = dp(5); bottomMargin = dp(7) })
         val favoriteRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         for (slot in 0..4) {
-            val favoriteButton = radioManagerKey("FAV \${slot + 1}") {
+            val favoriteButton = radioManagerKey("FAV ${slot + 1}") {
                 val station = loadFavoriteRadioStations().getOrNull(slot)
                 if (station != null) startRadioStation(station.first, station.second)
-                else toast("A \${slot + 1}. memóriahely még üres. A katalógusban hosszan nyomj egy állomásra a mentéshez.")
+                else toast("A ${slot + 1}. memóriahely még üres. A katalógusban hosszan nyomj egy állomásra a mentéshez.")
             }
             favoriteButton.textSize = 8f
             favoriteRow.addView(favoriteButton, LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (slot > 0) marginStart = dp(4) })
@@ -3926,15 +3935,15 @@ class MainActivity : Activity() {
                     resultStations.clear(); resultStations.addAll(found); resultNames.clear()
                     resultNames.addAll(found.map { station ->
                         val details = listOf(station.country, station.tags.split(",").take(2).joinToString(" / "),
-                            if (station.bitrate > 0) "\${station.bitrate} kbps" else station.codec)
+                            if (station.bitrate > 0) "${station.bitrate} kbps" else station.codec)
                             .filter { it.isNotBlank() && it != "Unknown" }.joinToString("  •  ")
-                        if (details.isBlank()) station.name else "\${station.name}\\n$details"
+                        if (details.isBlank()) station.name else "${station.name}\n$details"
                     })
                     adapter.notifyDataSetChanged()
                     resultLabel.text = when {
                         error != null -> "NEM SIKERÜLT BETÖLTENI: $error"
                         found.isEmpty() -> "NINCS TALÁLAT  •  MÓDOSÍTSD A SZŰRŐKET"
-                        else -> "\${found.size} ÁLLOMÁS  •  ÉRINTÉS A HANGOLÁSHOZ, HOSSZÚ NYOMÁS A KEDVENCHEZ"
+                        else -> "${found.size} ÁLLOMÁS  •  ÉRINTÉS A HANGOLÁSHOZ, HOSSZÚ NYOMÁS A KEDVENCHEZ"
                     }
                 }
             }.start()
@@ -3945,7 +3954,7 @@ class MainActivity : Activity() {
                 when {
                     saved -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELTÁVOLÍTVA A KEDVENCEKBŐL" }
                     favorites.size >= 5 -> resultLabel.text = "A KEDVENCEK MEGTELTEK  •  MAXIMUM 5"
-                    else -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  \${loadFavoriteRadioStations().size}/5" }
+                    else -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  ${loadFavoriteRadioStations().size}/5" }
                 }
             }
             true
@@ -3954,7 +3963,7 @@ class MainActivity : Activity() {
             resultStations.getOrNull(which)?.let { station ->
                 if (station.uuid.isNotBlank()) Thread {
                     try {
-                        val c = (java.net.URL("https://de1.api.radio-browser.info/json/url/\${station.uuid}")
+                        val c = (java.net.URL("https://de1.api.radio-browser.info/json/url/${station.uuid}")
                             .openConnection() as java.net.HttpURLConnection).apply {
                             connectTimeout = 5000; readTimeout = 5000; setRequestProperty("User-Agent", "AURA-HiFi/1.0")
                         }
@@ -3966,7 +3975,7 @@ class MainActivity : Activity() {
         }
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         actions.addView(radioManagerKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(3) })
-        actions.addView(radioManagerKey("KEDVENCEK \${loadFavoriteRadioStations().size}/5") {
+        actions.addView(radioManagerKey("KEDVENCEK ${loadFavoriteRadioStations().size}/5") {
             dialog.dismiss(); showFavoriteRadioStations()
         }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
         actions.addView(radioManagerKey("SAJÁT ADÓK") { dialog.dismiss(); showCustomRadioStationsManager() },
@@ -4091,6 +4100,13 @@ class MainActivity : Activity() {
                 radioStatusLabel?.text = "TUNER STANDBY  •  MP3 MÓD"
                 radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
             }
+            return
+        }
+        if (tunerPowered) {
+            tunerPowered = false
+            tunerPowerButton?.text = "TUNER KI"
+            radioStatusLabel?.text = "TUNER STANDBY  •  MP3 MÓD"
+            radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
             return
         }
         if (current != null && !current.scheme.equals("http", true) && !current.scheme.equals("https", true)) savedLocalTrackUri = current
