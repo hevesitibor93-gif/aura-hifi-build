@@ -1721,8 +1721,6 @@ class MainActivity : Activity() {
                 }
                 playerPage.addView(referenceImage, LinearLayout.LayoutParams(-1, -2))
             } else {
-                original.forEachIndexed
-            } else {
                 original.forEachIndexed { i, child ->
                     when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) }
                 }
