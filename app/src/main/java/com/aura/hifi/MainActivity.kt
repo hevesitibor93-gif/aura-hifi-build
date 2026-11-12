@@ -1144,7 +1144,7 @@ class MainActivity : Activity() {
         tunerPowerButton = radioManagerKey("TUNER KI") { toggleTunerPower() }.apply { setTextColor(Color.rgb(255, 208, 130)) }
         tunerControls.addView(tunerPowerButton, LinearLayout.LayoutParams(dp(100), dp(38)).apply { topMargin = dp(6) })
         radioPanel.addView(tunerControls)
-        playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(150)).apply { topMargin = dp(8); bottomMargin = dp(4) })
+        playerPage.addView(radioPanel, if (landscape) LinearLayout.LayoutParams(dp(150), -1).apply { marginStart = dp(7) } else LinearLayout.LayoutParams(-1, dp(150)).apply { topMargin = dp(8); bottomMargin = dp(4) })
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
