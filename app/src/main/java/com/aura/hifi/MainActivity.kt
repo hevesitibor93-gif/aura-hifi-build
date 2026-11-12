@@ -2337,7 +2337,6 @@ class MainActivity : Activity() {
             setPadding(dp(5), dp(4), dp(5), dp(4))
             background = rounded(Color.rgb(16, 18, 22), 16)
             elevation = dp(7).toFloat()
-)
         }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int, resetLibrary: Boolean = true) {
