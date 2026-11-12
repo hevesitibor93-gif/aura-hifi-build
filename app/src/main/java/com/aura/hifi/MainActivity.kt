@@ -4737,17 +4737,11 @@ class MainActivity : Activity() {
     private fun updateProgress() {
         val p = player ?: return
         try {
-            val duration = p.duration; val position = p.currentPosition
-            if (activeRadioStationName != null) {
-            } else {
-                    p.isPlaying -> "TRANSPORT  /  PLAYING"
-                    position > 0L -> "TRANSPORT  /  PAUSED"
-                    else -> "TRANSPORT  /  STOPPED"
-                }
-            }
+            val duration = p.duration
+            val position = p.currentPosition
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
             vinylView.invalidate()
-            val timeText = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
+            val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             timeLabel.text = "$timeText   •   $trackCount"
         } catch (_: Exception) {}
