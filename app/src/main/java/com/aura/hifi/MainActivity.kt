@@ -1938,41 +1938,128 @@ class MainActivity : Activity() {
                     leftMargin = dp(5); rightMargin = dp(5)
                 })
 
-                val amp = component("INTEGRATED AMPLIFIER", "STEREO POWER • TONE CONTROL")
+                val amp = component("AMPLIFIER", "STEREO INTEGRATED • TA-8800")
                 val ampFace = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.rgb(14, 16, 17)); setStroke(dp(1), Color.rgb(73, 78, 78)) }
-                    setPadding(dp(7), dp(5), dp(7), dp(5))
+                    background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(Color.rgb(31, 33, 34), Color.rgb(10, 12, 13), Color.rgb(29, 31, 32))).apply {
+                        cornerRadius = dp(3).toFloat()
+                        setStroke(dp(1), Color.rgb(115, 119, 116))
+                    }
+                    setPadding(dp(5), dp(4), dp(5), dp(4))
                 }
-                val bassTrebleColumn = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(0, dp(2), dp(3), dp(2)) }
-                listOf("BASS", "TREBLE").forEach { tone ->
-                    bassTrebleColumn.addView(towerHardwareKey(tone) { openSoundEnginePage?.invoke() },
-                        LinearLayout.LayoutParams(dp(43), dp(25)).apply { topMargin = dp(3); bottomMargin = dp(3) })
-                }
-                ampFace.addView(bassTrebleColumn, LinearLayout.LayoutParams(dp(47), -1))
-                towerAmpMeterLeft = TowerAnalogMeterView(channel = 0).apply { setActive(player?.isPlaying == true) }
-                towerAmpMeterRight = TowerAnalogMeterView(channel = 1).apply { setActive(player?.isPlaying == true) }
-                ampFace.addView(towerAmpMeterLeft, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginEnd = dp(3) })
-                val ampInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(3), 0, dp(3), 0) }
-                ampInfo.addView(label("MASTER", 7f, champagne).apply { gravity = Gravity.CENTER; letterSpacing = .12f })
-                ampInfo.addView(label("◉", 35f, champagne).apply {
+
+                // Left control bank: compact physical tone controls, as on the reference amplifier.
+                val leftControls = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(34, 36, 36)); setStroke(dp(2), Color.rgb(133, 119, 91)) }
-                    setOnClickListener { openSoundEnginePage?.invoke() }
-                }, LinearLayout.LayoutParams(dp(48), dp(48)))
-                ampInfo.addView(towerHardwareKey("TONE / EQ") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(68), dp(25)).apply { topMargin = dp(2) })
-                ampInfo.addView(towerHardwareKey("BALANCE") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(dp(68), dp(22)).apply { topMargin = dp(2) })
-                ampInfo.addView(label("OUTPUT  A  /  B", 6f, Color.rgb(151, 160, 153)).apply {
+                    setPadding(dp(1), 0, dp(3), 0)
+                }
+                leftControls.addView(label("BASS", 6.5f, champagne).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.DEFAULT_BOLD
-                    letterSpacing = .06f
-                    setPadding(0, dp(3), 0, 0)
+                    letterSpacing = .05f
+                }, LinearLayout.LayoutParams(-1, dp(12)))
+                leftControls.addView(towerHardwareKey("◉") { openSoundEnginePage?.invoke() },
+                    LinearLayout.LayoutParams(dp(38), dp(25)).apply { topMargin = dp(1) })
+                leftControls.addView(label("TREBLE", 6.5f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = .03f
+                }, LinearLayout.LayoutParams(-1, dp(12)))
+                leftControls.addView(towerHardwareKey("◉") { openSoundEnginePage?.invoke() },
+                    LinearLayout.LayoutParams(dp(38), dp(25)).apply { topMargin = dp(1) })
+                ampFace.addView(leftControls, LinearLayout.LayoutParams(dp(43), -1))
+
+                // Twin analogue VU meters share one recessed glass window.
+                val meterWindow = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable().apply {
+                        cornerRadius = dp(3).toFloat()
+                        setColor(Color.rgb(5, 7, 8))
+                        setStroke(dp(2), Color.rgb(83, 87, 85))
+                    }
+                    setPadding(dp(3), dp(4), dp(3), dp(4))
+                }
+                towerAmpMeterLeft = TowerAnalogMeterView(channel = 0).apply { setActive(player?.isPlaying == true) }
+                towerAmpMeterRight = TowerAnalogMeterView(channel = 1).apply { setActive(player?.isPlaying == true) }
+                meterWindow.addView(towerAmpMeterLeft, LinearLayout.LayoutParams(0, dp(58), 1f).apply { marginEnd = dp(3) })
+                meterWindow.addView(towerAmpMeterRight, LinearLayout.LayoutParams(0, dp(58), 1f).apply { marginStart = dp(3) })
+                ampFace.addView(meterWindow, LinearLayout.LayoutParams(0, dp(68), 1f).apply {
+                    marginStart = dp(2); marginEnd = dp(5)
                 })
-                ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(70), -1))
-                ampFace.addView(towerAmpMeterRight, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginStart = dp(3) })
-                amp.addView(ampFace, LinearLayout.LayoutParams(-1, dp(84)).apply { topMargin = dp(5) })
-                // Keep the amplifier at its designed hardware height; never stretch it to fill the screen.
+
+                // Large master control: metallic face, concentric rim and a clear functional touch target.
+                val masterColumn = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                }
+                masterColumn.addView(label("MASTER", 6.5f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = .12f
+                }, LinearLayout.LayoutParams(-1, dp(11)))
+                val masterKnob = TextView(this).apply {
+                    text = "◉"
+                    textSize = 34f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.rgb(225, 197, 145))
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(207, 190, 155), Color.rgb(47, 49, 48), Color.rgb(13, 15, 16))).apply {
+                        shape = GradientDrawable.OVAL
+                        setStroke(dp(3), Color.rgb(177, 133, 65))
+                    }
+                    elevation = dp(3).toFloat()
+                    contentDescription = "Master volume and sound engine"
+                    setOnClickListener { performAuraHaptic(this); openSoundEnginePage?.invoke() }
+                    applyPremiumPressEffect(this)
+                }
+                masterColumn.addView(masterKnob, LinearLayout.LayoutParams(dp(53), dp(53)).apply {
+                    topMargin = dp(1); bottomMargin = dp(1)
+                })
+                masterColumn.addView(label("MIN      MAX", 6f, Color.rgb(190, 174, 145)).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                }, LinearLayout.LayoutParams(-1, dp(10)))
+                ampFace.addView(masterColumn, LinearLayout.LayoutParams(dp(61), -1).apply {
+                    marginEnd = dp(4)
+                })
+
+                // Right bank keeps EQ, Sound Engine and balance reachable without widening the faceplate.
+                val rightControls = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(2), 0, 0, 0)
+                }
+                rightControls.addView(towerHardwareKey("EQ") { openSoundEnginePage?.invoke() },
+                    LinearLayout.LayoutParams(dp(62), dp(21)).apply { bottomMargin = dp(2) })
+                rightControls.addView(towerHardwareKey("SOUND ENGINE") { openSoundEnginePage?.invoke() },
+                    LinearLayout.LayoutParams(dp(62), dp(21)).apply { bottomMargin = dp(2) })
+                rightControls.addView(label("BALANCE", 6f, champagne).apply {
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                }, LinearLayout.LayoutParams(-1, dp(10)))
+                val balanceKnob = TextView(this).apply {
+                    text = "◉"
+                    textSize = 23f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.rgb(220, 194, 146))
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(175, 160, 130), Color.rgb(42, 44, 43), Color.rgb(12, 14, 15))).apply {
+                        shape = GradientDrawable.OVAL
+                        setStroke(dp(2), Color.rgb(153, 116, 59))
+                    }
+                    contentDescription = "Balance control"
+                    setOnClickListener { performAuraHaptic(this); openSoundEnginePage?.invoke() }
+                    applyPremiumPressEffect(this)
+                }
+                rightControls.addView(balanceKnob, LinearLayout.LayoutParams(dp(32), dp(32)).apply { topMargin = dp(1) })
+                ampFace.addView(rightControls, LinearLayout.LayoutParams(dp(66), -1))
+
+                amp.addView(ampFace, LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(3) })
+                // Keep the amplifier at its compact hardware height; never stretch it to fill the screen.
                 playerPage.addView(amp, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(1) })
                 playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
                     leftMargin = dp(5); rightMargin = dp(5)
