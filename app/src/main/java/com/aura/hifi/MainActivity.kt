@@ -953,7 +953,7 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE 
-         else if (landscape) {
+        if (landscape) {
             playerPage.orientation = LinearLayout.HORIZONTAL
             playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
