@@ -810,8 +810,6 @@ class MainActivity : Activity() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         // AURA Original is the only active theme. Legacy themes are retired.
         themePrefs.edit().putString("aura_theme", "original").apply()
-        val goldStudioTheme = false
-        val towerTheme = false
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -1086,19 +1084,15 @@ class MainActivity : Activity() {
             }
         }
 
-        // Shared internet radio access for Original and Gold Studio themes.
-        // Tower Edition owns its dedicated hardware tuner above.
-        if (!towerTheme) {
-            val radioGold = goldStudioTheme
+        // Shared internet radio access for AURA Original.
             val radioPanel = LinearLayout(this).apply {
                 orientation = if (landscape) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    if (radioGold) intArrayOf(Color.rgb(38, 32, 23), Color.rgb(13, 16, 21))
-                    else intArrayOf(Color.rgb(35, 42, 91), Color.rgb(17, 25, 57))
+                    intArrayOf(Color.rgb(35, 42, 91), Color.rgb(17, 25, 57))
                 ).apply {
                     cornerRadius = dp(12).toFloat()
-                    setStroke(dp(1), if (radioGold) Color.rgb(139, 111, 68) else Color.rgb(103, 111, 194))
+                    setStroke(dp(1), Color.rgb(103, 111, 194))
                 }
                 setPadding(dp(8), dp(6), dp(8), dp(6))
             }
@@ -1107,13 +1101,13 @@ class MainActivity : Activity() {
                 gravity = if (landscape) Gravity.CENTER else Gravity.CENTER_VERTICAL
             }
             radioInfo.addView(label("♫  INTERNET RÁDIÓ", if (landscape) 9f else 10f,
-                if (radioGold) Color.rgb(239, 205, 146) else Color.rgb(202, 194, 255)).apply {
+                Color.rgb(202, 194, 255)).apply {
                 typeface = Typeface.DEFAULT_BOLD
                 letterSpacing = .08f
                 gravity = if (landscape) Gravity.CENTER else Gravity.START
             })
             radioStatusLabel = label("VÁLASSZ ADÓT", 8f,
-                if (radioGold) Color.rgb(166, 190, 158) else Color.rgb(166, 190, 225)).apply {
+                Color.rgb(166, 190, 225)).apply {
                 gravity = if (landscape) Gravity.CENTER else Gravity.START
                 setPadding(0, dp(2), 0, 0)
                 maxLines = 1
@@ -1121,13 +1115,13 @@ class MainActivity : Activity() {
             radioInfo.addView(radioStatusLabel)
             if (landscape) {
                 radioPanel.addView(radioInfo, LinearLayout.LayoutParams(-1, 0, 1f))
-                radioPanel.addView(button("MIX RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioPanel.addView(button("MIX RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
                 }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(5) })
-                radioPanel.addView(button("DEEJAY RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioPanel.addView(button("DEEJAY RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
                 }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
-                radioPanel.addView(button("SAJÁT ADÓK", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioPanel.addView(button("SAJÁT ADÓK", Color.rgb(67, 65, 139), Color.WHITE) {
                     showRadioStationManager()
                 }, LinearLayout.LayoutParams(-1, dp(32)).apply { topMargin = dp(4) })
                 playerPage.addView(radioPanel, LinearLayout.LayoutParams(dp(126), -1).apply { marginStart = dp(7) })
@@ -1137,30 +1131,30 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
                 }
-                radioButtons.addView(button("MIX RÁDIÓ", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioButtons.addView(button("MIX RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
                 }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(4) })
-                radioButtons.addView(button("DEEJAY", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioButtons.addView(button("DEEJAY", Color.rgb(67, 65, 139), Color.WHITE) {
                     startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
                 }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginStart = dp(4) })
-                radioButtons.addView(button("SAJÁT", if (radioGold) Color.rgb(91, 65, 27) else Color.rgb(67, 65, 139), Color.WHITE) {
+                radioButtons.addView(button("SAJÁT", Color.rgb(67, 65, 139), Color.WHITE) {
                     showRadioStationManager()
                 }, LinearLayout.LayoutParams(0, dp(36), .8f).apply { marginStart = dp(4) })
                 radioPanel.addView(radioButtons, LinearLayout.LayoutParams(0, -1, 1.25f))
                 playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
             }
-        }
+        
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, if (goldStudioTheme) Color.rgb(196, 158, 99) else Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
-        songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, if (goldStudioTheme) Color.rgb(242, 218, 177) else Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
+        songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
+        songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
         val librarySearch = EditText(this).apply {
             hint = "⌕  Keresés a zenék között..."
             setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(177, 180, 205))
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                if (goldStudioTheme) intArrayOf(Color.rgb(35, 32, 27), Color.rgb(17, 20, 25)) else intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))
-            ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(139, 111, 68) else Color.rgb(126, 113, 221)) }
+                intArrayOf(Color.rgb(49, 54, 111), Color.rgb(36, 43, 91))
+            ).apply { cornerRadius = dp(22).toFloat(); setStroke(dp(1), Color.rgb(126, 113, 221)) }
             setPadding(dp(18), dp(4), dp(18), dp(4))
         }
         songsPage.addView(librarySearch, LinearLayout.LayoutParams(-1, dp(if (landscapeLibrary) 38 else 48)).apply { bottomMargin = dp(if (landscapeLibrary) 6 else 14) })
@@ -1169,13 +1163,12 @@ class MainActivity : Activity() {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    if (goldStudioTheme) intArrayOf(Color.rgb(91, 66, 31), Color.rgb(48, 39, 27), Color.rgb(17, 20, 25))
-                    else intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
-                ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(194, 151, 82) else Color.argb(220, 235, 190, 105)) }
+                    intArrayOf(Color.rgb(130, 83, 194), Color.rgb(91, 83, 174), Color.rgb(24, 61, 133))
+                ).apply { cornerRadius = dp(17).toFloat(); setStroke(dp(1), Color.argb(220, 235, 190, 105)) }
                 setPadding(dp(5), dp(if (landscapeLibrary) 5 else 12), dp(5), dp(if (landscapeLibrary) 5 else 12)); isClickable = true; isFocusable = true
                 addView(label(icon, if (landscapeLibrary) 18f else 25f, Color.WHITE).apply { gravity = Gravity.CENTER })
                 addView(label(title, if (landscapeLibrary) 10f else 12f, Color.WHITE).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-                addView(label(subtitle, if (landscapeLibrary) 8f else 9f, if (goldStudioTheme) Color.rgb(220, 204, 174) else Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
+                addView(label(subtitle, if (landscapeLibrary) 8f else 9f, Color.rgb(210, 211, 239)).apply { gravity = Gravity.CENTER })
                 setOnClickListener { performAuraHaptic(this); action() }
                 applyPremiumPressEffect(this)
             }
@@ -1230,11 +1223,11 @@ class MainActivity : Activity() {
         sortRow.addView(sortSpinner, LinearLayout.LayoutParams(0, dp(42), 1f))
         val recentHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), dp(17), dp(3), dp(7)) }
         recentHeader.addView(label("◷  Legutóbb hozzáadott dalok", 16f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(0, -2, 1f))
-        recentHeader.addView(button("↻ Frissítés", if (goldStudioTheme) Color.rgb(91, 67, 31) else Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
+        recentHeader.addView(button("↻ Frissítés", Color.rgb(73, 54, 135), Color.WHITE) { loadMusicLibrary() })
         libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                if (goldStudioTheme) intArrayOf(Color.rgb(28, 27, 25), Color.rgb(13, 16, 21)) else intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))
-            ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), if (goldStudioTheme) Color.rgb(112, 91, 61) else Color.rgb(93, 102, 183)) }
+                intArrayOf(Color.rgb(36, 39, 83), Color.rgb(20, 27, 60))
+            ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(93, 102, 183)) }
             setPadding(dp(9), dp(6), dp(9), dp(6))
         }
         libraryContainer.visibility = View.GONE
@@ -2341,13 +2334,10 @@ class MainActivity : Activity() {
         setVuAnimation(vuPrefs.getBoolean("vu_animation", true))
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
-            setPadding(dp(if (towerTheme) 3 else 5), dp(4), dp(if (towerTheme) 3 else 5), dp(4))
-            background = rounded(if (towerTheme || goldStudioTheme) Color.rgb(7, 6, 5) else Color.rgb(16, 18, 22), if (towerTheme) 7 else 16)
+            setPadding(dp(5), dp(4), dp(5), dp(4))
+            background = rounded(Color.rgb(16, 18, 22), 16)
             elevation = dp(7).toFloat()
-            if (towerTheme) setBackground(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(49, 31, 16), Color.rgb(5, 5, 5))).apply {
-                cornerRadius = dp(7).toFloat(); setStroke(dp(1), Color.rgb(189, 126, 43))
-            })
+)
         }
         val navButtons = mutableListOf<Button>()
         fun showPage(index: Int, resetLibrary: Boolean = true) {
@@ -2431,7 +2421,7 @@ class MainActivity : Activity() {
         }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (towerTheme) 66 else 58)).apply { topMargin = dp(if (towerTheme) 4 else 8) })
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
         showPage(0)
         setContentView(root)
         
@@ -2860,11 +2850,7 @@ class MainActivity : Activity() {
     private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
         val ordered = sortLibrarySongs(songs, scope, allowManual)
         val viewMode = listViewMode(scope)
-        val goldStudioTheme = false // AURA Original only
-        val tileBackground = if (goldStudioTheme) GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(39, 35, 29), Color.rgb(19, 21, 25))).apply {
-            cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(112, 91, 61))
-        } else rounded(Color.rgb(27, 32, 48), 12)
+        val tileBackground = rounded(Color.rgb(27, 32, 48), 12)
         fun playFrom(index: Int, song: LibrarySong) {
             queue.clear()
             queue.addAll(ordered.map { it.uri })
@@ -2892,7 +2878,7 @@ class MainActivity : Activity() {
                             setPadding(dp(6), dp(if (landscape) 6 else 10), dp(6), dp(6))
                             addView(libraryArtworkView(song, coverSize), LinearLayout.LayoutParams(-1, dp(coverSize)).apply { bottomMargin = dp(6) })
                             addView(label(song.title, if (landscape) 10f else 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
-                            addView(label(song.artist, 9f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                            addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
@@ -2936,7 +2922,7 @@ class MainActivity : Activity() {
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
                         details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         details.addView(label(song.artist, 10f, if (goldStudioTheme) Color.rgb(190, 174, 145) else Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.album, 9f, if (goldStudioTheme) Color.rgb(145, 139, 126) else Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         addView(details, LinearLayout.LayoutParams(0, -2, 1f))
                         setOnClickListener { playFrom(index, song) }
                     }
