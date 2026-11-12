@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     private var playbackListener: Player.Listener? = null
     private var radioStatusLabel: TextView? = null
     private var radioSongTitleLabel: TextView? = null
+    private var tunerNextTrackLabel: TextView? = null
     private var tunerPowerButton: TextView? = null
     private var savedLocalTrackUri: Uri? = null
     private var tunerPowered = false
@@ -344,7 +345,8 @@ class MainActivity : Activity() {
                     val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
                     val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
                     metadataLabel.text = display
-                    radioSongTitleLabel?.text = display
+                    radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+                    tunerNextTrackLabel?.visibility = View.GONE
                 }
             }
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1126,25 +1128,33 @@ class MainActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; isSelected = true; setPadding(0, dp(4), 0, 0)
         }
         tunerDisplay.addView(radioStatusLabel); tunerDisplay.addView(radioSongTitleLabel)
-        radioPanel.addView(tunerDisplay, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(3); bottomMargin = dp(4) })
+        radioPanel.addView(tunerDisplay, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(3); bottomMargin = dp(2) })
+        tunerNextTrackLabel = label("KÖVETKEZŐ MP3  •  NINCS KÖVETKEZŐ SZÁM", 8f, Color.rgb(194, 185, 160)).apply {
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; isSelected = true
+            setPadding(dp(2), 0, dp(2), dp(2))
+        }
+        radioPanel.addView(tunerNextTrackLabel, LinearLayout.LayoutParams(-1, dp(15)))
         val favoriteRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         for (slot in 0..4) {
             val favoriteButton = radioManagerKey("FAV ${slot + 1}") {
                 val station = loadFavoriteRadioStations().getOrNull(slot)
                 if (station != null) startRadioStation(station.first, station.second)
-                else toast("A ${slot + 1}. memóriahely még üres. A katalógusban hosszan nyomj egy állomásra a mentéshez.")
+                else toast("Ez a memóriahely még üres.")
             }
             favoriteButton.textSize = 8f
-            favoriteRow.addView(favoriteButton, LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (slot > 0) marginStart = dp(4) })
+            favoriteRow.addView(favoriteButton, LinearLayout.LayoutParams(0, dp(27), 1f).apply { if (slot > 0) marginStart = dp(4) })
         }
         radioPanel.addView(favoriteRow)
         val tunerControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         tunerControls.addView(radioManagerKey("ÁLLOMÁSKERESŐ") { showRadioStationManager() },
-            LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5); topMargin = dp(3) })
+            LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5) })
         tunerPowerButton = radioManagerKey("TUNER KI") { toggleTunerPower() }.apply { setTextColor(Color.rgb(255, 208, 130)) }
-        tunerControls.addView(tunerPowerButton, LinearLayout.LayoutParams(dp(86), dp(31)).apply { topMargin = dp(3) })
-        radioPanel.addView(tunerControls)
-        playerPage.addView(radioPanel, if (landscape) LinearLayout.LayoutParams(dp(150), -1).apply { marginStart = dp(7) } else LinearLayout.LayoutParams(-1, dp(112)).apply { topMargin = dp(4); bottomMargin = dp(2) })
+        tunerControls.addView(tunerPowerButton, LinearLayout.LayoutParams(0, dp(31), 1f))
+        val tunerColumn = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        tunerColumn.addView(radioPanel, LinearLayout.LayoutParams(-1, -2))
+        tunerColumn.addView(tunerControls, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(4) })
+        playerPage.addView(tunerColumn, if (landscape) LinearLayout.LayoutParams(dp(150), -1).apply { marginStart = dp(7) } else LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(2) })
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -3645,7 +3655,12 @@ class MainActivity : Activity() {
     }
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
+        val nextText = if (next != null) "KÖVETKEZŐ MP3  •  ${metadataTitle(next)}" else "KÖVETKEZŐ MP3  •  Nincs következő szám"
         nextTrackLabel.text = if (next != null) "NEXT TRACK  •  ${metadataTitle(next)}" else "NEXT TRACK  •  Nincs következő szám"
+        tunerNextTrackLabel?.apply {
+            text = nextText
+            visibility = if (activeRadioStationName == null) View.VISIBLE else View.GONE
+        }
         renderQueue()
     }
     private fun renderQueue() {
@@ -3759,51 +3774,86 @@ class MainActivity : Activity() {
         val uuid: String
     )
 
-    private fun loadFavoriteRadioStations(): List<Pair<String, String>> {
-        val raw = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("favorite_radio_stations", "[]") ?: "[]"
+    private val fixedRadioStations = listOf(
+        "MixRadio" to "https://stream.phost.hu:8006/live",
+        "Deejay Rádió" to "https://s01.diazol.hu:9042/stream"
+    )
+
+    private fun loadCustomFavoriteSlots(): MutableList<Pair<String, String>?> {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val rawV2 = prefs.getString("favorite_radio_slots_v2", null)
+        val raw = rawV2 ?: prefs.getString("favorite_radio_stations", "[]") ?: "[]"
         return try {
             val array = org.json.JSONArray(raw)
-            (0 until array.length()).mapNotNull { index ->
-                val item = array.optJSONObject(index) ?: return@mapNotNull null
-                val name = item.optString("name").trim()
-                val url = item.optString("url").trim()
-                if (name.isBlank() || !isValidRadioStreamUrl(url)) null else name to url
-            }.distinctBy { it.second }.take(5)
-        } catch (_: Exception) { emptyList() }
+            MutableList(3) { slot ->
+                val item = array.optJSONObject(if (rawV2 != null) slot else slot + 2)
+                if (item == null) null else {
+                    val name = item.optString("name").trim()
+                    val url = item.optString("url").trim()
+                    if (name.isBlank() || !isValidRadioStreamUrl(url) || fixedRadioStations.any { it.second == url }) null
+                    else name to url
+                }
+            }
+        } catch (_: Exception) { MutableList(3) { null } }
     }
 
-    private fun saveFavoriteRadioStations(stations: List<Pair<String, String>>) {
+    private fun loadFavoriteRadioStations(): List<Pair<String, String>> =
+        fixedRadioStations + loadCustomFavoriteSlots().filterNotNull()
+
+    private fun saveCustomFavoriteSlots(slots: List<Pair<String, String>?>) {
         val array = org.json.JSONArray()
-        stations.distinctBy { it.second }.take(5).forEach { (name, url) ->
-            array.put(org.json.JSONObject().put("name", name).put("url", url))
+        for (slot in 0..2) {
+            val station = slots.getOrNull(slot)
+            array.put(if (station == null) org.json.JSONObject.NULL else org.json.JSONObject()
+                .put("name", station.first).put("url", station.second))
         }
-        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putString("favorite_radio_stations", array.toString()).apply()
+        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
+            .putString("favorite_radio_slots_v2", array.toString()).apply()
     }
 
-    private fun toggleFavoriteRadioStation(name: String, url: String): Boolean {
-        val favorites = loadFavoriteRadioStations().toMutableList()
-        val existing = favorites.indexOfFirst { it.second == url }
-        if (existing >= 0) { favorites.removeAt(existing); saveFavoriteRadioStations(favorites); return false }
-        if (favorites.size >= 5) return false
-        favorites.add(name to url)
-        saveFavoriteRadioStations(favorites)
-        return true
+    private fun showFavoriteSlotPicker(name: String, url: String) {
+        if (fixedRadioStations.any { it.second == url }) {
+            toast("Ez a két alapállomás fix memóriahelyen van.")
+            return
+        }
+        val slots = loadCustomFavoriteSlots()
+        val options = arrayOf("FAV 3  •  ${slots[0]?.first ?: "ÜRES"}", "FAV 4  •  ${slots[1]?.first ?: "ÜRES"}", "FAV 5  •  ${slots[2]?.first ?: "ÜRES"}")
+        AlertDialog.Builder(this).setTitle("MENTÉS KEDVENC MEMÓRIAHELYRE")
+            .setItems(options) { _, which ->
+                val current = loadCustomFavoriteSlots()
+                if (current[which]?.second == url) {
+                    toast("$name már ezen a memóriahelyen van.")
+                } else {
+                    val old = current[which]
+                    val save = {
+                        current[which] = name to url
+                        for (i in current.indices) if (i != which && current[i]?.second == url) current[i] = null
+                        saveCustomFavoriteSlots(current)
+                        toast(if (old == null) "$name mentve a FAV ${which + 3} helyre." else "${old.first} helyére mentve: $name")
+                    }
+                    if (old != null) AlertDialog.Builder(this).setTitle("MEMÓRIAHELY CSERÉJE")
+                        .setMessage("A FAV ${which + 3} helyen már ez van: ${old.first}\nFelülírhatom?")
+                        .setNegativeButton("MÉGSE", null).setPositiveButton("CSERE") { _, _ -> save() }.show()
+                    else save()
+                }
+            }.setNegativeButton("MÉGSE", null).show()
     }
 
     private fun showFavoriteRadioStations() {
-        val favorites = loadFavoriteRadioStations()
-        if (favorites.isEmpty()) {
-            AlertDialog.Builder(this).setTitle("KEDVENC RÁDIÓK").setMessage("Még nincs mentett kedvenc állomásod. A katalógusban hosszan nyomj egy rádióra a mentéshez.")
-                .setPositiveButton("RENDBEN", null).show()
-            return
-        }
-        val rows = favorites.mapIndexed { index, station -> "${index + 1}.  ${station.first}" }.toMutableList()
+        val slots = loadCustomFavoriteSlots()
+        val rows = mutableListOf("1.  MixRadio  •  FIX", "2.  Deejay Rádió  •  FIX")
+        for (i in 0..2) rows.add("${i + 3}.  ${slots[i]?.first ?: "ÜRES"}")
         val list = ListView(this).apply { adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, rows); dividerHeight = dp(1) }
-        val dialog = AlertDialog.Builder(this).setTitle("KEDVENC RÁDIÓK  ${favorites.size}/5").setView(list).setNegativeButton("BEZÁR", null).create()
-        list.setOnItemClickListener { _, _, which, _ -> favorites.getOrNull(which)?.let { startRadioStation(it.first, it.second) }; dialog.dismiss() }
+        val dialog = AlertDialog.Builder(this).setTitle("KEDVENC MEMÓRIAHELYEK").setView(list).setNegativeButton("BEZÁR", null).create()
+        list.setOnItemClickListener { _, _, which, _ ->
+            loadFavoriteRadioStations().getOrNull(which)?.let { startRadioStation(it.first, it.second); dialog.dismiss() }
+        }
         list.setOnItemLongClickListener { _, _, which, _ ->
-            favorites.getOrNull(which)?.let { station ->
-                saveFavoriteRadioStations(favorites.filterNot { it.second == station.second })
+            if (which < 2) toast("Az első két memóriahely fix, nem törölhető.")
+            else {
+                val current = loadCustomFavoriteSlots()
+                current[which - 2] = null
+                saveCustomFavoriteSlots(current)
                 dialog.dismiss()
                 showFavoriteRadioStations()
             }
@@ -3937,8 +3987,13 @@ class MainActivity : Activity() {
                 } catch (e: Exception) { error = e.localizedMessage ?: "Hálózati hiba" }
                 handler.post {
                     if (!dialog.isShowing) return@post
-                    resultStations.clear(); resultStations.addAll(found); resultNames.clear()
-                    resultNames.addAll(found.map { station ->
+                    val pinned = fixedRadioStations.mapIndexed { index, pair ->
+                        OnlineRadioStation(pair.first, pair.second, "Magyarország", "Hungarian",
+                            if (index == 0) "dance, mix" else "dance, various", "MP3", 192, "")
+                    }
+                    val visibleStations = pinned + found.filterNot { station -> pinned.any { it.streamUrl == station.streamUrl } }
+                    resultStations.clear(); resultStations.addAll(visibleStations); resultNames.clear()
+                    resultNames.addAll(visibleStations.map { station ->
                         val details = listOf(station.country, station.tags.split(",").take(2).joinToString(" / "),
                             if (station.bitrate > 0) "${station.bitrate} kbps" else station.codec)
                             .filter { it.isNotBlank() && it != "Unknown" }.joinToString("  •  ")
@@ -3954,25 +4009,14 @@ class MainActivity : Activity() {
             }.start()
         }
         results.setOnItemLongClickListener { _, _, which, _ ->
-            resultStations.getOrNull(which)?.let { station ->
-                val saved = loadFavoriteRadioStations().any { it.second == station.streamUrl }
-                if (saved) {
-                    toggleFavoriteRadioStation(station.name, station.streamUrl)
-                    resultLabel.text = "ELTÁVOLÍTVA A KEDVENCEKBŐL"
-                } else if (loadFavoriteRadioStations().size >= 5) {
-                    resultLabel.text = "A KEDVENCEK MEGTEK  •  MAXIMUM 5"
-                } else {
-                    toggleFavoriteRadioStation(station.name, station.streamUrl)
-                    resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  ${loadFavoriteRadioStations().size}/5"
-                }
-            }
+            resultStations.getOrNull(which)?.let { station -> showFavoriteSlotPicker(station.name, station.streamUrl) }
             true
         }
         results.setOnItemClickListener { _, _, which, _ ->
             resultStations.getOrNull(which)?.let { station ->
                 val saved = loadFavoriteRadioStations().any { it.second == station.streamUrl }
-                val actions = if (saved) arrayOf("LEJÁTSZÁS", "ELTÁVOLÍTÁS A KEDVENCEKBŐL")
-                    else arrayOf("LEJÁTSZÁS", "HOZZÁADÁS A KEDVENCEKHEZ")
+                val actions = if (saved) arrayOf("LEJÁTSZÁS", "MEMÓRIAHELY MÓDOSÍTÁSA")
+                    else arrayOf("LEJÁTSZÁS", "MENTÉS FAV 3–5 HELYRE")
                 AlertDialog.Builder(this).setTitle(station.name).setItems(actions) { _, choice ->
                     if (choice == 0) {
                         if (station.uuid.isNotBlank()) Thread {
@@ -3987,12 +4031,8 @@ class MainActivity : Activity() {
                         startRadioStation(station.name, station.streamUrl)
                         dialog.dismiss()
                     } else {
-                        val changed = toggleFavoriteRadioStation(station.name, station.streamUrl)
-                        resultLabel.text = when {
-                            changed -> "ELMENTVE A KEDVENCEKHEZ  •  ${loadFavoriteRadioStations().size}/5"
-                            saved -> "ELTÁVOLÍTVA A KEDVENCEKBŐL"
-                            else -> "A KEDVENCEK MEGTEK  •  MAXIMUM 5"
-                        }
+                        showFavoriteSlotPicker(station.name, station.streamUrl)
+                        resultLabel.text = "VÁLASSZ MEMÓRIAHELYET A FAV 3–5 KÖZÜL"
                     }
                 }.show()
             }
@@ -4189,7 +4229,8 @@ class MainActivity : Activity() {
             radioStreamError = false
             trackLabel.text = stationName
             metadataLabel.text = "VÁRUNK A DALINFORMÁCIÓRA…"
-            radioSongTitleLabel?.text = "VÁRUNK A DALINFORMÁCIÓRA…"
+            radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+            tunerNextTrackLabel?.visibility = View.GONE
             albumLabel.text = "AURA NETWORK TUNER"
             radioStatusLabel?.apply {
                 text = "CONNECTING  •  $stationName"
@@ -4209,7 +4250,9 @@ class MainActivity : Activity() {
                         val title = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() && !it.equals(stationName, true) }
                         val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
                         val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
-                        metadataLabel.text = display; radioSongTitleLabel?.text = display
+                        metadataLabel.text = display
+                        radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+                        tunerNextTrackLabel?.visibility = View.GONE
                     }
                 }
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -4273,6 +4316,7 @@ class MainActivity : Activity() {
         radioStreamError = false
         tunerPowered = false; tunerPowerButton?.text = "TUNER KI"
         radioSongTitleLabel?.text = "MP3 / HELYI ZENELEJÁTSZÁS"
+        tunerNextTrackLabel?.visibility = View.VISIBLE
         radioStatusLabel?.apply {
             text = "LOCAL SOURCE  /  READY"
             setTextColor(Color.rgb(151, 208, 174))
