@@ -7,6 +7,10 @@ import android.net.Uri
 import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.AudioAttributes as PlatformAudioAttributes
+import android.os.Build
 import org.json.JSONArray
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -31,6 +35,38 @@ class AuraPlaybackService : MediaSessionService() {
     private val playbackPrefs by lazy { getSharedPreferences("aura_playback_state", Context.MODE_PRIVATE) }
     private val saveHandler = Handler(Looper.getMainLooper())
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = false
+    private var isDuckedForNotification = false
+    private var volumeBeforeDucking = 1f
+
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        val activePlayer = player ?: return@OnAudioFocusChangeListener
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                if (!isDuckedForNotification) {
+                    volumeBeforeDucking = activePlayer.volume
+                    isDuckedForNotification = true
+                }
+                activePlayer.volume = volumeBeforeDucking * 0.20f
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                if (isDuckedForNotification) {
+                    activePlayer.volume = volumeBeforeDucking
+                    isDuckedForNotification = false
+                }
+                hasAudioFocus = true
+                // Deliberately do not resume playback: interruptions require a manual Play.
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                restoreVolumeAfterDucking()
+                activePlayer.pause()
+                abandonAudioFocus()
+            }
+        }
+    }
     private val savePositionTask = object : Runnable {
         override fun run() {
             savePlaybackState()
@@ -62,8 +98,9 @@ class AuraPlaybackService : MediaSessionService() {
         restoreSavedQueue()
 
         // Keep Bluetooth auto-start available while the Activity is not visible.
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager?.let { manager ->
+            audioDeviceCallback = object : android.media.AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<android.media.AudioDeviceInfo>) {
                 val bluetoothOutputAdded = addedDevices.any { device ->
                     device.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
@@ -81,9 +118,27 @@ class AuraPlaybackService : MediaSessionService() {
                 }
             }
         }
-        audioManager.registerAudioDeviceCallback(audioDeviceCallback, saveHandler)
+            manager.registerAudioDeviceCallback(audioDeviceCallback, saveHandler)
+        }
 
+        // Handle focus ourselves so interruptions pause without auto-resuming,
+        // while short notification sounds duck the current output to exactly 20%.
+        exoPlayer.setAudioAttributes(
+            androidx.media3.common.AudioAttributes.DEFAULT,
+            false
+        )
         exoPlayer.addListener(object : Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (playWhenReady) {
+                    if (!requestAudioFocus()) {
+                        exoPlayer.pause()
+                    }
+                } else {
+                    restoreVolumeAfterDucking()
+                    abandonAudioFocus()
+                }
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val uri = mediaItem?.localConfiguration?.uri ?: return
                 val index = queueUris.indexOf(uri)
@@ -147,6 +202,55 @@ class AuraPlaybackService : MediaSessionService() {
             .setId("aura-hifi-session")
             .setSessionActivity(sessionActivity)
             .build()
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        val manager = audioManager ?: return false
+        if (hasAudioFocus) return true
+
+        val attributes = PlatformAudioAttributes.Builder()
+            .setUsage(PlatformAudioAttributes.USAGE_MEDIA)
+            .setContentType(PlatformAudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .setWillPauseWhenDucked(true)
+                .setOnAudioFocusChangeListener(audioFocusChangeListener, saveHandler)
+                .build()
+            audioFocusRequest = request
+            manager.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            manager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+        }
+
+        hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return hasAudioFocus
+    }
+
+    private fun restoreVolumeAfterDucking() {
+        val activePlayer = player ?: return
+        if (isDuckedForNotification) {
+            activePlayer.volume = volumeBeforeDucking
+            isDuckedForNotification = false
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val manager = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { manager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            manager.abandonAudioFocus(audioFocusChangeListener)
+        }
+        hasAudioFocus = false
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -265,9 +369,11 @@ class AuraPlaybackService : MediaSessionService() {
     override fun onDestroy() {
         savePlaybackState()
         saveHandler.removeCallbacks(savePositionTask)
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-        audioDeviceCallback?.let { audioManager.unregisterAudioDeviceCallback(it) }
+        audioDeviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = null
+        restoreVolumeAfterDucking()
+        abandonAudioFocus()
+        audioManager = null
         instance = null
         mediaSession?.release()
         mediaSession = null
