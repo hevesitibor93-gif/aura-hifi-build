@@ -1972,9 +1972,9 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
                     background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        intArrayOf(Color.rgb(7, 6, 5), Color.rgb(45, 27, 12))).apply {
+                        intArrayOf(Color.rgb(7, 10, 12), Color.rgb(32, 38, 41))).apply {
                         cornerRadius = dp(4).toFloat()
-                        setStroke(dp(2), Color.rgb(195, 128, 44))
+                        setStroke(dp(2), Color.rgb(151, 159, 161))
                     }
                     setPadding(dp(12), dp(8), dp(12), dp(8))
                 }
@@ -1993,8 +1993,12 @@ class MainActivity : Activity() {
                     setPadding(0, dp(3), 0, dp(1))
                 }
                 cassette.addView(towerTapeCounterLabel)
-                towerCassetteMeter = TowerAnalogMeterView(dualRow = true).apply { setActive(player?.isPlaying == true) }
-                cassette.addView(towerCassetteMeter, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(2) })
+                // Fixed classic analogue cassette VU; independent from the selectable amplifier VU.
+                towerCassetteMeter = TowerAnalogMeterView(dualRow = false).apply {
+                    setActive(player?.isPlaying == true)
+                    contentDescription = "Classic cassette VU meter"
+                }
+                cassette.addView(towerCassetteMeter, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(2) })
                 towerTapeStatusLabel = label("TRANSPORT  /  STOPPED", 7f, displayGreen).apply {
                     gravity = Gravity.CENTER
                     typeface = Typeface.create("monospace", Typeface.BOLD)
@@ -2013,9 +2017,9 @@ class MainActivity : Activity() {
                         val selected = tapeTypes[index] == activeTapeType
                         key.setTextColor(if (selected) Color.rgb(255, 210, 120) else Color.rgb(178, 157, 124))
                         key.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                            if (selected) intArrayOf(Color.rgb(116, 72, 24), Color.rgb(21, 13, 7))
-                            else intArrayOf(Color.rgb(42, 31, 20), Color.rgb(9, 8, 7))).apply {
-                            cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(143, 91, 35))
+                            if (selected) intArrayOf(Color.rgb(91, 98, 101), Color.rgb(22, 27, 30))
+                            else intArrayOf(Color.rgb(42, 47, 49), Color.rgb(9, 12, 14))).apply {
+                            cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(126, 134, 135))
                         }
                     }
                     towerTapeCounterLabel?.text = "TAPE COUNTER   00:00   •   $activeTapeType"
