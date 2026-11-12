@@ -3857,27 +3857,31 @@ class MainActivity : Activity() {
         }
         val colors = try { org.json.JSONObject(prefs.getString("favorite_radio_color_map", "{}") ?: "{}") }
             catch (_: Exception) { org.json.JSONObject() }
-        val activeUrls = (fixedRadioStations + slots.filterNotNull()).map { it.second }.toSet()
+        val activeStations = fixedRadioStations + slots.filterNotNull()
+        val activeUrls = activeStations.map { it.second }.toSet()
         val iterator = colors.keys()
         val removeKeys = mutableListOf<String>()
         while (iterator.hasNext()) { val key = iterator.next(); if (key !in activeUrls) removeKeys.add(key) }
         removeKeys.forEach { colors.remove(it) }
-        fixedRadioStations.forEachIndexed { index, station ->
-            if (!colors.has(station.second)) colors.put(station.second, index)
-        }
-        val used = mutableSetOf<Int>()
-        for (station in fixedRadioStations + slots.filterNotNull()) {
+        fixedRadioStations.forEachIndexed { index, station -> colors.put(station.second, index) }
+        val used = mutableSetOf(0, 1)
+        var nextCandidate = prefs.getInt("favorite_radio_color_next", 2).coerceIn(0, 7)
+        for (station in slots.filterNotNull()) {
             val existing = colors.optInt(station.second, -1)
-            if (existing in 0..7 && existing !in used) used.add(existing)
-            else {
-                val next = (0..7).firstOrNull { it !in used } ?: 0
-                colors.put(station.second, next); used.add(next)
+            if (existing in 2..7 && existing !in used) {
+                used.add(existing)
+            } else {
+                val chosen = (0..7).map { (nextCandidate + it) % 8 }.firstOrNull { it !in used } ?: 2
+                colors.put(station.second, chosen)
+                used.add(chosen)
+                nextCandidate = (chosen + 1) % 8
+                if (nextCandidate < 2) nextCandidate = 2
             }
         }
         prefs.edit().putString("favorite_radio_slots_v2", array.toString())
-            .putString("favorite_radio_color_map", colors.toString()).apply()
+            .putString("favorite_radio_color_map", colors.toString())
+            .putInt("favorite_radio_color_next", nextCandidate).apply()
     }
-
     private fun showFavoriteSlotPicker(name: String, url: String) {
         if (fixedRadioStations.any { it.second == url }) {
             toast("Ez a két alapállomás fix memóriahelyen van.")
