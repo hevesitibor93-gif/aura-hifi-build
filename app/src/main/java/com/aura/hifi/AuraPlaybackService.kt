@@ -54,7 +54,10 @@ class AuraPlaybackService : MediaSessionService() {
             }
         }
 
-        val exoPlayer = ExoPlayer.Builder(this, renderersFactory).build()
+        val exoPlayer = ExoPlayer.Builder(this, renderersFactory).build().apply {
+            // Keep the CPU available for active playback while the screen is off.
+            setWakeMode(androidx.media3.common.C.WAKE_MODE_LOCAL)
+        }
         player = exoPlayer
         restoreSavedQueue()
 
