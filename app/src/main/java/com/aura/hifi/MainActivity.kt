@@ -810,8 +810,6 @@ class MainActivity : Activity() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         // AURA Original is the only active theme. Legacy themes are retired.
         themePrefs.edit().putString("aura_theme", "original").apply()
-        val goldHeaderPageActions = mutableListOf<Pair<View, Int>>()
-        val goldHeaderOverflowActions = mutableListOf<View>()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -4814,57 +4812,6 @@ class MainActivity : Activity() {
         )
     }
 
-    private inner class AurixVuView : View(this@MainActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var left = 0f
-        private var right = 0f
-        private var active = false
-        private var brightness = 80
-        fun setActive(v: Boolean) { active = v; if (!v) { left = 0f; right = 0f }; invalidate() }
-        fun setLevels(l: Float, r: Float) { if (!active) return; left=l.coerceIn(0f,1f); right=r.coerceIn(0f,1f); invalidate() }
-        fun setBrightness(v: Int) { brightness=v.coerceIn(20,100); invalidate() }
-        override fun onDraw(c: Canvas) {
-            super.onDraw(c)
-            val w=width.toFloat(); val h=height.toFloat()
-            if (w<=0f || h<=0f) return
-            val frame=RectF(dp(3).toFloat(),dp(4).toFloat(),w-dp(3).toFloat(),h-dp(4).toFloat())
-            paint.style=Paint.Style.FILL
-            paint.shader=android.graphics.LinearGradient(0f,0f,0f,h,intArrayOf(Color.rgb(5,5,6),Color.rgb(24,18,10),Color.rgb(3,3,4)),null,android.graphics.Shader.TileMode.CLAMP)
-            c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint); paint.shader=null
-            paint.style=Paint.Style.STROKE; paint.strokeWidth=dp(3).toFloat()
-            paint.color=Color.rgb(255,190,75); c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint)
-            val pad=dp(8).toFloat()
-            val centerW=w*0.22f
-            val sideW=(w-centerW-pad*4)/2f
-            val barH=max(dp(5).toFloat(),h*0.17f)
-            drawGoldBar(c,pad,h*0.25f,sideW,barH,left)
-            drawGoldBar(c,w-pad-sideW,h*0.25f,sideW,barH,right)
-            paint.style=Paint.Style.FILL; paint.textAlign=Paint.Align.CENTER
-            paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
-            paint.color=Color.rgb(255,222,157); paint.textSize=h*0.31f
-            c.drawText("VU",w/2f,h*0.49f,paint)
-            paint.textSize=h*0.13f; paint.color=Color.rgb(238,190,112)
-            c.drawText("AURIX",w/2f,h*0.70f,paint)
-            paint.textAlign=Paint.Align.LEFT
-        }
-        private fun drawGoldBar(c: Canvas,x:Float,y:Float,width:Float,height:Float,level:Float) {
-            val n=32; val gap=dp(1).toFloat(); val sw=(width-gap*(n-1))/n
-            val lit=(level*n).toInt()
-            for(i in 0 until n) {
-                val sx=x+i*(sw+gap)
-                val color = when {
-                    i >= 20 -> Color.rgb(255, 35, 22)
-                    i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
-                    i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
-                    i < 15 -> blendVuColor(Color.rgb(145, 215, 190), Color.rgb(135, 205, 235), (i - 10) / 5f)
-                    else -> blendVuColor(Color.rgb(135, 205, 235), Color.rgb(65, 155, 225), (i - 15) / 5f)
-                }
-                paint.style=Paint.Style.FILL
-                paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
-                c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(1).toFloat(),dp(1).toFloat(),paint)
-            }
-        }
-    }
 
 
     private inner class VuView(private val verticalSingle: Boolean = false, private val channelOnly: Int = -1) : View(this@MainActivity) {
