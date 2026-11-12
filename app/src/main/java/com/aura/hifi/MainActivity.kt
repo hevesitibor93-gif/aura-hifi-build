@@ -299,6 +299,7 @@ class MainActivity : Activity() {
                 val stationName = metadata.title?.toString()?.takeIf { it.isNotBlank() }
                     ?: uri.host ?: "INTERNET RÁDIÓ"
                 activeRadioStationName = stationName
+                tunerNextTrackLabel?.visibility = View.GONE
                 trackLabel.text = stationName
                 metadataLabel.text = metadata.artist?.toString() ?: "MAGYAR INTERNET RÁDIÓ"
                 albumLabel.text = metadata.albumTitle?.toString() ?: "AURA NETWORK TUNER"
@@ -345,7 +346,7 @@ class MainActivity : Activity() {
                     val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
                     val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
                     metadataLabel.text = display
-                    radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+                    radioSongTitleLabel?.text = display
                     tunerNextTrackLabel?.visibility = View.GONE
                 }
             }
@@ -3786,7 +3787,7 @@ class MainActivity : Activity() {
         return try {
             val array = org.json.JSONArray(raw)
             MutableList(3) { slot ->
-                val item = array.optJSONObject(if (rawV2 != null) slot else slot + 2)
+                val item = array.optJSONObject(slot)
                 if (item == null) null else {
                     val name = item.optString("name").trim()
                     val url = item.optString("url").trim()
@@ -4229,7 +4230,7 @@ class MainActivity : Activity() {
             radioStreamError = false
             trackLabel.text = stationName
             metadataLabel.text = "VÁRUNK A DALINFORMÁCIÓRA…"
-            radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+            radioSongTitleLabel?.text = "VÁRUNK A DALINFORMÁCIÓRA…"
             tunerNextTrackLabel?.visibility = View.GONE
             albumLabel.text = "AURA NETWORK TUNER"
             radioStatusLabel?.apply {
@@ -4251,7 +4252,7 @@ class MainActivity : Activity() {
                         val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
                         val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
                         metadataLabel.text = display
-                        radioSongTitleLabel?.text = "AURA INTERNET RÁDIÓ"
+                        radioSongTitleLabel?.text = display
                         tunerNextTrackLabel?.visibility = View.GONE
                     }
                 }
