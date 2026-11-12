@@ -4172,13 +4172,21 @@ class MainActivity : Activity() {
     private fun toggleTunerPower() {
         val current = player?.currentMediaItem?.localConfiguration?.uri
         if (activeRadioStationName != null) {
-            val restore = savedLocalTrackUri
-            tunerPowered = false; tunerPowerButton?.text = "TUNER KI"; player?.stop()
-            activeRadioStationName = null; radioStreamError = false
-            if (restore != null) startTrack(restore) else {
-                radioStatusLabel?.text = "TUNER STANDBY  •  MP3 MÓD"
-                radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
-            }
+            // Turning the tuner off must stop playback, not resume the previously
+            // saved MP3 automatically. Keep the library queue available for
+            // an explicit user selection.
+            tunerPowered = false
+            tunerPowerButton?.text = "TUNER KI"
+            activeRadioStationName = null
+            radioStreamError = false
+            player?.stop()
+            player?.clearMediaItems()
+            radioStatusLabel?.text = "TUNER STANDBY  •  MP3 MÓD"
+            radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
+            tunerNextTrackLabel?.visibility = View.VISIBLE
+            updateNextTrack()
+            playButton.text = "▶"
+            setVuActive(false)
             return
         }
         if (tunerPowered) {
@@ -4193,6 +4201,9 @@ class MainActivity : Activity() {
     }
 
     private fun startRadioStation(stationName: String, streamUrl: String) {
+        // Hide the upcoming local MP3 immediately on the first radio switch,
+        // including while the playback service/player is still starting.
+        tunerNextTrackLabel?.visibility = View.GONE
         val exo = player
         if (exo == null) {
             pendingRadioStation = stationName to streamUrl
