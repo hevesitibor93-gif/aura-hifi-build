@@ -1538,6 +1538,16 @@ class MainActivity : Activity() {
                 refreshTowerQuickBar()
             }
             applyTowerModules()
+            // NEW TOWER THEME: build and preview the amplifier as the only visible hardware module.
+            moduleCards.forEachIndexed { index, card ->
+                card.visibility = if (index == 1) View.VISIBLE else View.GONE
+            }
+            rackJoints.forEach { it.visibility = View.GONE }
+            if (rack.childCount > 1) {
+                rack.getChildAt(0).visibility = View.GONE
+                rack.getChildAt(rack.childCount - 1).visibility = View.GONE
+            }
+            towerQuickBar.visibility = View.GONE
             towerBrand.addView(button("MODULES  ▾", Color.rgb(48, 43, 34), champagne) {
                 val selected = BooleanArray(moduleCards.size) { index ->
                     towerPrefs.getBoolean("tower_module_" + moduleKeys[index], true)
@@ -2201,6 +2211,13 @@ class MainActivity : Activity() {
                     portraitTowerJoints.forEach { it.visibility = View.VISIBLE }
                 }
                 applyPortraitTowerModules()
+                // NEW TOWER THEME: show only the amplifier while its proportions are designed and tested.
+                sourceDeck.visibility = View.GONE
+                cassette.visibility = View.GONE
+                radio.visibility = View.GONE
+                portraitTowerJoints.forEach { it.visibility = View.GONE }
+                towerTopSpine.visibility = View.GONE
+                towerBottomSpine.visibility = View.GONE
                 technicalLabel.visibility = View.GONE
                 nextTrackLabel.visibility = View.GONE
                 controlStack.visibility = View.GONE
