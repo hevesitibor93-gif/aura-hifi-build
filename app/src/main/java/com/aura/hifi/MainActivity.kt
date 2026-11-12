@@ -237,15 +237,24 @@ class MainActivity : Activity() {
         startActivityForResult(intent, backupImportRequest)
     }
 
+    private fun applyKeepScreenOnPreference() {
+        val keepAwake = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            .getBoolean("keep_screen_on", false)
+        if (keepAwake) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
     override fun onPause() {
         // Persist the active output profile even if Android later recreates the Activity.
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         if (isSoundProfileSaved(prefs, soundOutputProfile)) saveSoundProfile(prefs, soundOutputProfile)
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
+        applyKeepScreenOnPreference()
         // Reattach the meter whenever the screen returns, not only after a track change.
         handler.post {
             val exo = player
@@ -1890,6 +1899,23 @@ class MainActivity : Activity() {
         }
         rotationRow.addView(rotationSwitch)
         displaySettingsPage.addView(rotationRow)
+
+        val keepScreenOnRow = settingRow(
+            "KIJELZŐ ÉBREN TARTÁSA",
+            "Bekapcsolva az AURA előtérben tartja a kijelzőt, amíg az alkalmazást használod"
+        )
+        val keepScreenOnSwitch = Switch(this).apply {
+            text = ""
+            isChecked = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+                .getBoolean("keep_screen_on", false)
+            setOnCheckedChangeListener { _, checked ->
+                getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
+                    .putBoolean("keep_screen_on", checked).apply()
+                applyKeepScreenOnPreference()
+            }
+        }
+        keepScreenOnRow.addView(keepScreenOnSwitch)
+        displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
         appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
