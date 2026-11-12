@@ -828,8 +828,10 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        val goldStudioTheme = themePrefs.getString("aura_theme", "gold_studio") == "gold_studio"
-        val towerTheme = themePrefs.getString("aura_theme", "gold_studio") == "tower_edition"
+        // AURA Original is the only active theme. Legacy themes are retired.
+        themePrefs.edit().putString("aura_theme", "original").apply()
+        val goldStudioTheme = false
+        val towerTheme = false
         val goldHeaderPageActions = mutableListOf<Pair<View, Int>>()
         val goldHeaderOverflowActions = mutableListOf<View>()
         fun goldHeaderAction(title: String): TextView = TextView(this).apply {
@@ -3101,20 +3103,8 @@ class MainActivity : Activity() {
         }
         rotationRow.addView(rotationSwitch)
         displaySettingsPage.addView(rotationRow)
-        appearanceSettingsPage.addView(sectionTitle("TÉMÁK"))
-        appearanceSettingsPage.addView(label("Válassz az AURA két külön megjelenése közül. A választás nem módosítja a hangzást vagy a VU-beállításokat.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(10)) })
-        appearanceSettingsPage.addView(button("◈  AURA ORIGINAL  •  EREDETI", Color.rgb(35, 41, 53), Color.WHITE) {
-            themePrefs.edit().putString("aura_theme", "original").apply()
-            toast("AURA Original kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
-        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(button("▣  AURA HI-FI TOWER EDITION", Color.rgb(38, 43, 44), Color.rgb(226, 199, 145)) {
-            themePrefs.edit().putString("aura_theme", "tower_edition").apply()
-            toast("AURA Hi-Fi Tower Edition kiválasztva. Az új téma az alkalmazás újraindításakor lép életbe.")
-        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(button("✦  AURA GOLD STUDIO", Color.rgb(91, 65, 27), Color.rgb(255, 225, 174)) {
-            themePrefs.edit().putString("aura_theme", "gold_studio").apply()
-            toast("AURA Gold Studio kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
-        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
+        appearanceSettingsPage.addView(sectionTitle("TÉMA"))
+        appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
@@ -4197,7 +4187,7 @@ class MainActivity : Activity() {
     private fun renderSongRows(songs: List<LibrarySong>, scope: String = "library", allowManual: Boolean = false) {
         val ordered = sortLibrarySongs(songs, scope, allowManual)
         val viewMode = listViewMode(scope)
-        val goldStudioTheme = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("aura_theme", "gold_studio") == "gold_studio"
+        val goldStudioTheme = false // AURA Original only
         val tileBackground = if (goldStudioTheme) GradientDrawable(GradientDrawable.Orientation.TL_BR,
             intArrayOf(Color.rgb(39, 35, 29), Color.rgb(19, 21, 25))).apply {
             cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(112, 91, 61))
