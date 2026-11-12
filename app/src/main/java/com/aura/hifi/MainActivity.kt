@@ -1972,7 +1972,8 @@ class MainActivity : Activity() {
                 ampFace.addView(ampInfo, LinearLayout.LayoutParams(dp(70), -1))
                 ampFace.addView(towerAmpMeterRight, LinearLayout.LayoutParams(0, dp(70), 1f).apply { marginStart = dp(3) })
                 amp.addView(ampFace, LinearLayout.LayoutParams(-1, dp(84)).apply { topMargin = dp(5) })
-                playerPage.addView(amp, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(1) })
+                // Keep the amplifier at its designed hardware height; never stretch it to fill the screen.
+                playerPage.addView(amp, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(1) })
                 playerPage.addView(portraitTowerJoint(), LinearLayout.LayoutParams(-1, dp(4)).apply {
                     leftMargin = dp(5); rightMargin = dp(5)
                 })
