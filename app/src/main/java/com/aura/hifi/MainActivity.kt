@@ -6355,52 +6355,52 @@ class MainActivity : Activity() {
             super.onDraw(canvas)
             val w = width.toFloat(); val h = height.toFloat()
             if (w <= 0f || h <= 0f) return
-            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = Color.rgb(7, 6, 5)
+            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = Color.rgb(8, 11, 13)
             canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(4).toFloat(), dp(4).toFloat(), paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(181, 119, 39)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(151, 159, 161)
             canvas.drawRoundRect(RectF(dp(1).toFloat(), dp(1).toFloat(), w-dp(1).toFloat(), h-dp(1).toFloat()), dp(4).toFloat(), dp(4).toFloat(), paint)
             if (dualRow) {
                 for (row in 0..1) {
                     val cy = h * if (row == 0) .34f else .73f
                     val x0 = w * .15f; val x1 = w * .94f
-                    drawText(canvas, if (row == 0) "L" else "R", w*.08f, cy+dp(3), dp(8).toFloat(), Color.rgb(255, 204, 112))
-                    paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(196, 151, 82)
+                    drawText(canvas, if (row == 0) "L" else "R", w*.08f, cy+dp(3), dp(8).toFloat(), Color.rgb(210, 190, 151))
+                    paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(132, 143, 145)
                     canvas.drawLine(x0, cy, x1, cy, paint)
                     for (i in 0..20) {
                         val x = x0 + (x1-x0)*i/20f
                         paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
-                        paint.color = if (i >= 17) Color.rgb(218, 65, 35) else Color.rgb(244, 190, 95)
+                        paint.color = if (i >= 17) Color.rgb(218, 65, 35) else Color.rgb(190, 199, 195)
                         canvas.drawLine(x, cy-dp(if (i%5==0) 5 else 3), x, cy+dp(3), paint)
                     }
                     val level = if (row == 0) leftLevel else rightLevel
                     val nx = x0 + (x1-x0)*level
-                    paint.strokeWidth = dp(2).toFloat(); paint.color = Color.rgb(255, 225, 155)
+                    paint.strokeWidth = dp(2).toFloat(); paint.color = Color.rgb(255, 202, 119)
                     canvas.drawLine(nx, cy-dp(8), nx, cy+dp(5), paint)
                 }
                 return
             }
             paint.style = Paint.Style.FILL
-            paint.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, Color.rgb(255, 226, 143), Color.rgb(190, 111, 27), android.graphics.Shader.TileMode.CLAMP)
+            paint.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, Color.rgb(48, 57, 60), Color.rgb(12, 16, 18), android.graphics.Shader.TileMode.CLAMP)
             canvas.drawRoundRect(RectF(dp(4).toFloat(), dp(3).toFloat(), w-dp(4).toFloat(), h-dp(3).toFloat()), dp(3).toFloat(), dp(3).toFloat(), paint)
             paint.shader = null
             val cx = w*.5f; val cy = h*.78f; val radius = minOf(w*.43f, h*.72f)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(69, 43, 18)
+            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(155, 164, 164)
             canvas.drawArc(RectF(cx-radius, cy-radius, cx+radius, cy+radius), 205f, 130f, false, paint)
             for (i in 0..20) {
                 val angle = Math.toRadians(205.0 + i*6.5)
                 val inner = radius*.78f; val outer = radius*.94f
-                paint.color = if (i >= 17) Color.rgb(180, 38, 20) else Color.rgb(65, 48, 24)
+                paint.color = if (i >= 17) Color.rgb(222, 72, 51) else Color.rgb(193, 200, 196)
                 paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
                 canvas.drawLine(cx+kotlin.math.cos(angle).toFloat()*inner, cy+kotlin.math.sin(angle).toFloat()*inner,
                     cx+kotlin.math.cos(angle).toFloat()*outer, cy+kotlin.math.sin(angle).toFloat()*outer, paint)
             }
-            drawText(canvas, "-20    -10     0     +3", cx, h*.40f, dp(7).toFloat(), Color.rgb(75, 48, 20))
-            drawText(canvas, "VU", cx, h*.67f, dp(13).toFloat(), Color.BLACK)
+            drawText(canvas, "-20    -10     0     +3", cx, h*.40f, dp(7).toFloat(), Color.rgb(210, 216, 211))
+            drawText(canvas, "VU", cx, h*.67f, dp(13).toFloat(), Color.rgb(255, 202, 119))
             val level = if (channel == 0) leftLevel else if (channel == 1) rightLevel else (leftLevel+rightLevel)*.5f
             val angle = Math.toRadians(205.0 + level*130.0)
-            paint.color = Color.rgb(35, 25, 15); paint.strokeWidth = dp(2).toFloat()
+            paint.color = Color.rgb(255, 204, 126); paint.strokeWidth = dp(2).toFloat()
             canvas.drawLine(cx, cy, cx+kotlin.math.cos(angle).toFloat()*radius*.78f, cy+kotlin.math.sin(angle).toFloat()*radius*.78f, paint)
-            paint.style = Paint.Style.FILL; paint.color = Color.rgb(48, 34, 19); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
+            paint.style = Paint.Style.FILL; paint.color = Color.rgb(166, 174, 173); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
         }
     }
 
