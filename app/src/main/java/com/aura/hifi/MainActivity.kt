@@ -1147,17 +1147,15 @@ class MainActivity : Activity() {
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
         } else {
-            // Portrait layouts: Gold Studio receives its own equipment-inspired composition.
+            // Portrait layout: AURA Original.
             vu.visibility = View.VISIBLE
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
             landscapeVuLeftPanel = null
             landscapeVuRightPanel = null
-            else {
-                original.forEachIndexed { i, child ->
-                    when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) }
-                }
+            original.forEachIndexed { i, child ->
+                when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) }
             }
         }
 
@@ -2517,9 +2515,7 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        else {
-            listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
-        }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (towerTheme) 66 else 58)).apply { topMargin = dp(if (towerTheme) 4 else 8) })
         showPage(0)
