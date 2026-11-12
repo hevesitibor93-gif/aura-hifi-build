@@ -47,11 +47,8 @@ class MainActivity : Activity() {
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
     private var radioStatusLabel: TextView? = null
-    private var towerRadioStationDisplay: TextView? = null
     private var activeRadioStationName: String? = null
     private var radioStreamError = false
-    private var towerTapeCounterLabel: TextView? = null
-    private var towerTapeStatusLabel: TextView? = null
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
     private var pendingTrackStartAttempts = 0
@@ -91,9 +88,6 @@ class MainActivity : Activity() {
     private var landscapeVuLeftPanel: LinearLayout? = null
     private var landscapeVuRightPanel: LinearLayout? = null
     private var centerAurixVu: VuView? = null
-    private var towerAmpMeterLeft: TowerAnalogMeterView? = null
-    private var towerAmpMeterRight: TowerAnalogMeterView? = null
-    private var towerCassetteMeter: TowerAnalogMeterView? = null
     private var portraitMeterPanel: LinearLayout? = null
     private var portraitDualVuPanel: LinearLayout? = null
     private var portraitLeftVu: VuView? = null
@@ -303,7 +297,6 @@ class MainActivity : Activity() {
                 trackLabel.text = stationName
                 metadataLabel.text = metadata.artist?.toString() ?: "MAGYAR INTERNET RÁDIÓ"
                 albumLabel.text = metadata.albumTitle?.toString() ?: "AURA NETWORK TUNER"
-                towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
                 radioStatusLabel?.apply {
                     text = when {
                         radioStreamError -> "STREAM ERROR  •  $stationName"
@@ -315,15 +308,8 @@ class MainActivity : Activity() {
                         else if (exo.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
                         else if (exo.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
                 }
-                towerTapeStatusLabel?.apply {
-                    if (radioStreamError) {
-                        text = "TRANSPORT  /  ERROR"
-                        setTextColor(Color.rgb(255, 125, 105))
-                    }
-                }
             } else {
                 activeRadioStationName = null
-                towerRadioStationDisplay?.text = "NET  •  96 kHz"
                 radioStatusLabel?.apply {
                     text = "LOCAL SOURCE  /  READY"
                     setTextColor(Color.rgb(151, 208, 174))
@@ -396,10 +382,6 @@ class MainActivity : Activity() {
                 activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
                         text = "STREAM ERROR  •  $stationName"
-                        setTextColor(Color.rgb(255, 125, 105))
-                    }
-                    towerTapeStatusLabel?.apply {
-                        text = "TRANSPORT  /  ERROR"
                         setTextColor(Color.rgb(255, 125, 105))
                     }
                 }
@@ -763,11 +745,9 @@ class MainActivity : Activity() {
 
     private fun setVuActive(value: Boolean) {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
-        towerAmpMeterLeft?.setActive(value); towerAmpMeterRight?.setActive(value); towerCassetteMeter?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
-        towerAmpMeterLeft?.setLevels(left, right); towerAmpMeterRight?.setLevels(left, right); towerCassetteMeter?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); portraitLeftVu?.setStyle(value); portraitRightVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
@@ -832,58 +812,6 @@ class MainActivity : Activity() {
         themePrefs.edit().putString("aura_theme", "original").apply()
         val goldStudioTheme = false
         val towerTheme = false
-        val goldHeaderPageActions = mutableListOf<Pair<View, Int>>()
-        val goldHeaderOverflowActions = mutableListOf<View>()
-        fun goldHeaderAction(title: String): TextView = TextView(this).apply {
-            text = title
-            textSize = if (towerTheme) 8f else 9f
-            gravity = Gravity.CENTER
-            typeface = if (towerTheme) Typeface.create("sans-serif-condensed", Typeface.BOLD) else Typeface.DEFAULT_BOLD
-            setTextColor(if (towerTheme) Color.rgb(226, 205, 160) else Color.rgb(231, 204, 157))
-            setPadding(dp(if (towerTheme) 6 else 8), dp(3), dp(if (towerTheme) 6 else 8), dp(3))
-            background = GradientDrawable(
-                if (towerTheme) GradientDrawable.Orientation.TOP_BOTTOM else GradientDrawable.Orientation.TL_BR,
-                if (towerTheme) intArrayOf(Color.rgb(83, 86, 84), Color.rgb(28, 31, 31), Color.rgb(12, 14, 15))
-                else intArrayOf(Color.rgb(34, 29, 21), Color.rgb(34, 29, 21))
-            ).apply {
-                cornerRadius = dp(if (towerTheme) 4 else 9).toFloat()
-                setStroke(dp(1), if (towerTheme) Color.rgb(132, 128, 113) else Color.rgb(111, 86, 48))
-            }
-            elevation = dp(if (towerTheme) 3 else 0).toFloat()
-            isClickable = true
-            isFocusable = true
-            applyPremiumPressEffect(this)
-        }
-        fun addGoldHeaderActions(target: LinearLayout) {
-            val eqAction = goldHeaderAction("EQ")
-            val settingsAction = goldHeaderAction("⚙")
-            val moreAction = goldHeaderAction("⋮")
-            goldHeaderPageActions.add(eqAction to 2)
-            goldHeaderPageActions.add(settingsAction to 3)
-            goldHeaderOverflowActions.add(moreAction)
-            target.addView(eqAction, LinearLayout.LayoutParams(dp(35), dp(30)).apply { marginStart = dp(5) })
-            target.addView(settingsAction, LinearLayout.LayoutParams(dp(35), dp(30)).apply { marginStart = dp(5) })
-            target.addView(moreAction, LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginStart = dp(5) })
-        }
-        fun towerHardwareKey(title: String, action: () -> Unit): TextView = TextView(this).apply {
-            text = title
-            textSize = 8f
-            gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            letterSpacing = .08f
-            setTextColor(Color.rgb(231, 213, 174))
-            setPadding(dp(7), dp(4), dp(7), dp(4))
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(91, 94, 91), Color.rgb(39, 42, 42), Color.rgb(17, 19, 20))).apply {
-                cornerRadius = dp(4).toFloat()
-                setStroke(dp(1), Color.rgb(133, 128, 111))
-            }
-            elevation = dp(2).toFloat()
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { performAuraHaptic(this); action() }
-            applyPremiumPressEffect(this)
-        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
@@ -901,7 +829,6 @@ class MainActivity : Activity() {
         val brand = TextView(this).apply { text = "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
         val hi = TextView(this).apply { text = "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        if (goldStudioTheme) addGoldHeaderActions(header)
         body.addView(header)
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
@@ -2432,19 +2359,6 @@ class MainActivity : Activity() {
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) Color.rgb(245, 211, 151) else Color.rgb(160, 160, 158)); b.background = rounded(if (selected) Color.rgb(57, 46, 30) else Color.rgb(26, 28, 31), 12) }
         }
-        goldHeaderPageActions.forEach { (view, page) ->
-            view.setOnClickListener { performAuraHaptic(view); showPage(page) }
-        }
-        goldHeaderOverflowActions.forEach { view ->
-            view.setOnClickListener {
-                performAuraHaptic(view)
-                val popup = PopupMenu(this, view)
-                popup.menu.add("ZENETÁR").setOnMenuItemClickListener { showPage(1); true }
-                popup.menu.add("VU STUDIO").setOnMenuItemClickListener { showPage(4); true }
-                popup.menu.add("SOUND STUDIO").setOnMenuItemClickListener { showPage(5); true }
-                popup.show()
-            }
-        }
         settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
         val soundBackButton = button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }
@@ -3743,41 +3657,6 @@ class MainActivity : Activity() {
         val p = player ?: return
         try { if (p.duration > 0) p.seekTo((p.currentPosition + deltaMs).coerceIn(0L, p.duration)) } catch (_: Exception) {}
     }
-    private fun handleTowerCassetteKey(key: String) {
-        val isLiveRadio = activeRadioStationName != null
-        when (key) {
-            "REW" -> {
-                if (isLiveRadio) toast("Élő rádiónál a visszatekerés nem használható.")
-                else seekBy(-10_000L)
-            }
-            "PLAY" -> togglePlayback()
-            "STOP" -> {
-                try { player?.pause(); if (!isLiveRadio) player?.seekTo(0L) } catch (_: Exception) {}
-                setVuActive(false)
-                try {
-                    playButton.text = "▶"
-                    vinylView.invalidate()
-                    towerTapeCounterLabel?.text = if (isLiveRadio) "LIVE STREAM   •   NETWORK TUNER" else "TAPE COUNTER   00:00   •   METAL / CrO₂"
-                    towerTapeStatusLabel?.text = "TRANSPORT  /  STOPPED"
-                } catch (_: Exception) {}
-            }
-            "FF" -> {
-                if (isLiveRadio) toast("Élő rádiónál az előretekerés nem használható.")
-                else seekBy(10_000L)
-            }
-            "EJECT" -> {
-                try { player?.pause(); if (!isLiveRadio) player?.seekTo(0L) } catch (_: Exception) {}
-                setVuActive(false)
-                try {
-                    playButton.text = "▶"
-                    vinylView.invalidate()
-                    towerTapeCounterLabel?.text = if (isLiveRadio) "LIVE STREAM   •   NETWORK TUNER" else "TAPE COUNTER   00:00   •   METAL / CrO₂"
-                    towerTapeStatusLabel?.text = "TRANSPORT  /  EJECTED"
-                } catch (_: Exception) {}
-                openAudio()
-            }
-        }
-    }
     private fun updateNextTrack() {
         val next = queue.getOrNull(currentIndex + 1)
         nextTrackLabel.text = if (next != null) "NEXT TRACK  •  ${metadataTitle(next)}" else "NEXT TRACK  •  Nincs következő szám"
@@ -4258,7 +4137,6 @@ class MainActivity : Activity() {
             attachVuMeter()
             activeRadioStationName = stationName
             radioStreamError = false
-            towerRadioStationDisplay?.text = stationName.uppercase(java.util.Locale.ROOT)
             trackLabel.text = stationName
             metadataLabel.text = "MAGYAR INTERNET RÁDIÓ"
             albumLabel.text = "AURA NETWORK TUNER"
@@ -4311,10 +4189,6 @@ class MainActivity : Activity() {
                         text = "STREAM ERROR  •  $stationName"
                         setTextColor(Color.rgb(255, 125, 105))
                     }
-                    towerTapeStatusLabel?.apply {
-                        text = "TRANSPORT  /  ERROR"
-                        setTextColor(Color.rgb(255, 125, 105))
-                    }
                     toast("$stationName nem érhető el: " + (error.message ?: "lejátszási hiba"))
                 }
             }
@@ -4331,10 +4205,6 @@ class MainActivity : Activity() {
                 text = "STREAM ERROR  •  $stationName"
                 setTextColor(Color.rgb(255, 125, 105))
             }
-            towerTapeStatusLabel?.apply {
-                text = "TRANSPORT  /  ERROR"
-                setTextColor(Color.rgb(255, 125, 105))
-            }
             toast("Nem sikerült elindítani: " + (e.message ?: "ismeretlen hiba"))
         }
     }
@@ -4342,7 +4212,6 @@ class MainActivity : Activity() {
     private fun startTrack(uri: Uri) {
         activeRadioStationName = null
         radioStreamError = false
-        towerRadioStationDisplay?.text = "NET  •  96 kHz"
         radioStatusLabel?.apply {
             text = "LOCAL SOURCE  /  READY"
             setTextColor(Color.rgb(151, 208, 174))
@@ -4939,31 +4808,11 @@ class MainActivity : Activity() {
     private fun updateProgress() {
         val p = player ?: return
         try {
-            val duration = p.duration; val position = p.currentPosition
-            if (activeRadioStationName != null) {
-                towerTapeCounterLabel?.text = "LIVE STREAM   •   NETWORK TUNER"
-                towerTapeStatusLabel?.apply {
-                    text = if (radioStreamError) "TRANSPORT  /  ERROR" else when (p.playbackState) {
-                        Player.STATE_BUFFERING -> "TRANSPORT  /  BUFFERING"
-                        Player.STATE_READY -> if (p.isPlaying) "TRANSPORT  /  LIVE" else "TRANSPORT  /  PAUSED"
-                        Player.STATE_ENDED -> "TRANSPORT  /  ENDED"
-                        else -> if (p.playWhenReady) "TRANSPORT  /  BUFFERING" else "TRANSPORT  /  PAUSED"
-                    }
-                    setTextColor(if (radioStreamError) Color.rgb(255, 125, 105)
-                        else if (p.playbackState == Player.STATE_BUFFERING) Color.rgb(230, 190, 112)
-                        else if (p.isPlaying) Color.rgb(151, 208, 174) else Color.rgb(190, 190, 190))
-                }
-            } else {
-                towerTapeCounterLabel?.text = "TAPE COUNTER   ${formatTime(position)}   •   METAL / CrO₂"
-                towerTapeStatusLabel?.text = when {
-                    p.isPlaying -> "TRANSPORT  /  PLAYING"
-                    position > 0L -> "TRANSPORT  /  PAUSED"
-                    else -> "TRANSPORT  /  STOPPED"
-                }
-            }
+            val duration = p.duration
+            val position = p.currentPosition
             if (duration > 0) seekBar.progress = (position * 1000L / duration).toInt()
             vinylView.invalidate()
-            val timeText = if (showRemaining) "-${formatTime(duration-position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
+            val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             timeLabel.text = "$timeText   •   $trackCount"
         } catch (_: Exception) {}
@@ -5036,122 +4885,7 @@ class MainActivity : Activity() {
         )
     }
 
-    private inner class AurixVuView : View(this@MainActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var left = 0f
-        private var right = 0f
-        private var active = false
-        private var brightness = 80
-        fun setActive(v: Boolean) { active = v; if (!v) { left = 0f; right = 0f }; invalidate() }
-        fun setLevels(l: Float, r: Float) { if (!active) return; left=l.coerceIn(0f,1f); right=r.coerceIn(0f,1f); invalidate() }
-        fun setBrightness(v: Int) { brightness=v.coerceIn(20,100); invalidate() }
-        override fun onDraw(c: Canvas) {
-            super.onDraw(c)
-            val w=width.toFloat(); val h=height.toFloat()
-            if (w<=0f || h<=0f) return
-            val frame=RectF(dp(3).toFloat(),dp(4).toFloat(),w-dp(3).toFloat(),h-dp(4).toFloat())
-            paint.style=Paint.Style.FILL
-            paint.shader=android.graphics.LinearGradient(0f,0f,0f,h,intArrayOf(Color.rgb(5,5,6),Color.rgb(24,18,10),Color.rgb(3,3,4)),null,android.graphics.Shader.TileMode.CLAMP)
-            c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint); paint.shader=null
-            paint.style=Paint.Style.STROKE; paint.strokeWidth=dp(3).toFloat()
-            paint.color=Color.rgb(255,190,75); c.drawRoundRect(frame,dp(18).toFloat(),dp(18).toFloat(),paint)
-            val pad=dp(8).toFloat()
-            val centerW=w*0.22f
-            val sideW=(w-centerW-pad*4)/2f
-            val barH=max(dp(5).toFloat(),h*0.17f)
-            drawGoldBar(c,pad,h*0.25f,sideW,barH,left)
-            drawGoldBar(c,w-pad-sideW,h*0.25f,sideW,barH,right)
-            paint.style=Paint.Style.FILL; paint.textAlign=Paint.Align.CENTER
-            paint.typeface=Typeface.create("sans-serif-black",Typeface.BOLD)
-            paint.color=Color.rgb(255,222,157); paint.textSize=h*0.31f
-            c.drawText("VU",w/2f,h*0.49f,paint)
-            paint.textSize=h*0.13f; paint.color=Color.rgb(238,190,112)
-            c.drawText("AURIX",w/2f,h*0.70f,paint)
-            paint.textAlign=Paint.Align.LEFT
-        }
-        private fun drawGoldBar(c: Canvas,x:Float,y:Float,width:Float,height:Float,level:Float) {
-            val n=32; val gap=dp(1).toFloat(); val sw=(width-gap*(n-1))/n
-            val lit=(level*n).toInt()
-            for(i in 0 until n) {
-                val sx=x+i*(sw+gap)
-                val color = when {
-                    i >= 20 -> Color.rgb(255, 35, 22)
-                    i < 5 -> blendVuColor(Color.rgb(255, 194, 42), Color.rgb(190, 225, 135), i / 5f)
-                    i < 10 -> blendVuColor(Color.rgb(190, 225, 135), Color.rgb(145, 215, 190), (i - 5) / 5f)
-                    i < 15 -> blendVuColor(Color.rgb(145, 215, 190), Color.rgb(135, 205, 235), (i - 10) / 5f)
-                    else -> blendVuColor(Color.rgb(135, 205, 235), Color.rgb(65, 155, 225), (i - 15) / 5f)
-                }
-                paint.style=Paint.Style.FILL
-                paint.color=if(active && i<lit) Color.argb(brightness*255/100,Color.red(color),Color.green(color),Color.blue(color)) else Color.rgb(48,39,25)
-                c.drawRoundRect(RectF(sx,y,sx+sw,y+height),dp(1).toFloat(),dp(1).toFloat(),paint)
-            }
-        }
-    }
 
-    private inner class TowerAnalogMeterView(private val dualRow: Boolean = false, private val channel: Int = -1) : View(this@MainActivity) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var leftLevel = 0f
-        private var rightLevel = 0f
-        private var active = false
-        fun setActive(value: Boolean) { active = value; invalidate() }
-        fun setLevels(left: Float, right: Float) { leftLevel = left.coerceIn(0f, 1f); rightLevel = right.coerceIn(0f, 1f); invalidate() }
-        private fun drawText(canvas: Canvas, value: String, x: Float, y: Float, size: Float, color: Int) {
-            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = color; paint.textSize = size
-            paint.typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD); paint.textAlign = Paint.Align.CENTER
-            canvas.drawText(value, x, y, paint)
-        }
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val w = width.toFloat(); val h = height.toFloat()
-            if (w <= 0f || h <= 0f) return
-            paint.shader = null; paint.style = Paint.Style.FILL; paint.color = Color.rgb(8, 11, 13)
-            canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(4).toFloat(), dp(4).toFloat(), paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(151, 159, 161)
-            canvas.drawRoundRect(RectF(dp(1).toFloat(), dp(1).toFloat(), w-dp(1).toFloat(), h-dp(1).toFloat()), dp(4).toFloat(), dp(4).toFloat(), paint)
-            if (dualRow) {
-                for (row in 0..1) {
-                    val cy = h * if (row == 0) .34f else .73f
-                    val x0 = w * .15f; val x1 = w * .94f
-                    drawText(canvas, if (row == 0) "L" else "R", w*.08f, cy+dp(3), dp(8).toFloat(), Color.rgb(210, 190, 151))
-                    paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(132, 143, 145)
-                    canvas.drawLine(x0, cy, x1, cy, paint)
-                    for (i in 0..20) {
-                        val x = x0 + (x1-x0)*i/20f
-                        paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
-                        paint.color = if (i >= 17) Color.rgb(218, 65, 35) else Color.rgb(190, 199, 195)
-                        canvas.drawLine(x, cy-dp(if (i%5==0) 5 else 3), x, cy+dp(3), paint)
-                    }
-                    val level = if (row == 0) leftLevel else rightLevel
-                    val nx = x0 + (x1-x0)*level
-                    paint.strokeWidth = dp(2).toFloat(); paint.color = Color.rgb(255, 202, 119)
-                    canvas.drawLine(nx, cy-dp(8), nx, cy+dp(5), paint)
-                }
-                return
-            }
-            paint.style = Paint.Style.FILL
-            paint.shader = android.graphics.LinearGradient(0f, 0f, 0f, h, Color.rgb(48, 57, 60), Color.rgb(12, 16, 18), android.graphics.Shader.TileMode.CLAMP)
-            canvas.drawRoundRect(RectF(dp(4).toFloat(), dp(3).toFloat(), w-dp(4).toFloat(), h-dp(3).toFloat()), dp(3).toFloat(), dp(3).toFloat(), paint)
-            paint.shader = null
-            val cx = w*.5f; val cy = h*.78f; val radius = minOf(w*.43f, h*.72f)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = dp(1).toFloat(); paint.color = Color.rgb(155, 164, 164)
-            canvas.drawArc(RectF(cx-radius, cy-radius, cx+radius, cy+radius), 205f, 130f, false, paint)
-            for (i in 0..20) {
-                val angle = Math.toRadians(205.0 + i*6.5)
-                val inner = radius*.78f; val outer = radius*.94f
-                paint.color = if (i >= 17) Color.rgb(222, 72, 51) else Color.rgb(193, 200, 196)
-                paint.strokeWidth = dp(if (i%5==0) 2 else 1).toFloat()
-                canvas.drawLine(cx+kotlin.math.cos(angle).toFloat()*inner, cy+kotlin.math.sin(angle).toFloat()*inner,
-                    cx+kotlin.math.cos(angle).toFloat()*outer, cy+kotlin.math.sin(angle).toFloat()*outer, paint)
-            }
-            drawText(canvas, "-20    -10     0     +3", cx, h*.40f, dp(7).toFloat(), Color.rgb(210, 216, 211))
-            drawText(canvas, "VU", cx, h*.67f, dp(13).toFloat(), Color.rgb(255, 202, 119))
-            val level = if (channel == 0) leftLevel else if (channel == 1) rightLevel else (leftLevel+rightLevel)*.5f
-            val angle = Math.toRadians(205.0 + level*130.0)
-            paint.color = Color.rgb(255, 204, 126); paint.strokeWidth = dp(2).toFloat()
-            canvas.drawLine(cx, cy, cx+kotlin.math.cos(angle).toFloat()*radius*.78f, cy+kotlin.math.sin(angle).toFloat()*radius*.78f, paint)
-            paint.style = Paint.Style.FILL; paint.color = Color.rgb(166, 174, 173); canvas.drawCircle(cx, cy, dp(3).toFloat(), paint)
-        }
-    }
 
     private inner class VuView(private val verticalSingle: Boolean = false, private val channelOnly: Int = -1) : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
