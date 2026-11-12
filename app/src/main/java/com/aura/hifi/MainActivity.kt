@@ -47,6 +47,10 @@ class MainActivity : Activity() {
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
     private var playbackListener: Player.Listener? = null
     private var radioStatusLabel: TextView? = null
+    private var radioSongTitleLabel: TextView? = null
+    private var tunerPowerButton: TextView? = null
+    private var savedLocalTrackUri: Uri? = null
+    private var tunerPowered = false
     private var activeRadioStationName: String? = null
     private var radioStreamError = false
     private var playbackRestoreAttempts = 0
@@ -831,11 +835,11 @@ class MainActivity : Activity() {
         val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
-        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(224), dp(224)))
-        artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(224), dp(224)))
+        artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(154), dp(154)))
+        artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(154), dp(154)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
-        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(252)).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(178)).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
         applyArtworkMode()
         vu = VuView().apply { isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() } }; body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
         trackLabel = label("", 20f, Color.rgb(242, 211, 157)).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.015f; setPadding(dp(4), dp(5), dp(4), dp(3)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
@@ -1084,66 +1088,54 @@ class MainActivity : Activity() {
             }
         }
 
-        // Shared internet radio access for AURA Original.
-            val radioPanel = LinearLayout(this).apply {
-                orientation = if (landscape) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(35, 42, 91), Color.rgb(17, 25, 57))
-                ).apply {
-                    cornerRadius = dp(12).toFloat()
-                    setStroke(dp(1), Color.rgb(103, 111, 194))
-                }
-                setPadding(dp(8), dp(6), dp(8), dp(6))
+        // AURA Original tuner deck.
+        val radioPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(77, 80, 82), Color.rgb(35, 38, 41), Color.rgb(12, 15, 19))
+            ).apply { cornerRadius = dp(9).toFloat(); setStroke(dp(1), Color.rgb(145, 132, 108)) }
+            setPadding(dp(10), dp(8), dp(10), dp(8)); elevation = dp(5).toFloat()
+        }
+        val tunerHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        tunerHeader.addView(label("AURA  •  DIGITAL TUNER", 10f, Color.rgb(229, 207, 165)).apply {
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD); letterSpacing = .13f
+        }, LinearLayout.LayoutParams(0, dp(22), 1f))
+        tunerHeader.addView(label("FM / NET", 8f, Color.rgb(165, 169, 171)).apply { typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER })
+        radioPanel.addView(tunerHeader)
+        val tunerDisplay = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(5, 12, 13), Color.rgb(10, 23, 22), Color.rgb(4, 9, 11))
+            ).apply { cornerRadius = dp(5).toFloat(); setStroke(dp(1), Color.rgb(68, 91, 77)) }
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        radioStatusLabel = label("TUNER STANDBY  •  VÁLASSZ ADÓT", 9f, Color.rgb(157, 206, 166)).apply {
+            typeface = Typeface.create("monospace", Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        radioSongTitleLabel = label("NINCS RDS / DALINFORMÁCIÓ", 11f, Color.rgb(224, 211, 177)).apply {
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; isSelected = true; setPadding(0, dp(4), 0, 0)
+        }
+        tunerDisplay.addView(radioStatusLabel); tunerDisplay.addView(radioSongTitleLabel)
+        radioPanel.addView(tunerDisplay, LinearLayout.LayoutParams(-1, dp(49)).apply { topMargin = dp(5); bottomMargin = dp(7) })
+        val favoriteRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        for (slot in 0..4) {
+            val favoriteButton = radioManagerKey("FAV \${slot + 1}") {
+                val station = loadFavoriteRadioStations().getOrNull(slot)
+                if (station != null) startRadioStation(station.first, station.second)
+                else toast("A \${slot + 1}. memóriahely még üres. A katalógusban hosszan nyomj egy állomásra a mentéshez.")
             }
-            val radioInfo = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = if (landscape) Gravity.CENTER else Gravity.CENTER_VERTICAL
-            }
-            radioInfo.addView(label("♫  INTERNET RÁDIÓ", if (landscape) 9f else 10f,
-                Color.rgb(202, 194, 255)).apply {
-                typeface = Typeface.DEFAULT_BOLD
-                letterSpacing = .08f
-                gravity = if (landscape) Gravity.CENTER else Gravity.START
-            })
-            radioStatusLabel = label("VÁLASSZ ADÓT", 8f,
-                Color.rgb(166, 190, 225)).apply {
-                gravity = if (landscape) Gravity.CENTER else Gravity.START
-                setPadding(0, dp(2), 0, 0)
-                maxLines = 1
-            }
-            radioInfo.addView(radioStatusLabel)
-            if (landscape) {
-                radioPanel.addView(radioInfo, LinearLayout.LayoutParams(-1, 0, 1f))
-                radioPanel.addView(button("MIX RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
-                    startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
-                }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(5) })
-                radioPanel.addView(button("DEEJAY RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
-                    startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
-                }, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
-                radioPanel.addView(button("SAJÁT ADÓK", Color.rgb(67, 65, 139), Color.WHITE) {
-                    showRadioStationManager()
-                }, LinearLayout.LayoutParams(-1, dp(32)).apply { topMargin = dp(4) })
-                playerPage.addView(radioPanel, LinearLayout.LayoutParams(dp(126), -1).apply { marginStart = dp(7) })
-            } else {
-                radioPanel.addView(radioInfo, LinearLayout.LayoutParams(0, -1, 1f))
-                val radioButtons = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER
-                }
-                radioButtons.addView(button("MIX RÁDIÓ", Color.rgb(67, 65, 139), Color.WHITE) {
-                    startRadioStation("Mix Rádió", "https://stream.phost.hu:8006/live")
-                }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(4) })
-                radioButtons.addView(button("DEEJAY", Color.rgb(67, 65, 139), Color.WHITE) {
-                    startRadioStation("Deejay Rádió", "https://s01.diazol.hu:9042/stream")
-                }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginStart = dp(4) })
-                radioButtons.addView(button("SAJÁT", Color.rgb(67, 65, 139), Color.WHITE) {
-                    showRadioStationManager()
-                }, LinearLayout.LayoutParams(0, dp(36), .8f).apply { marginStart = dp(4) })
-                radioPanel.addView(radioButtons, LinearLayout.LayoutParams(0, -1, 1.25f))
-                playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
-            }
-        
+            favoriteButton.textSize = 8f
+            favoriteRow.addView(favoriteButton, LinearLayout.LayoutParams(0, dp(34), 1f).apply { if (slot > 0) marginStart = dp(4) })
+        }
+        radioPanel.addView(favoriteRow)
+        val tunerControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        tunerControls.addView(radioManagerKey("ÁLLOMÁSKERESŐ") { showRadioStationManager() },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5); topMargin = dp(6) })
+        tunerPowerButton = radioManagerKey("TUNER KI") { toggleTunerPower() }.apply { setTextColor(Color.rgb(255, 208, 130)) }
+        tunerControls.addView(tunerPowerButton, LinearLayout.LayoutParams(dp(100), dp(38)).apply { topMargin = dp(6) })
+        radioPanel.addView(tunerControls)
+        playerPage.addView(radioPanel, LinearLayout.LayoutParams(-1, dp(150)).apply { topMargin = dp(8); bottomMargin = dp(4) })
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -3833,142 +3825,156 @@ class MainActivity : Activity() {
     }
 
     private fun showRadioStationManager() {
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
+        val stationSearch = EditText(this).apply {
+            hint = "Állomás neve / kulcsszó (opcionális)"; isSingleLine = true
+            setTextColor(Color.WHITE); setHintTextColor(Color.LTGRAY)
         }
-        val stationSearch = EditText(this).apply { hint = "Állomás neve / kulcsszó"; isSingleLine = true }
-        val countrySearch = EditText(this).apply { hint = "Ország (pl. Hungary, Germany)"; isSingleLine = true }
-        val genreSearch = EditText(this).apply { hint = "Műfaj (pl. rock, dance, jazz)"; isSingleLine = true }
-        listOf(stationSearch, countrySearch, genreSearch).forEach { field ->
-            field.setTextColor(Color.WHITE)
-            field.setHintTextColor(Color.LTGRAY)
-            panel.addView(field, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(stationSearch, LinearLayout.LayoutParams(-1, dp(46)))
+        fun makeSpinner(): Spinner = Spinner(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.rgb(57, 61, 65), Color.rgb(24, 27, 31)))
+                .apply { cornerRadius = dp(5).toFloat(); setStroke(dp(1), Color.rgb(117, 111, 96)) }
         }
+        val countrySpinner = makeSpinner(); val genreSpinner = makeSpinner()
+        fun setSpinnerItems(spinner: Spinner, values: List<String>) {
+            spinner.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, values)
+                .apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        }
+        setSpinnerItems(countrySpinner, listOf("MINDEN ORSZÁG", "Magyarország", "Németország"))
+        setSpinnerItems(genreSpinner, listOf("MINDEN MŰFAJ", "Pop", "Rock", "Dance", "Jazz", "Classical", "News", "Talk"))
+        panel.addView(label("ORSZÁG", 8f, Color.rgb(202, 181, 143)).apply { setPadding(0, dp(5), 0, 0) })
+        panel.addView(countrySpinner, LinearLayout.LayoutParams(-1, dp(42)))
+        panel.addView(label("MŰFAJ", 8f, Color.rgb(202, 181, 143)).apply { setPadding(0, dp(5), 0, 0) })
+        panel.addView(genreSpinner, LinearLayout.LayoutParams(-1, dp(42)))
         val resultLabel = TextView(this).apply {
-            text = "ONLINE RÁDIÓKATALÓGUS  •  Radio Browser"
-            setTextColor(Color.rgb(220, 178, 104))
-            textSize = 11f
-            setPadding(0, dp(8), 0, dp(5))
+            text = "ORSZÁG- ÉS MŰFAJLISTA BETÖLTÉSE…"; setTextColor(Color.rgb(220, 178, 104))
+            textSize = 10f; setPadding(0, dp(8), 0, dp(5))
         }
         panel.addView(resultLabel)
         val results = ListView(this).apply { dividerHeight = dp(1) }
-        val resultNames = mutableListOf<String>()
-        val resultStations = mutableListOf<OnlineRadioStation>()
+        val resultNames = mutableListOf<String>(); val resultStations = mutableListOf<OnlineRadioStation>()
         val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, resultNames)
-        results.adapter = adapter
-        panel.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("AURA  /  INTERNET RADIO")
-            .setView(panel)
-            .setNegativeButton("BEZÁR", null)
-            .create()
+        results.adapter = adapter; panel.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
+        val dialog = AlertDialog.Builder(this).setTitle("AURA  /  INTERNET TUNER").setView(panel).setNegativeButton("BEZÁR", null).create()
+
+        fun loadFilterCatalogs() {
+            Thread {
+                var countries = listOf("MINDEN ORSZÁG"); var genres = listOf("MINDEN MŰFAJ")
+                try {
+                    val c = (java.net.URL("https://de1.api.radio-browser.info/json/countries?order=stationcount&reverse=true&hidebroken=true")
+                        .openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 9000; readTimeout = 10000; setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                    }
+                    try {
+                        val arr = org.json.JSONArray(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        countries += (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.optString("name")?.trim()?.takeIf { it.isNotBlank() } }.distinct().take(250)
+                    } finally { c.disconnect() }
+                } catch (_: Exception) {}
+                try {
+                    val c = (java.net.URL("https://de1.api.radio-browser.info/json/tags?order=stationcount&reverse=true&hidebroken=true")
+                        .openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 9000; readTimeout = 10000; setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                    }
+                    try {
+                        val arr = org.json.JSONArray(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        genres += (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.optString("name")?.trim()?.takeIf { it.isNotBlank() } }.distinct().take(180)
+                    } finally { c.disconnect() }
+                } catch (_: Exception) {}
+                handler.post {
+                    if (dialog.isShowing) {
+                        setSpinnerItems(countrySpinner, countries); setSpinnerItems(genreSpinner, genres)
+                        resultLabel.text = "VÁLASSZ ORSZÁGOT ÉS MŰFAJT  •  A SZŰRŐK KÉSZEN ÁLLNAK"
+                    }
+                }
+            }.start()
+        }
+
         fun searchStations() {
             val name = stationSearch.text.toString().trim()
-            val country = countrySearch.text.toString().trim()
-            val genre = genreSearch.text.toString().trim()
-            resultLabel.text = "KERESÉS…"
-            resultNames.clear(); resultStations.clear(); adapter.notifyDataSetChanged()
+            val country = countrySpinner.selectedItem?.toString().orEmpty().takeUnless { it.startsWith("MINDEN") }.orEmpty()
+            val genre = genreSpinner.selectedItem?.toString().orEmpty().takeUnless { it.startsWith("MINDEN") }.orEmpty()
+            resultLabel.text = "ÁLLOMÁSOK KERESÉSE…"; resultNames.clear(); resultStations.clear(); adapter.notifyDataSetChanged()
             Thread {
-                var found = emptyList<OnlineRadioStation>()
-                var error: String? = null
+                var found = emptyList<OnlineRadioStation>(); var error: String? = null
                 try {
                     val query = buildList {
                         if (name.isNotBlank()) add("name=" + java.net.URLEncoder.encode(name, "UTF-8"))
                         if (country.isNotBlank()) add("country=" + java.net.URLEncoder.encode(country, "UTF-8"))
                         if (genre.isNotBlank()) add("tag=" + java.net.URLEncoder.encode(genre, "UTF-8"))
-                        add("hidebroken=true")
-                        add("order=clickcount")
-                        add("reverse=true")
-                        add("limit=100")
+                        add("hidebroken=true"); add("order=clickcount"); add("reverse=true"); add("limit=100")
                     }.joinToString("&")
-                    val endpoint = "https://de1.api.radio-browser.info/json/stations/search?$query"
-                    val connection = (java.net.URL(endpoint).openConnection() as java.net.HttpURLConnection).apply {
-                        connectTimeout = 10000
-                        readTimeout = 12000
-                        requestMethod = "GET"
-                        setRequestProperty("User-Agent", "AURA-HiFi/1.0")
-                        setRequestProperty("Accept", "application/json")
+                    val c = (java.net.URL("https://de1.api.radio-browser.info/json/stations/search?$query")
+                        .openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 10000; readTimeout = 12000; requestMethod = "GET"
+                        setRequestProperty("User-Agent", "AURA-HiFi/1.0"); setRequestProperty("Accept", "application/json")
                     }
                     try {
-                        val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                        val array = org.json.JSONArray(body)
-                        found = (0 until array.length()).mapNotNull { index ->
-                            val item = array.optJSONObject(index) ?: return@mapNotNull null
+                        val arr = org.json.JSONArray(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        found = (0 until arr.length()).mapNotNull { i ->
+                            val item = arr.optJSONObject(i) ?: return@mapNotNull null
                             val stationName = item.optString("name").trim()
                             val stream = item.optString("url_resolved").ifBlank { item.optString("url") }.trim()
                             if (stationName.isBlank() || !isValidRadioStreamUrl(stream)) return@mapNotNull null
-                            OnlineRadioStation(
-                                stationName, stream,
-                                item.optString("country").ifBlank { "Unknown" },
-                                item.optString("language"),
-                                item.optString("tags"),
-                                item.optString("codec"),
-                                item.optInt("bitrate", 0),
-                                item.optString("stationuuid")
-                            )
+                            OnlineRadioStation(stationName, stream, item.optString("country").ifBlank { "Unknown" },
+                                item.optString("language"), item.optString("tags"), item.optString("codec"),
+                                item.optInt("bitrate", 0), item.optString("stationuuid"))
                         }
-                    } finally { connection.disconnect() }
-                } catch (e: Exception) {
-                    error = e.localizedMessage ?: "Hálózati hiba"
-                }
+                    } finally { c.disconnect() }
+                } catch (e: Exception) { error = e.localizedMessage ?: "Hálózati hiba" }
                 handler.post {
                     if (!dialog.isShowing) return@post
-                    resultStations.clear(); resultStations.addAll(found)
-                    resultNames.clear()
+                    resultStations.clear(); resultStations.addAll(found); resultNames.clear()
                     resultNames.addAll(found.map { station ->
-                        val details = listOf(station.country, station.tags.split(",").take(2).joinToString(" / "), if (station.bitrate > 0) "${station.bitrate} kbps" else station.codec)
+                        val details = listOf(station.country, station.tags.split(",").take(2).joinToString(" / "),
+                            if (station.bitrate > 0) "\${station.bitrate} kbps" else station.codec)
                             .filter { it.isNotBlank() && it != "Unknown" }.joinToString("  •  ")
-                        if (details.isBlank()) station.name else "${station.name}\n$details"
+                        if (details.isBlank()) station.name else "\${station.name}\\n$details"
                     })
                     adapter.notifyDataSetChanged()
                     resultLabel.text = when {
                         error != null -> "NEM SIKERÜLT BETÖLTENI: $error"
                         found.isEmpty() -> "NINCS TALÁLAT  •  MÓDOSÍTSD A SZŰRŐKET"
-                        else -> "${found.size} ÁLLOMÁS  •  VÁLASSZ A LEJÁTSZÁSHOZ"
+                        else -> "\${found.size} ÁLLOMÁS  •  ÉRINTÉS A HANGOLÁSHOZ, HOSSZÚ NYOMÁS A KEDVENCHEZ"
                     }
                 }
             }.start()
         }
         results.setOnItemLongClickListener { _, _, which, _ ->
             resultStations.getOrNull(which)?.let { station ->
-                val favorites = loadFavoriteRadioStations()
-                val saved = favorites.any { it.second == station.streamUrl }
+                val favorites = loadFavoriteRadioStations(); val saved = favorites.any { it.second == station.streamUrl }
                 when {
                     saved -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELTÁVOLÍTVA A KEDVENCEKBŐL" }
                     favorites.size >= 5 -> resultLabel.text = "A KEDVENCEK MEGTELTEK  •  MAXIMUM 5"
-                    else -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  ${loadFavoriteRadioStations().size}/5" }
+                    else -> { toggleFavoriteRadioStation(station.name, station.streamUrl); resultLabel.text = "ELMENTVE A KEDVENCEKHEZ  •  \${loadFavoriteRadioStations().size}/5" }
                 }
             }
             true
         }
         results.setOnItemClickListener { _, _, which, _ ->
             resultStations.getOrNull(which)?.let { station ->
-                if (station.uuid.isNotBlank()) {
-                    Thread {
-                        try {
-                            val click = java.net.URL("https://de1.api.radio-browser.info/json/url/${station.uuid}")
-                                .openConnection() as java.net.HttpURLConnection
-                            click.connectTimeout = 5000; click.readTimeout = 5000
-                            click.setRequestProperty("User-Agent", "AURA-HiFi/1.0")
-                            click.inputStream.close(); click.disconnect()
-                        } catch (_: Exception) {}
-                    }.start()
-                }
-                startRadioStation(station.name, station.streamUrl)
-                dialog.dismiss()
+                if (station.uuid.isNotBlank()) Thread {
+                    try {
+                        val c = (java.net.URL("https://de1.api.radio-browser.info/json/url/\${station.uuid}")
+                            .openConnection() as java.net.HttpURLConnection).apply {
+                            connectTimeout = 5000; readTimeout = 5000; setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                        }
+                        c.inputStream.close(); c.disconnect()
+                    } catch (_: Exception) {}
+                }.start()
+                startRadioStation(station.name, station.streamUrl); dialog.dismiss()
             }
         }
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         actions.addView(radioManagerKey("KERESÉS") { searchStations() }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(3) })
-        actions.addView(radioManagerKey("KEDVENCEK ${loadFavoriteRadioStations().size}/5") { dialog.dismiss(); showFavoriteRadioStations() },
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
+        actions.addView(radioManagerKey("KEDVENCEK \${loadFavoriteRadioStations().size}/5") {
+            dialog.dismiss(); showFavoriteRadioStations()
+        }, LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
         actions.addView(radioManagerKey("SAJÁT ADÓK") { dialog.dismiss(); showCustomRadioStationsManager() },
             LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(3) })
         panel.addView(actions, LinearLayout.LayoutParams(-1, dp(46)))
         dialog.show()
-        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt(), (resources.displayMetrics.heightPixels * 0.82f).toInt())
-        searchStations()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.92f).toInt(), (resources.displayMetrics.heightPixels * 0.86f).toInt())
+        loadFilterCatalogs(); searchStations()
     }
 
     private fun showCustomRadioStationsManager() {
@@ -4075,6 +4081,22 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun toggleTunerPower() {
+        val current = player?.currentMediaItem?.localConfiguration?.uri
+        if (activeRadioStationName != null) {
+            val restore = savedLocalTrackUri
+            tunerPowered = false; tunerPowerButton?.text = "TUNER KI"; player?.stop()
+            activeRadioStationName = null; radioStreamError = false
+            if (restore != null) startTrack(restore) else {
+                radioStatusLabel?.text = "TUNER STANDBY  •  MP3 MÓD"
+                radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
+            }
+            return
+        }
+        if (current != null && !current.scheme.equals("http", true) && !current.scheme.equals("https", true)) savedLocalTrackUri = current
+        tunerPowered = true; tunerPowerButton?.text = "TUNER BE"; showRadioStationManager()
+    }
+
     private fun startRadioStation(stationName: String, streamUrl: String) {
         val exo = player
         if (exo == null) {
@@ -4117,13 +4139,17 @@ class MainActivity : Activity() {
         pendingRadioStartRunnable = null
         pendingRadioStartAttempts = 0
         try {
+            val previousUri = player?.currentMediaItem?.localConfiguration?.uri
+            if (previousUri != null && !previousUri.scheme.equals("http", true) && !previousUri.scheme.equals("https", true)) savedLocalTrackUri = previousUri
+            tunerPowered = true; tunerPowerButton?.text = "TUNER BE"
             openPlayerPage?.invoke()
             releaseAudio()
             attachVuMeter()
             activeRadioStationName = stationName
             radioStreamError = false
             trackLabel.text = stationName
-            metadataLabel.text = "MAGYAR INTERNET RÁDIÓ"
+            metadataLabel.text = "VÁRUNK A DALINFORMÁCIÓRA…"
+            radioSongTitleLabel?.text = "VÁRUNK A DALINFORMÁCIÓRA…"
             albumLabel.text = "AURA NETWORK TUNER"
             radioStatusLabel?.apply {
                 text = "CONNECTING  •  $stationName"
@@ -4138,6 +4164,14 @@ class MainActivity : Activity() {
                 .build()
             playbackListener?.let { exo.removeListener(it) }
             val listener = object : Player.Listener {
+                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                    if (activeRadioStationName != null) {
+                        val title = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() && !it.equals(stationName, true) }
+                        val artist = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() }
+                        val display = listOfNotNull(title, artist).joinToString("  •  ").ifBlank { "NINCS RDS / DALINFORMÁCIÓ" }
+                        metadataLabel.text = display; radioSongTitleLabel?.text = display
+                    }
+                }
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (!radioStreamError) {
                         when (playbackState) {
@@ -4197,6 +4231,8 @@ class MainActivity : Activity() {
     private fun startTrack(uri: Uri) {
         activeRadioStationName = null
         radioStreamError = false
+        tunerPowered = false; tunerPowerButton?.text = "TUNER KI"
+        radioSongTitleLabel?.text = "MP3 / HELYI ZENELEJÁTSZÁS"
         radioStatusLabel?.apply {
             text = "LOCAL SOURCE  /  READY"
             setTextColor(Color.rgb(151, 208, 174))
