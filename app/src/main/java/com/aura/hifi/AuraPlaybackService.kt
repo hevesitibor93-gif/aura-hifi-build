@@ -95,7 +95,6 @@ class AuraPlaybackService : MediaSessionService() {
             setWakeMode(androidx.media3.common.C.WAKE_MODE_LOCAL)
         }
         player = exoPlayer
-        restoreSavedQueue()
 
         // Keep Bluetooth auto-start available while the Activity is not visible.
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -167,6 +166,10 @@ class AuraPlaybackService : MediaSessionService() {
                 savePlaybackState()
             }
         })
+
+        // Restore only after the focus listener is installed, so startup resume
+        // follows the same audio-focus rules as a manual Play action.
+        restoreSavedQueue()
 
         val sessionPlayer = object : androidx.media3.common.ForwardingPlayer(exoPlayer) {
             override fun getAvailableCommands(): Player.Commands {
