@@ -157,6 +157,7 @@ class MainActivity : Activity() {
     private var shuffleMode = 0
     private var repeatMode = 0
     private var shuffleOriginalQueue: List<Uri>? = null
+    private var folderRepeatOriginalQueue: List<Uri>? = null
     private var shuffleButton: Button? = null
     private var repeatButton: Button? = null
     private val abQuickButtons = mutableMapOf<String, Button>()
@@ -919,7 +920,9 @@ class MainActivity : Activity() {
         val rewindButton = neonRoundButton("↶ 10", 38, false) { seekBy(-10_000L) }
         val forwardButton = neonRoundButton("10 ↷", 38, false) { seekBy(10_000L) }
         val shuffleControl = button("SHUFFLE: KI", Color.rgb(35, 41, 53), Color.WHITE) { cycleShuffleMode() }
-        val repeatControl = button("ISMÉTLÉS: KI", Color.rgb(35, 41, 53), Color.WHITE) { cycleRepeatMode() }
+        val repeatControl = button("ISMÉTLÉS: KI", Color.rgb(35, 41, 53), Color.WHITE) { cycleRepeatMode() }.apply {
+            setOnLongClickListener { showRepeatOptions(); true }
+        }
         shuffleButton = shuffleControl; repeatButton = repeatControl
         transportExtras.addView(rewindButton, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) })
         transportExtras.addView(shuffleControl, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(5) })
@@ -3682,7 +3685,7 @@ class MainActivity : Activity() {
     }
     private fun updateShuffleRepeatButtons() {
         shuffleButton?.text = when (shuffleMode) { 1 -> "SHUFFLE: LISTA"; 2 -> "SHUFFLE: ÖSSZES"; else -> "SHUFFLE: KI" }
-        repeatButton?.text = when (repeatMode) { 1 -> "ISMÉTLÉS: DAL"; 2 -> "ISMÉTLÉS: LISTA"; else -> "ISMÉTLÉS: KI" }
+        repeatButton?.text = when (repeatMode) { 1 -> "ISMÉTLÉS: DAL"; 2 -> "ISMÉTLÉS: LISTA"; 3 -> "ISMÉTLÉS: MAPPÁK"; else -> "ISMÉTLÉS: KI" }
         shuffleButton?.setTextColor(if (shuffleMode == 0) Color.WHITE else gold)
         repeatButton?.setTextColor(if (repeatMode == 0) Color.WHITE else gold)
     }
@@ -3717,10 +3720,86 @@ class MainActivity : Activity() {
         updateShuffleRepeatButtons(); updateNextTrack()
         toast(when (shuffleMode) { 1 -> "Az aktuális lista keverése bekapcsolva"; 2 -> "A teljes zenetár keverése bekapcsolva"; else -> "Keverés kikapcsolva" })
     }
-    private fun cycleRepeatMode() {
-        repeatMode = (repeatMode + 1) % 3
+    private fun folderSequenceSongs(): List<LibrarySong> {
+        val root = java.io.File(android.os.Environment.getExternalStorageDirectory().absolutePath).absolutePath
+        val rootPrefix = root.trimEnd(java.io.File.separatorChar) + java.io.File.separator
+        val songs = librarySongs.filter { it.folder == root || it.folder.startsWith(rootPrefix) }
+        fun compareFolderPaths(first: String, second: String): Int {
+            val firstParts = java.io.File(first).absolutePath.split(java.io.File.separatorChar).filter { it.isNotEmpty() }
+            val secondParts = java.io.File(second).absolutePath.split(java.io.File.separatorChar).filter { it.isNotEmpty() }
+            for (index in 0 until minOf(firstParts.size, secondParts.size)) {
+                val comparison = firstParts[index].compareTo(secondParts[index], ignoreCase = true)
+                if (comparison != 0) return comparison
+            }
+            return firstParts.size.compareTo(secondParts.size)
+        }
+        return songs.sortedWith(Comparator { first, second ->
+            val folderComparison = compareFolderPaths(first.folder, second.folder)
+            if (folderComparison != 0) folderComparison else compareNaturalText(first.title, second.title)
+        })
+    }
+
+    private fun setRepeatMode(mode: Int) {
+        val targetMode = mode.coerceIn(0, 3)
+        val currentUri = selectedUri ?: queue.getOrNull(currentIndex)
+        if (repeatMode == 3 && targetMode != 3) {
+            val original = folderRepeatOriginalQueue
+            if (!original.isNullOrEmpty()) {
+                queue.clear()
+                queue.addAll(original)
+                val restoredIndex = currentUri?.let { queue.indexOf(it) } ?: -1
+                currentIndex = if (restoredIndex >= 0) restoredIndex else 0
+            }
+            folderRepeatOriginalQueue = null
+        }
+        if (targetMode == 3 && repeatMode != 3) {
+            val orderedSongs = folderSequenceSongs()
+            val orderedUris = orderedSongs.map { it.uri }.distinct()
+            val currentIndexInAll = currentUri?.let { orderedUris.indexOf(it) } ?: -1
+            if (orderedUris.isEmpty() || currentIndexInAll < 0) {
+                toast("A mappák szerinti lejátszáshoz előbb a zenetár egyik dalát indítsd el.")
+                return
+            }
+            folderRepeatOriginalQueue = queue.toList()
+            queue.clear()
+            queue.addAll(orderedUris)
+            currentIndex = currentIndexInAll
+            if (shuffleMode != 0) {
+                shuffleMode = 0
+                shuffleOriginalQueue = null
+            }
+        }
+        repeatMode = targetMode
         updateShuffleRepeatButtons()
-        toast(when (repeatMode) { 1 -> "Aktuális dal ismétlése"; 2 -> "Lista ismétlése"; else -> "Ismétlés kikapcsolva" })
+        updateNextTrack()
+        AuraPlaybackService.syncQueue(queue.toList(), currentIndex, repeatMode, shuffleMode)
+        toast(when (repeatMode) {
+            1 -> "Aktuális dal ismétlése"
+            2 -> "Aktuális lista ismétlése"
+            3 -> "Mappák és almappák automatikus lejátszása bekapcsolva"
+            else -> "Ismétlés kikapcsolva"
+        })
+    }
+
+    private fun cycleRepeatMode() {
+        setRepeatMode((repeatMode + 1) % 4)
+    }
+
+    private fun showRepeatOptions() {
+        val options = arrayOf(
+            "Kikapcsolva",
+            "Aktuális dal ismétlése",
+            "Aktuális lista ismétlése",
+            "Mappák és almappák sorban lejátszása"
+        )
+        android.app.AlertDialog.Builder(this)
+            .setTitle("ISMÉTLÉS ÉS LEJÁTSZÁSI SORREND")
+            .setSingleChoiceItems(options, repeatMode) { dialog, which ->
+                setRepeatMode(which)
+                dialog.dismiss()
+            }
+            .setNegativeButton("BEZÁRÁS", null)
+            .show()
     }
     private fun seekBy(deltaMs: Long) {
         val p = player ?: return
