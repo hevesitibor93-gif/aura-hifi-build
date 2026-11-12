@@ -4934,7 +4934,8 @@ class MainActivity : Activity() {
             vinylView.invalidate()
             val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
-            timeLabel.text = "$timeText   •   $trackCount"
+            // Radio mode has no meaningful local playlist position; show it again for MP3 playback.
+            timeLabel.text = if (activeRadioStationName != null) timeText else "$timeText   •   $trackCount"
         } catch (_: Exception) {}
     }
 
