@@ -2484,16 +2484,22 @@ class MainActivity : Activity() {
         appearanceSettingsPage.addView(label("Válassz az AURA két külön megjelenése közül. A választás nem módosítja a hangzást vagy a VU-beállításokat.", 11f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(10)) })
         appearanceSettingsPage.addView(button("◈  AURA ORIGINAL  •  EREDETI", Color.rgb(35, 41, 53), Color.WHITE) {
             themePrefs.edit().putString("aura_theme", "original").apply()
-            toast("AURA Original kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
+            toast("AURA Original betöltése…")
+            recreate()
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
         appearanceSettingsPage.addView(button("▣  AURA HI-FI TOWER EDITION", Color.rgb(38, 43, 44), Color.rgb(226, 199, 145)) {
             themePrefs.edit().putString("aura_theme", "tower_edition").apply()
-            toast("AURA Hi-Fi Tower Edition kiválasztva. Az új téma az alkalmazás újraindításakor lép életbe.")
+            toast("AURA Hi-Fi Tower Edition betöltése…")
+            recreate()
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
         appearanceSettingsPage.addView(button("✦  AURA GOLD STUDIO", Color.rgb(91, 65, 27), Color.rgb(255, 225, 174)) {
             themePrefs.edit().putString("aura_theme", "gold_studio").apply()
-            toast("AURA Gold Studio kiválasztva. A teljes témaváltás az alkalmazás újraindításakor lép életbe.")
+            toast("AURA Gold Studio betöltése…")
+            recreate()
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
+        appearanceSettingsPage.addView(button("↻  AURA ÚJRAINDÍTÁSA / TÉMA ALKALMAZÁSA", Color.rgb(54, 43, 28), Color.rgb(255, 215, 150)) {
+            recreate()
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(14) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
