@@ -1001,7 +1001,6 @@ class MainActivity : Activity() {
                     intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
                 ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
             }
-            landscapeHeadUnit = headUnit
             val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
             val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; "circular", "aurix" -> 72; else -> 54 }
             val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
@@ -1020,6 +1019,7 @@ class MainActivity : Activity() {
                 }
                 elevation = dp(10).toFloat()
             }
+            landscapeHeadUnit = headUnit
             original.forEachIndexed { i, child ->
                 when (i) {
                     in 0..10 -> headUnit.addView(child)
