@@ -441,6 +441,20 @@ class MainActivity : Activity() {
         trackLabel.text = savedTitle
         metadataLabel.text = savedArtist
         albumLabel.text = savedAlbum
+
+        // Rebind the VU meter to the freshly rebuilt portrait/landscape views.
+        // The audio service keeps playing across rotation, but the Activity's
+        // visual meter views are recreated by buildUi().
+        handler.post {
+            attachVuMeter()
+            val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            setVuStyle(prefs.getString("vu_style", "car") ?: "car")
+            setVuBrightness(prefs.getInt("vu_brightness", 80))
+            setVuAnimation(prefs.getBoolean("vu_animation", true))
+            applyVuCustomSettings()
+            setVuOverallScale(prefs.getInt("vu_overall_scale", 100))
+            setVuActive(player?.isPlaying == true)
+        }
     }
 
 
