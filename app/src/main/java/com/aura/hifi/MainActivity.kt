@@ -1158,6 +1158,11 @@ class MainActivity : Activity() {
                 else toast("Ez a memóriahely még üres.")
             }
             favoriteButton.textSize = 8f
+            val savedStation = loadFavoriteRadioStations().getOrNull(slot)
+            if (savedStation != null && savedStation.second.isNotBlank()) {
+                favoriteButton.background = favoriteButtonBackground(savedStation.second, slot)
+                favoriteButton.setTextColor(if ((favoriteColorIndex(savedStation.second) ?: slot) % 2 == 0) Color.rgb(28, 28, 28) else Color.WHITE)
+            }
             favoriteRow.addView(favoriteButton, LinearLayout.LayoutParams(0, dp(27), 1f).apply { if (slot > 0) marginStart = dp(4) })
         }
         radioPanel.addView(favoriteRow)
@@ -3815,15 +3820,62 @@ class MainActivity : Activity() {
     private fun loadFavoriteRadioStations(): List<Pair<String, String>> =
         fixedRadioStations + loadCustomFavoriteSlots().map { it ?: ("" to "") }
 
+    private val favoriteStationColors = listOf(
+        intArrayOf(Color.rgb(255, 105, 105), Color.rgb(145, 25, 35)), // red
+        intArrayOf(Color.rgb(105, 175, 255), Color.rgb(20, 65, 145)), // blue
+        intArrayOf(Color.rgb(255, 224, 105), Color.rgb(155, 112, 15)), // yellow
+        intArrayOf(Color.rgb(125, 225, 145), Color.rgb(25, 105, 55)) // green
+    )
+
+    private fun favoriteColorIndex(url: String): Int? {
+        val raw = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            .getString("favorite_radio_color_map", "{}") ?: "{}"
+        return try { org.json.JSONObject(raw).optInt(url, -1).takeIf { it in favoriteStationColors.indices.flatMap { i -> listOf(i * 2, i * 2 + 1) } } }
+        catch (_: Exception) { null }
+    }
+
+    private fun favoriteButtonBackground(url: String, slot: Int): GradientDrawable {
+        val index = favoriteColorIndex(url) ?: slot.coerceIn(0, 7)
+        val pair = favoriteStationColors[index / 2]
+        val light = index % 2 == 0
+        val base = if (light) pair[0] else pair[1]
+        val darker = if (light) pair[1] else Color.rgb(
+            (Color.red(base) * .62f).toInt(), (Color.green(base) * .62f).toInt(), (Color.blue(base) * .62f).toInt())
+        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(base, darker)).apply {
+            cornerRadius = dp(4).toFloat()
+            setStroke(dp(1), if (light) Color.argb(190, 255, 255, 255) else Color.argb(190, 0, 0, 0))
+        }
+    }
+
     private fun saveCustomFavoriteSlots(slots: List<Pair<String, String>?>) {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val array = org.json.JSONArray()
         for (slot in 0..2) {
             val station = slots.getOrNull(slot)
             array.put(if (station == null) org.json.JSONObject.NULL else org.json.JSONObject()
                 .put("name", station.first).put("url", station.second))
         }
-        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit()
-            .putString("favorite_radio_slots_v2", array.toString()).apply()
+        val colors = try { org.json.JSONObject(prefs.getString("favorite_radio_color_map", "{}") ?: "{}") }
+            catch (_: Exception) { org.json.JSONObject() }
+        val activeUrls = (fixedRadioStations + slots.filterNotNull()).map { it.second }.toSet()
+        val iterator = colors.keys()
+        val removeKeys = mutableListOf<String>()
+        while (iterator.hasNext()) { val key = iterator.next(); if (key !in activeUrls) removeKeys.add(key) }
+        removeKeys.forEach { colors.remove(it) }
+        fixedRadioStations.forEachIndexed { index, station ->
+            if (!colors.has(station.second)) colors.put(station.second, index)
+        }
+        val used = mutableSetOf<Int>()
+        for (station in fixedRadioStations + slots.filterNotNull()) {
+            val existing = colors.optInt(station.second, -1)
+            if (existing in 0..7 && existing !in used) used.add(existing)
+            else {
+                val next = (0..7).firstOrNull { it !in used } ?: 0
+                colors.put(station.second, next); used.add(next)
+            }
+        }
+        prefs.edit().putString("favorite_radio_slots_v2", array.toString())
+            .putString("favorite_radio_color_map", colors.toString()).apply()
     }
 
     private fun showFavoriteSlotPicker(name: String, url: String) {
