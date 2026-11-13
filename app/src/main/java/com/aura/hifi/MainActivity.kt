@@ -876,8 +876,7 @@ class MainActivity : Activity() {
         artFrame.addView(vinylView, LinearLayout.LayoutParams(dp(154), dp(154)))
         showCover = getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("show_cover", true)
         applyArtworkMode()
-        // Replace the old standalone cover-art frame with the modular, touch-free AURA music-center chassis.
-        body.addView(AuraMusicCenterView(this), LinearLayout.LayoutParams(-1, dp(250)).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
+        body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(178)).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
         applyArtworkMode()
         vu = VuView().apply { isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() } }; body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
         trackLabel = label("", 20f, Color.rgb(242, 211, 157)).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.015f; setPadding(dp(4), dp(5), dp(4), dp(3)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
