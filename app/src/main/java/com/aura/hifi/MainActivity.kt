@@ -859,7 +859,8 @@ class MainActivity : Activity() {
         val rootInsetPadding = if (studioTheme) 10 else 18
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
+            background = if (studioTheme) getDrawable(R.drawable.aura_studio_background) else
+                GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
             setPadding(dp(rootInsetPadding), dp(12), dp(rootInsetPadding), dp(12))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
