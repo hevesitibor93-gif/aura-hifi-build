@@ -9,7 +9,6 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
-import kotlin.math.min
 
 /**
  * Static, touch-free front-panel illustration for the AURA modular music center.
@@ -40,7 +39,6 @@ class AuraMusicCenterView @JvmOverloads constructor(
         color = Color.rgb(177, 157, 122)
         textSize = 7.5f * density
         typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
-        letterSpacing = 0.12f
     }
     private val screwPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(164, 164, 157)
@@ -127,7 +125,6 @@ class AuraMusicCenterView @JvmOverloads constructor(
         val smallNamePaint = Paint(labelPaint).apply {
             textSize = 5.8f * density
             color = Color.rgb(139, 140, 137)
-            letterSpacing = 0.08f
         }
         canvas.drawText(name, labelX, labelY + 8f * density, smallNamePaint)
 
