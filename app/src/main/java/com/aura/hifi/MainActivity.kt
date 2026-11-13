@@ -849,16 +849,21 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        // AURA Original is the only active theme. Legacy themes are retired.
-        themePrefs.edit().putString("aura_theme", "original").apply()
+        // AURA Classic remains the default; Hi-Fi Studio is an appearance-only alternative.
+        val studioTheme = themePrefs.getString("aura_theme", "classic") == "studio"
+        val studioLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val studioScaleBase = if (studioLandscape) resources.configuration.screenHeightDp / 360f else resources.configuration.screenWidthDp / 390f
+        val studioScale = studioScaleBase.coerceIn(0.82f, 1.12f)
+        fun studioDp(value: Int): Int = dp((value * studioScale).toInt().coerceAtLeast(1))
+        val rootInsetPadding = if (studioTheme) 10 else 18
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
-            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setPadding(dp(rootInsetPadding), dp(12), dp(rootInsetPadding), dp(12))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
                 val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
-                view.setPadding(dp(18), dp(12) + topInset, dp(18), dp(12) + bottomInset)
+                view.setPadding(dp(rootInsetPadding), dp(12) + topInset, dp(rootInsetPadding), dp(12) + bottomInset)
                 insets
             }
         }
@@ -1213,6 +1218,117 @@ class MainActivity : Activity() {
             tunerColumn.visibility = View.GONE
         } else {
             playerPage.addView(tunerColumn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(2) })
+        }
+
+        if (studioTheme) {
+            // The Studio skin is a visual shell only: existing playback, EQ and DSP views stay intact.
+            fun studioModule(title: String, readout: String, actionText: String, action: () -> Unit): LinearLayout {
+                val shell = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(studioDp(8), studioDp(5), studioDp(8), studioDp(5))
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(119, 122, 122), Color.rgb(62, 67, 70), Color.rgb(25, 29, 33), Color.rgb(12, 15, 19))
+                    ).apply {
+                        cornerRadius = studioDp(8).toFloat()
+                        setStroke(studioDp(1), Color.rgb(158, 148, 125))
+                    }
+                    elevation = studioDp(4).toFloat()
+                }
+                val screwColumn = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                }
+                repeat(2) {
+                    screwColumn.addView(label("●", 6f, Color.rgb(205, 196, 174)).apply {
+                        gravity = Gravity.CENTER
+                        setShadowLayer(1f, 0f, 1f, Color.BLACK)
+                    }, LinearLayout.LayoutParams(studioDp(12), studioDp(15)))
+                }
+                shell.addView(screwColumn, LinearLayout.LayoutParams(studioDp(13), -1))
+                val info = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                info.addView(label(title, 8f, Color.rgb(238, 211, 160)).apply {
+                    typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                    letterSpacing = .12f
+                    maxLines = 1
+                })
+                info.addView(label(readout, 10f, Color.rgb(255, 190, 91)).apply {
+                    typeface = Typeface.create("monospace", Typeface.BOLD)
+                    maxLines = 1
+                    setPadding(0, studioDp(2), 0, 0)
+                    background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.rgb(5, 12, 13), Color.rgb(12, 18, 19))
+                    ).apply { cornerRadius = studioDp(3).toFloat() }
+                }, LinearLayout.LayoutParams(-1, studioDp(22)).apply { topMargin = studioDp(2) })
+                shell.addView(info, LinearLayout.LayoutParams(0, -1, 1f).apply { marginEnd = studioDp(7) })
+                val actionButton = radioManagerKey(actionText, action).apply {
+                    textSize = 8f
+                    setPadding(studioDp(6), studioDp(3), studioDp(6), studioDp(3))
+                }
+                shell.addView(actionButton, LinearLayout.LayoutParams(studioDp(94), studioDp(31)))
+                return shell
+            }
+
+            // Separate pre-amplifier and power-amplifier faceplates, scaled to the available display.
+            val studioAmpStack = LinearLayout(this).apply {
+                orientation = if (landscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+            }
+            val preampModule = studioModule("03  /  PRE AMPLIFIER", "12 BAND  •  EQ", "EQUALIZER") {
+                navButtons.getOrNull(2)?.performClick()
+            }
+            val powerModule = studioModule("04  /  POWER AMPLIFIER", "AURA SOUND ENGINE", "DSP") {
+                openSoundEnginePage?.invoke()
+            }
+            if (landscape) {
+                studioAmpStack.addView(preampModule, LinearLayout.LayoutParams(0, studioDp(48), 1f).apply { marginEnd = studioDp(5) })
+                studioAmpStack.addView(powerModule, LinearLayout.LayoutParams(0, studioDp(48), 1f).apply { marginStart = studioDp(5) })
+                landscapeHeadUnit?.addView(studioAmpStack, LinearLayout.LayoutParams(-1, studioDp(52)).apply {
+                    topMargin = studioDp(3)
+                })
+                landscapeHeadUnit?.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(105, 109, 111), Color.rgb(43, 49, 54), Color.rgb(12, 16, 21))
+                ).apply {
+                    cornerRadius = studioDp(12).toFloat()
+                    setStroke(studioDp(2), Color.rgb(172, 158, 130))
+                }
+            } else {
+                studioAmpStack.addView(preampModule, LinearLayout.LayoutParams(-1, studioDp(56)).apply { bottomMargin = studioDp(6) })
+                studioAmpStack.addView(powerModule, LinearLayout.LayoutParams(-1, studioDp(56)))
+                playerPage.addView(studioAmpStack, LinearLayout.LayoutParams(-1, -2).apply {
+                    topMargin = studioDp(7)
+                    bottomMargin = studioDp(5)
+                })
+                // Add the digital-player faceplate label without changing the original child-index routing.
+                playerPage.addView(label("02  /  DIGITAL MUSIC PLAYER", 9f, Color.rgb(238, 211, 160)).apply {
+                    typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                    letterSpacing = .15f
+                    setPadding(studioDp(4), studioDp(3), 0, studioDp(2))
+                }, 0, LinearLayout.LayoutParams(-1, studioDp(20)))
+            }
+            playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(105, 109, 111), Color.rgb(48, 53, 57), Color.rgb(17, 21, 25), Color.rgb(8, 11, 15))
+            ).apply {
+                cornerRadius = studioDp(13).toFloat()
+                setStroke(studioDp(2), Color.rgb(171, 157, 130))
+            }
+            playerPage.setPadding(studioDp(8), studioDp(7), studioDp(8), studioDp(7))
+            radioPanel.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(121, 124, 123), Color.rgb(54, 59, 61), Color.rgb(17, 21, 24))
+            ).apply {
+                cornerRadius = studioDp(8).toFloat()
+                setStroke(studioDp(1), Color.rgb(177, 163, 135))
+            }
+            radioPanel.setPadding(studioDp(9), studioDp(6), studioDp(9), studioDp(6))
+            artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(93, 98, 101), Color.rgb(23, 28, 33), Color.rgb(8, 11, 15))
+            ).apply {
+                cornerRadius = studioDp(8).toFloat()
+                setStroke(studioDp(2), Color.rgb(170, 155, 126))
+            }
         }
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
@@ -1920,7 +2036,24 @@ class MainActivity : Activity() {
         keepScreenOnRow.addView(keepScreenOnSwitch)
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
-        appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        appearanceSettingsPage.addView(label(
+            if (studioTheme) "AURA HI-FI STUDIO  •  AKTÍV" else "AURA CLASSIC  •  AKTÍV",
+            11f, Color.rgb(220, 190, 135)
+        ).apply { setPadding(dp(3), 0, dp(3), dp(10)) })
+        appearanceSettingsPage.addView(button(
+            if (studioTheme) "✓  AURA HI-FI STUDIO  •  AKTÍV" else "AURA HI-FI STUDIO  •  VÁLASZTÁS",
+            Color.rgb(57, 45, 27), Color.rgb(255, 207, 112)
+        ) {
+            themePrefs.edit().putString("aura_theme", "studio").apply()
+            recreate()
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(button(
+            if (!studioTheme) "✓  AURA CLASSIC  •  AKTÍV" else "AURA CLASSIC  •  VÁLASZTÁS",
+            Color.rgb(35, 41, 53), Color.WHITE
+        ) {
+            themePrefs.edit().putString("aura_theme", "classic").apply()
+            recreate()
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(14) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
