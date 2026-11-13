@@ -856,16 +856,38 @@ class MainActivity : Activity() {
         val studioScaleBase = if (studioLandscape) resources.configuration.screenHeightDp / 360f else resources.configuration.screenWidthDp / 390f
         val studioScale = studioScaleBase.coerceIn(0.82f, 1.12f)
         fun studioDp(value: Int): Int = dp((value * studioScale).toInt().coerceAtLeast(1))
-        val rootInsetPadding = if (studioTheme) 10 else 18
+        // Hi-Fi Studio extends its chassis/background to the physical screen edges.
+        // The content itself keeps only the small safe-area inset needed by system bars.
+        if (studioTheme && Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
+            window.decorView.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        } else if (Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(true)
+            window.statusBarColor = bg
+            window.navigationBarColor = bg
+            window.decorView.systemUiVisibility = 0
+        }
+        val rootInsetPadding = if (studioTheme) 4 else 18
+        val rootBaseVerticalPadding = if (studioTheme) 4 else 12
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = if (studioTheme) getDrawable(R.drawable.aura_studio_background) else
                 GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
-            setPadding(dp(rootInsetPadding), dp(12), dp(rootInsetPadding), dp(12))
+            setPadding(dp(rootInsetPadding), dp(rootBaseVerticalPadding), dp(rootInsetPadding), dp(rootBaseVerticalPadding))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
                 val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
-                view.setPadding(dp(rootInsetPadding), dp(12) + topInset, dp(rootInsetPadding), dp(12) + bottomInset)
+                view.setPadding(
+                    dp(rootInsetPadding),
+                    dp(rootBaseVerticalPadding) + if (studioTheme) topInset else topInset,
+                    dp(rootInsetPadding),
+                    dp(rootBaseVerticalPadding) + if (studioTheme) bottomInset else bottomInset
+                )
                 insets
             }
         }
