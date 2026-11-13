@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import java.util.concurrent.Executors
 
 /**
  * Owns playback independently from the Activity, keeping audio and the Android
@@ -34,6 +35,12 @@ class AuraPlaybackService : MediaSessionService() {
     private var queueShuffleMode = 0
     private val playbackPrefs by lazy { getSharedPreferences("aura_playback_state", Context.MODE_PRIVATE) }
     private val saveHandler = Handler(Looper.getMainLooper())
+    private val queueRestoreExecutor = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "AuraQueueRestore").apply { isDaemon = true }
+    }
+    @Volatile private var queueRestoreComplete = false
+    private var queueRevision = 0
+    @Volatile private var serviceDestroyed = false
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -302,37 +309,66 @@ class AuraPlaybackService : MediaSessionService() {
 
     private fun restoreSavedQueue() {
         val saved = playbackPrefs
-        val array = try { JSONArray(saved.getString(KEY_QUEUE, "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
-        val restored = mutableListOf<Uri>()
-        for (i in 0 until array.length()) {
-            val value = array.optString(i)
-            if (value.isNotBlank()) {
-                val uri = Uri.parse(value)
-                try {
-                    contentResolver.openFileDescriptor(uri, "r")?.use { restored.add(uri) }
-                } catch (_: Exception) {
-                    // A document may have been moved or its persisted permission revoked.
-                }
-            }
-        }
-        queueUris = restored
-        queueIndex = saved.getInt(KEY_INDEX, 0).coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
-        queueRepeatMode = saved.getInt(KEY_REPEAT, 0)
-        queueShuffleMode = saved.getInt(KEY_SHUFFLE, 0)
-        val exo = player ?: return
-        val uri = queueUris.getOrNull(queueIndex) ?: return
+        val queueJson = saved.getString(KEY_QUEUE, "[]") ?: "[]"
+        val savedIndex = saved.getInt(KEY_INDEX, 0)
+        val savedRepeatMode = saved.getInt(KEY_REPEAT, 0)
+        val savedShuffleMode = saved.getInt(KEY_SHUFFLE, 0)
         val position = saved.getLong(KEY_POSITION, 0L).coerceAtLeast(0L)
         val wasPlaying = saved.getBoolean(KEY_WAS_PLAYING, false)
         val resumeOnAppStart = getSharedPreferences("aurix_settings", Context.MODE_PRIVATE)
             .getBoolean("resume_on_app_start", true)
         val shouldResume = wasPlaying && resumeOnAppStart
-        exo.setMediaItem(buildMediaItem(uri))
-        exo.prepare()
-        if (position > 0L) exo.seekTo(position)
-        exo.playWhenReady = shouldResume
+        val restoreRevision = queueRevision
+        queueRestoreComplete = false
+
+        // URI permission checks and metadata extraction can block on external
+        // document providers. Keep all of that work off Android's main thread.
+        queueRestoreExecutor.execute {
+            val array = try { JSONArray(queueJson) } catch (_: Exception) { JSONArray() }
+            val restored = mutableListOf<Uri>()
+            for (i in 0 until array.length()) {
+                val value = array.optString(i)
+                if (value.isNotBlank()) {
+                    val uri = Uri.parse(value)
+                    try {
+                        contentResolver.openFileDescriptor(uri, "r")?.use { restored.add(uri) }
+                    } catch (_: Exception) {
+                        // A document may have been moved or its persisted permission revoked.
+                    }
+                }
+            }
+
+            val restoredIndex = savedIndex.coerceIn(0, (restored.size - 1).coerceAtLeast(0))
+            val restoredUri = restored.getOrNull(restoredIndex)
+            val restoredMediaItem = restoredUri?.let { buildMediaItem(it) }
+
+            saveHandler.post {
+                if (serviceDestroyed) return@post
+
+                // A user action may replace the queue while restoration is running.
+                // In that case, never overwrite the newer queue with this old snapshot.
+                if (queueRevision == restoreRevision) {
+                    queueUris = restored
+                    queueIndex = restoredIndex
+                    queueRepeatMode = savedRepeatMode
+                    queueShuffleMode = savedShuffleMode
+
+                    val exo = player
+                    if (restoredMediaItem != null && exo != null) {
+                        exo.setMediaItem(restoredMediaItem)
+                        exo.prepare()
+                        if (position > 0L) exo.seekTo(position)
+                        exo.playWhenReady = shouldResume
+                    }
+                }
+                queueRestoreComplete = true
+            }
+        }
     }
 
     private fun savePlaybackState() {
+        // Do not persist the temporary empty queue while async restoration is running.
+        if (!queueRestoreComplete) return
         val exo = player
         val currentUri = exo?.currentMediaItem?.localConfiguration?.uri
         if (currentUri != null) {
@@ -362,6 +398,8 @@ class AuraPlaybackService : MediaSessionService() {
         QueueSnapshot(queueUris.toList(), queueIndex, queueRepeatMode, queueShuffleMode)
 
     private fun updateQueue(items: List<Uri>, index: Int, repeatMode: Int, shuffleMode: Int) {
+        queueRevision++
+        queueRestoreComplete = true
         queueUris = items.toList()
         queueIndex = index.coerceIn(0, (queueUris.size - 1).coerceAtLeast(0))
         queueRepeatMode = repeatMode
@@ -370,6 +408,8 @@ class AuraPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceDestroyed = true
+        queueRestoreExecutor.shutdownNow()
         savePlaybackState()
         saveHandler.removeCallbacks(savePositionTask)
         audioDeviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
@@ -402,6 +442,8 @@ class AuraPlaybackService : MediaSessionService() {
 
         fun getQueueSnapshot(): QueueSnapshot =
             instance?.snapshotQueue() ?: QueueSnapshot(emptyList(), 0, 0, 0)
+
+        fun isQueueRestoreComplete(): Boolean = instance?.queueRestoreComplete ?: true
 
         fun togglePlaybackFromWidget() {
             val active = player ?: return
