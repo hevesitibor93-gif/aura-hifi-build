@@ -852,6 +852,7 @@ class MainActivity : Activity() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         // AURA Classic remains the default; Hi-Fi Studio is an appearance-only alternative.
         val studioTheme = themePrefs.getString("aura_theme", "classic") == "studio"
+        var studioRackRoot: View? = null
         val studioLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val studioScaleBase = if (studioLandscape) resources.configuration.screenHeightDp / 360f else resources.configuration.screenWidthDp / 390f
         val studioScale = studioScaleBase.coerceIn(0.82f, 1.12f)
@@ -2648,27 +2649,30 @@ class MainActivity : Activity() {
                 showPage(3)
                 showSettingsCategory(vuAppearanceSettingsPage)
             } else {
-                showPage(0, false)
+                if (studioTheme && studioRackRoot != null) setContentView(studioRackRoot) else showPage(0, false)
             }
         }
-        openPlayerPage = { showPage(0, false) }
+        openPlayerPage = { if (studioTheme && studioRackRoot != null) setContentView(studioRackRoot) else showPage(0, false) }
         openVuSettingsPage = {
             vuSettingsReturnToCategory = false
+            if (studioTheme) setContentView(root)
             showPage(4, false)
         }
-        openSoundEnginePage = { showPage(5, false) }
+        openSoundEnginePage = { if (studioTheme) setContentView(root); showPage(5, false) }
         openLibraryPage = {
+            if (studioTheme) setContentView(root)
             showPage(1, false)
             currentTrackRow = null
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { if (studioTheme && i == 0 && studioRackRoot != null) setContentView(studioRackRoot) else showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
         if (studioTheme) {
-            setContentView(buildStudioFramesOnlyRoot(landscape, studioScale))
+            studioRackRoot = buildStudioFramesOnlyRoot(landscape, studioScale)
+            setContentView(studioRackRoot)
         } else {
             setContentView(root)
         }
