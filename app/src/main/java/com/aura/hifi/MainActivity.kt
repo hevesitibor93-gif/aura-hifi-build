@@ -2667,8 +2667,124 @@ class MainActivity : Activity() {
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
-        setContentView(root)
+        if (studioTheme) {
+            setContentView(buildStudioFramesOnlyRoot(landscape, studioScale))
+        } else {
+            setContentView(root)
+        }
         
+    }
+
+    /**
+     * Temporary AURA Hi-Fi Studio construction mode.
+     * This screen intentionally contains only the physical chassis/bezel frames:
+     * no labels, buttons, displays, player controls, tuner, EQ, or other theme UI.
+     */
+    private fun buildStudioFramesOnlyRoot(landscape: Boolean, scale: Float): View {
+        fun sd(value: Int) = dp((value * scale).toInt().coerceAtLeast(1))
+        val frameRoot = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = getDrawable(R.drawable.aura_studio_background)
+            setPadding(sd(8), sd(8), sd(8), sd(8))
+            setOnApplyWindowInsetsListener { view, insets ->
+                val top = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
+                val bottom = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
+                view.setPadding(sd(8), sd(8) + top, sd(8), sd(8) + bottom)
+                insets
+            }
+        }
+
+        fun screw(): View = View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(224, 218, 203), Color.rgb(75, 78, 78), Color.rgb(18, 20, 21))
+            ).apply {
+                shape = GradientDrawable.OVAL
+                setStroke(sd(1), Color.rgb(18, 20, 21))
+            }
+            elevation = sd(2).toFloat()
+        }
+
+        fun chassis(height: Int, variant: Int): FrameLayout {
+            val plate = FrameLayout(this).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(173, 174, 169), Color.rgb(92, 98, 101), Color.rgb(36, 42, 47), Color.rgb(112, 113, 108))
+                ).apply {
+                    cornerRadius = sd(5).toFloat()
+                    setStroke(sd(2), Color.rgb(190, 178, 150))
+                }
+                elevation = sd(5).toFloat()
+                setPadding(sd(8), sd(7), sd(8), sd(7))
+            }
+            val bevel = FrameLayout(this).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(15, 19, 23), Color.rgb(49, 54, 57), Color.rgb(10, 13, 16))
+                ).apply {
+                    cornerRadius = sd(3).toFloat()
+                    setStroke(sd(2), Color.rgb(119, 119, 108))
+                }
+            }
+            plate.addView(bevel, FrameLayout.LayoutParams(-1, -1).apply {
+                setMargins(sd(7), sd(6), sd(7), sd(6))
+            })
+
+            // Empty recessed faceplate: only the layered outline is drawn.
+            val inner = FrameLayout(this).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(7, 10, 13), Color.rgb(18, 22, 25), Color.rgb(5, 8, 11))
+                ).apply {
+                    cornerRadius = sd(2).toFloat()
+                    setStroke(sd(1), Color.rgb(75, 82, 84))
+                }
+            }
+            bevel.addView(inner, FrameLayout.LayoutParams(-1, -1).apply {
+                setMargins(sd(variant + 7), sd(variant + 6), sd(variant + 7), sd(variant + 6))
+            })
+
+            val screwSize = sd(9)
+            listOf(
+                Gravity.TOP or Gravity.LEFT,
+                Gravity.TOP or Gravity.RIGHT,
+                Gravity.BOTTOM or Gravity.LEFT,
+                Gravity.BOTTOM or Gravity.RIGHT
+            ).forEach { gravity ->
+                plate.addView(screw(), FrameLayout.LayoutParams(screwSize, screwSize, gravity).apply {
+                    val x = sd(3)
+                    val y = sd(3)
+                    setMargins(x, y, x, y)
+                })
+            }
+            return plate
+        }
+
+        val rack = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(sd(7), sd(7), sd(7), sd(7))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(25, 29, 33), Color.rgb(7, 10, 13), Color.rgb(34, 37, 38))
+            ).apply {
+                cornerRadius = sd(8).toFloat()
+                setStroke(sd(2), Color.rgb(137, 126, 102))
+            }
+            elevation = sd(12).toFloat()
+        }
+
+        if (landscape) {
+            rack.orientation = LinearLayout.HORIZONTAL
+            rack.addView(chassis(150, 1), LinearLayout.LayoutParams(0, sd(150), 1.18f).apply { marginEnd = sd(7) })
+            rack.addView(chassis(150, 2), LinearLayout.LayoutParams(0, sd(150), 1f).apply { marginEnd = sd(7) })
+            rack.addView(chassis(150, 3), LinearLayout.LayoutParams(0, sd(150), 1f))
+        } else {
+            rack.addView(chassis(104, 1), LinearLayout.LayoutParams(-1, sd(104)).apply { bottomMargin = sd(8) })
+            rack.addView(chassis(86, 2), LinearLayout.LayoutParams(-1, sd(86)).apply { bottomMargin = sd(8) })
+            rack.addView(chassis(86, 3), LinearLayout.LayoutParams(-1, sd(86)))
+        }
+        frameRoot.addView(rack, LinearLayout.LayoutParams(-1, -2).apply {
+            leftMargin = sd(2)
+            rightMargin = sd(2)
+        })
+        return frameRoot
     }
 
     private fun applyArtworkMode() {
