@@ -154,6 +154,7 @@ class MainActivity : Activity() {
     private var openPlayerPage: (() -> Unit)? = null
     private var openVuSettingsPage: (() -> Unit)? = null
     private var openSoundEnginePage: (() -> Unit)? = null
+    private var openEqualizerPage: (() -> Unit)? = null
     private var shuffleMode = 0
     private var repeatMode = 0
     private var shuffleOriginalQueue: List<Uri>? = null
@@ -1278,7 +1279,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
             }
             val preampModule = studioModule("03  /  PRE AMPLIFIER", "12 BAND  •  EQ", "EQUALIZER") {
-                navButtons.getOrNull(2)?.performClick()
+                openEqualizerPage?.invoke()
             }
             val powerModule = studioModule("04  /  POWER AMPLIFIER", "AURA SOUND ENGINE", "DSP") {
                 openSoundEnginePage?.invoke()
@@ -2568,6 +2569,7 @@ class MainActivity : Activity() {
             }
             navButtons.forEachIndexed { i, b -> val selected = i == (if (index == 4 || index == 5) 3 else index); b.setTextColor(if (selected) Color.rgb(245, 211, 151) else Color.rgb(160, 160, 158)); b.background = rounded(if (selected) Color.rgb(57, 46, 30) else Color.rgb(26, 28, 31), 12) }
         }
+        openEqualizerPage = { showPage(2, false) }
         settingsMenu.addView(button("♫  HANGBEÁLLÍTÁSOK  ›", Color.rgb(75, 57, 29), Color.rgb(255, 207, 112)) { showPage(5) },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3); bottomMargin = dp(12) })
         val soundBackButton = button("‹  VISSZA A BEÁLLÍTÁSOKHOZ", Color.rgb(35, 41, 53), Color.WHITE) { showPage(3) }
