@@ -2649,10 +2649,10 @@ class MainActivity : Activity() {
                 showPage(3)
                 showSettingsCategory(vuAppearanceSettingsPage)
             } else {
-                if (studioTheme && studioRackRoot != null) setContentView(studioRackRoot) else showPage(0, false)
+                if (studioTheme && studioRackRoot != null) studioRackRoot?.let { setContentView(it) } else showPage(0, false)
             }
         }
-        openPlayerPage = { if (studioTheme && studioRackRoot != null) setContentView(studioRackRoot) else showPage(0, false) }
+        openPlayerPage = { if (studioTheme && studioRackRoot != null) studioRackRoot?.let { setContentView(it) } else showPage(0, false) }
         openVuSettingsPage = {
             vuSettingsReturnToCategory = false
             if (studioTheme) setContentView(root)
@@ -2666,13 +2666,13 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { if (studioTheme && i == 0 && studioRackRoot != null) setContentView(studioRackRoot) else showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { if (studioTheme && i == 0 && studioRackRoot != null) studioRackRoot?.let { setContentView(it) } else showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
         if (studioTheme) {
             studioRackRoot = buildStudioFramesOnlyRoot(landscape, studioScale)
-            setContentView(studioRackRoot)
+            studioRackRoot?.let { setContentView(it) }
         } else {
             setContentView(root)
         }
