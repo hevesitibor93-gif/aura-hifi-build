@@ -283,6 +283,13 @@ class MainActivity : Activity() {
             }
             return
         }
+        if (!AuraPlaybackService.isQueueRestoreComplete()) {
+            if (playbackRestoreAttempts < 600) {
+                playbackRestoreAttempts++
+                handler.postDelayed({ restorePlaybackState() }, 100L)
+            }
+            return
+        }
         playbackRestoreAttempts = 0
         val snapshot = AuraPlaybackService.getQueueSnapshot()
         queue.clear()
