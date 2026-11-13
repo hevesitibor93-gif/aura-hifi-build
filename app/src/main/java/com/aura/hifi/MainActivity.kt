@@ -2680,9 +2680,8 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Temporary AURA Hi-Fi Studio construction mode.
-     * This screen intentionally contains only the physical chassis/bezel frames:
-     * no labels, buttons, displays, player controls, tuner, EQ, or other theme UI.
+     * Full-screen AURA Hi-Fi Studio rack.
+     * Four functional faceplates reuse the existing tuner, playback, EQ and VU/DSP controls.
      */
     private fun buildStudioFramesOnlyRoot(landscape: Boolean, scale: Float): View {
         fun sd(value: Int) = dp((value * scale).toInt().coerceAtLeast(1))
