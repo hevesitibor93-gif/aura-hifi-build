@@ -2682,108 +2682,244 @@ class MainActivity : Activity() {
      */
     private fun buildStudioFramesOnlyRoot(landscape: Boolean, scale: Float): View {
         fun sd(value: Int) = dp((value * scale).toInt().coerceAtLeast(1))
+        fun detach(view: View) {
+            (view.parent as? ViewGroup)?.removeView(view)
+        }
+        fun key(textValue: String, action: () -> Unit): TextView =
+            TextView(this).apply {
+                text = textValue
+                textSize = 9f
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                setTextColor(Color.rgb(255, 216, 145))
+                setPadding(sd(7), sd(4), sd(7), sd(4))
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(48, 42, 32), Color.rgb(17, 20, 24))
+                ).apply {
+                    cornerRadius = sd(7).toFloat()
+                    setStroke(sd(1), Color.rgb(176, 123, 49))
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { performAuraHaptic(this); action() }
+            }
+
         val frameRoot = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
             background = getDrawable(R.drawable.aura_studio_background)
-            setPadding(sd(8), sd(8), sd(8), sd(8))
+            setPadding(sd(8), sd(6), sd(8), sd(6))
             setOnApplyWindowInsetsListener { view, insets ->
                 val top = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
                 val bottom = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
-                view.setPadding(sd(8), sd(8) + top, sd(8), sd(8) + bottom)
+                view.setPadding(sd(8), sd(6) + top, sd(8), sd(6) + bottom)
                 insets
             }
         }
 
-        fun screw(): View = View(this).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(224, 218, 203), Color.rgb(75, 78, 78), Color.rgb(18, 20, 21))
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(sd(10), sd(4), sd(8), sd(4))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(43, 34, 25), Color.rgb(17, 17, 17), Color.rgb(9, 10, 11))
             ).apply {
-                shape = GradientDrawable.OVAL
-                setStroke(sd(1), Color.rgb(18, 20, 21))
+                cornerRadius = sd(12).toFloat()
+                setStroke(sd(1), Color.rgb(224, 220, 207))
             }
-            elevation = sd(2).toFloat()
         }
-
-        fun chassis(height: Int, variant: Int): FrameLayout {
-            val plate = FrameLayout(this).apply {
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(173, 174, 169), Color.rgb(92, 98, 101), Color.rgb(36, 42, 47), Color.rgb(112, 113, 108))
-                ).apply {
-                    cornerRadius = sd(5).toFloat()
-                    setStroke(sd(2), Color.rgb(190, 178, 150))
-                }
-                elevation = sd(5).toFloat()
-                setPadding(sd(8), sd(7), sd(8), sd(7))
-            }
-            val bevel = FrameLayout(this).apply {
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(15, 19, 23), Color.rgb(49, 54, 57), Color.rgb(10, 13, 16))
-                ).apply {
-                    cornerRadius = sd(3).toFloat()
-                    setStroke(sd(2), Color.rgb(119, 119, 108))
-                }
-            }
-            plate.addView(bevel, FrameLayout.LayoutParams(-1, -1).apply {
-                setMargins(sd(7), sd(6), sd(7), sd(6))
-            })
-
-            // Empty recessed faceplate: only the layered outline is drawn.
-            val inner = FrameLayout(this).apply {
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(7, 10, 13), Color.rgb(18, 22, 25), Color.rgb(5, 8, 11))
-                ).apply {
-                    cornerRadius = sd(2).toFloat()
-                    setStroke(sd(1), Color.rgb(75, 82, 84))
-                }
-            }
-            bevel.addView(inner, FrameLayout.LayoutParams(-1, -1).apply {
-                setMargins(sd(variant + 7), sd(variant + 6), sd(variant + 7), sd(variant + 6))
-            })
-
-            val screwSize = sd(9)
-            listOf(
-                Gravity.TOP or Gravity.LEFT,
-                Gravity.TOP or Gravity.RIGHT,
-                Gravity.BOTTOM or Gravity.LEFT,
-                Gravity.BOTTOM or Gravity.RIGHT
-            ).forEach { gravity ->
-                plate.addView(screw(), FrameLayout.LayoutParams(screwSize, screwSize, gravity).apply {
-                    val x = sd(3)
-                    val y = sd(3)
-                    setMargins(x, y, x, y)
-                })
-            }
-            return plate
-        }
+        header.addView(label("〽 AURA", 21f, Color.rgb(255, 188, 65)).apply {
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            letterSpacing = .08f
+        }, LinearLayout.LayoutParams(-2, -1))
+        header.addView(label("│  Hi-Fi Studio", 12f, Color.rgb(229, 169, 69)).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(sd(9), 0, 0, 0)
+        }, LinearLayout.LayoutParams(0, -1, 1f))
+        header.addView(key("ZENETÁR") { openLibraryPage?.invoke() },
+            LinearLayout.LayoutParams(sd(72), sd(31)))
+        frameRoot.addView(header, LinearLayout.LayoutParams(-1, sd(48)).apply {
+            bottomMargin = sd(7)
+        })
 
         val rack = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(sd(7), sd(7), sd(7), sd(7))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25, 29, 33), Color.rgb(7, 10, 13), Color.rgb(34, 37, 38))
-            ).apply {
-                cornerRadius = sd(8).toFloat()
-                setStroke(sd(2), Color.rgb(137, 126, 102))
+            setPadding(0, 0, 0, 0)
+        }
+        frameRoot.addView(rack, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        fun addPlate(title: String, weight: Float, content: LinearLayout, last: Boolean = false) {
+            val plate = FrameLayout(this).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(73, 77, 78), Color.rgb(38, 43, 47), Color.rgb(20, 24, 28), Color.rgb(55, 58, 58))
+                ).apply {
+                    cornerRadius = sd(8).toFloat()
+                    setStroke(sd(2), Color.rgb(211, 139, 43))
+                }
+                elevation = sd(4).toFloat()
             }
-            elevation = sd(12).toFloat()
+            val face = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(sd(14), sd(7), sd(14), sd(7))
+            }
+            face.addView(label(title, 9f, Color.rgb(255, 193, 76)).apply {
+                typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+                letterSpacing = .1f
+            }, LinearLayout.LayoutParams(-1, sd(17)))
+            face.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
+            plate.addView(face, FrameLayout.LayoutParams(-1, -1))
+            listOf(
+                Gravity.TOP or Gravity.LEFT, Gravity.TOP or Gravity.RIGHT,
+                Gravity.BOTTOM or Gravity.LEFT, Gravity.BOTTOM or Gravity.RIGHT
+            ).forEach { gravity ->
+                val screw = View(this).apply {
+                    background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        intArrayOf(Color.rgb(224, 220, 205), Color.rgb(66, 70, 72), Color.rgb(16, 18, 20))
+                    ).apply { shape = GradientDrawable.OVAL; setStroke(sd(1), Color.rgb(15, 17, 19)) }
+                }
+                plate.addView(screw, FrameLayout.LayoutParams(sd(9), sd(9), gravity).apply {
+                    setMargins(sd(4), sd(4), sd(4), sd(4))
+                })
+            }
+            rack.addView(plate, LinearLayout.LayoutParams(-1, 0, weight).apply {
+                if (!last) bottomMargin = sd(6)
+            })
         }
 
-        if (landscape) {
-            rack.orientation = LinearLayout.HORIZONTAL
-            rack.addView(chassis(150, 1), LinearLayout.LayoutParams(0, sd(150), 1.18f).apply { marginEnd = sd(7) })
-            rack.addView(chassis(150, 2), LinearLayout.LayoutParams(0, sd(150), 1f).apply { marginEnd = sd(7) })
-            rack.addView(chassis(150, 3), LinearLayout.LayoutParams(0, sd(150), 1f))
-        } else {
-            rack.addView(chassis(104, 1), LinearLayout.LayoutParams(-1, sd(104)).apply { bottomMargin = sd(8) })
-            rack.addView(chassis(86, 2), LinearLayout.LayoutParams(-1, sd(86)).apply { bottomMargin = sd(8) })
-            rack.addView(chassis(86, 3), LinearLayout.LayoutParams(-1, sd(86)))
+        // 01 — TUNER: the existing radio status and RDS labels remain live.
+        val tunerContent = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        frameRoot.addView(rack, LinearLayout.LayoutParams(-1, -2).apply {
-            leftMargin = sd(2)
-            rightMargin = sd(2)
-        })
+        val tunerReadout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        radioStatusLabel?.let { detach(it); tunerReadout.addView(it, LinearLayout.LayoutParams(-1, sd(22))) }
+            ?: tunerReadout.addView(label("FM  •  INTERNET RADIO", 11f, Color.rgb(255, 194, 61)))
+        radioSongTitleLabel?.let { detach(it); tunerReadout.addView(it, LinearLayout.LayoutParams(-1, sd(25))) }
+            ?: tunerReadout.addView(label("VÁLASSZ RÁDIÓADÓT", 10f, Color.LTGRAY))
+        tunerNextTrackLabel?.let { detach(it); tunerReadout.addView(it, LinearLayout.LayoutParams(-1, sd(17))) }
+        tunerContent.addView(tunerReadout, LinearLayout.LayoutParams(0, -1, 1f).apply { marginEnd = sd(8) })
+        val tunerKeys = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        tunerKeys.addView(key("ÁLLOMÁSOK") { showRadioStationManager() }, LinearLayout.LayoutParams(sd(92), sd(31)).apply { bottomMargin = sd(5) })
+        tunerKeys.addView(key(if (tunerPowered) "TUNER BE" else "TUNER KI") { toggleTunerPower() }, LinearLayout.LayoutParams(sd(92), sd(31)))
+        tunerContent.addView(tunerKeys)
+        addPlate("01  /  DIGITAL TUNER", 1.0f, tunerContent)
+
+        // 02 — PLAYER: reuse the real artwork, metadata, seek bar and playback button.
+        val playerContent = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val playerTop = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val coverFrame = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = sd(6).toFloat()
+                setColor(Color.rgb(7, 10, 13))
+                setStroke(sd(1), Color.rgb(176, 119, 43))
+            }
+            clipToOutline = true
+        }
+        detach(artworkView)
+        detach(vinylView)
+        coverFrame.addView(artworkView, FrameLayout.LayoutParams(-1, -1))
+        coverFrame.addView(vinylView, FrameLayout.LayoutParams(-1, -1))
+        playerTop.addView(coverFrame, LinearLayout.LayoutParams(sd(64), sd(64)).apply { marginEnd = sd(9) })
+        val trackInfo = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+        detach(trackLabel)
+        detach(metadataLabel)
+        detach(albumLabel)
+        trackLabel.textSize = 13f
+        trackLabel.setTextColor(Color.rgb(255, 194, 61))
+        metadataLabel.textSize = 10f
+        albumLabel.textSize = 9f
+        trackInfo.addView(trackLabel, LinearLayout.LayoutParams(-1, sd(22)))
+        trackInfo.addView(metadataLabel, LinearLayout.LayoutParams(-1, sd(18)))
+        trackInfo.addView(albumLabel, LinearLayout.LayoutParams(-1, sd(16)))
+        playerTop.addView(trackInfo, LinearLayout.LayoutParams(0, -1, 1f))
+        playerContent.addView(playerTop, LinearLayout.LayoutParams(-1, 0, 1f))
+        val playerControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        playerControls.addView(key("◀◀") { playPrevious() }, LinearLayout.LayoutParams(0, sd(31), 1f).apply { marginEnd = sd(5) })
+        detach(playButton)
+        playButton.textSize = 17f
+        playerControls.addView(playButton, LinearLayout.LayoutParams(0, sd(34), 1.15f).apply { marginEnd = sd(5) })
+        playerControls.addView(key("▶▶") { playNext() }, LinearLayout.LayoutParams(0, sd(31), 1f).apply { marginEnd = sd(5) })
+        playerControls.addView(key("ZENETÁR") { openLibraryPage?.invoke() }, LinearLayout.LayoutParams(0, sd(31), 1.25f))
+        playerContent.addView(playerControls, LinearLayout.LayoutParams(-1, sd(35)).apply { topMargin = sd(4) })
+        detach(seekBar)
+        detach(timeLabel)
+        playerContent.addView(seekBar, LinearLayout.LayoutParams(-1, sd(18)))
+        playerContent.addView(timeLabel, LinearLayout.LayoutParams(-1, sd(17)))
+        addPlate("02  /  DIGITAL MUSIC PLAYER", 1.22f, playerContent)
+
+        // 03 — PREAMP: compact live tone controls plus a shortcut to the full 12-band EQ.
+        val preampContent = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val tonePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        fun toneControl(title: String, keyName: String) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(label(title, 8f, Color.rgb(226, 205, 168)), LinearLayout.LayoutParams(sd(48), -2))
+            val slider = SeekBar(this).apply {
+                max = 24
+                progress = (tonePrefs.getInt(keyName, 0) + 12).coerceIn(0, 24)
+                progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 177, 36))
+                thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 190, 58))
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                        if (fromUser) {
+                            tonePrefs.edit().putInt(keyName, value - 12).apply()
+                            applyEqualizerSettings(tonePrefs)
+                        }
+                    }
+                    override fun onStartTrackingTouch(bar: SeekBar?) {}
+                    override fun onStopTrackingTouch(bar: SeekBar?) {}
+                })
+            }
+            row.addView(slider, LinearLayout.LayoutParams(0, sd(25), 1f))
+            preampContent.addView(row, LinearLayout.LayoutParams(-1, sd(27)))
+        }
+        val toneRows = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        toneRows.addView(label("BASS", 8f, Color.rgb(255, 198, 85)), LinearLayout.LayoutParams(0, -2, 1f))
+        toneRows.addView(label("TREBLE", 8f, Color.rgb(255, 198, 85)), LinearLayout.LayoutParams(0, -2, 1f))
+        preampContent.addView(toneRows)
+        toneControl("MÉLY", "eq_bass")
+        toneControl("MAGAS", "eq_treble")
+        preampContent.addView(key("12 SÁVOS EQUALIZER  ›") { openEqualizerPage?.invoke() },
+            LinearLayout.LayoutParams(-1, sd(29)).apply { topMargin = sd(2) })
+        addPlate("03  /  PRE AMPLIFIER  •  12 BAND EQ", 1.05f, preampContent)
+
+        // 04 — POWER AMP: retain the real audio-session VU meter and DSP controls.
+        val powerContent = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        detach(vu)
+        powerContent.addView(vu, LinearLayout.LayoutParams(0, sd(66), 1f).apply { marginEnd = sd(8) })
+        val ampStatus = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        ampStatus.addView(label("●  POWER", 9f, Color.rgb(143, 232, 74)), LinearLayout.LayoutParams(-1, sd(20)))
+        ampStatus.addView(label("●  PROTECT", 8f, Color.rgb(150, 155, 157)), LinearLayout.LayoutParams(-1, sd(18)))
+        ampStatus.addView(key("DSP / A-B") { openSoundEnginePage?.invoke() }, LinearLayout.LayoutParams(sd(91), sd(31)).apply { topMargin = sd(4) })
+        powerContent.addView(ampStatus)
+        addPlate("04  /  POWER AMPLIFIER  •  L / R", 1.05f, powerContent, true)
+
+        val feet = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(sd(12), sd(5), sd(12), 0)
+        }
+        repeat(2) {
+            val light = View(this).apply {
+                background = GradientDrawable().apply {
+                    cornerRadius = sd(8).toFloat()
+                    setColor(Color.rgb(218, 137, 35))
+                }
+                elevation = sd(7).toFloat()
+            }
+            feet.addView(light, LinearLayout.LayoutParams(sd(34), sd(6)).apply {
+                if (it == 0) marginEnd = 0 else marginStart = 0
+            })
+            if (it == 0) feet.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        }
+        frameRoot.addView(feet, LinearLayout.LayoutParams(-1, sd(15)))
         return frameRoot
     }
 
