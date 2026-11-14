@@ -1928,6 +1928,9 @@ class MainActivity : Activity() {
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
         appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        appearanceSettingsPage.addView(button("◈  AURA STUDIO  •  ÚJ TÉMA", Color.rgb(66, 46, 25), Color.rgb(255, 211, 133)) {
+            startActivity(Intent(this, AuraStudioActivity::class.java))
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(12) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
