@@ -77,7 +77,7 @@ jobs:
               "Base", "Container", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
               "ScreenMain", "RunningLine", "TimeDisplay", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
               "SpectrumA1", "SpecModeA", "ButtonStop", "ButtonOpen", "ButtonSleep",
-              "ButtonShuffle", "ButtonRepeat", "VUPPMMode", "ButtonTopMainMenu", "ButtonTopOptions",
+              "ButtonShuffle", "ButtonRepeat", "ButtonManager", "ButtonLibrary", "ButtonRadio", "VUPPMMode", "ButtonTopMainMenu", "ButtonTopOptions",
               "ButtonTopUtilities", "CloseBtn", "ToTrayBtn"
           )
           imported = 0
