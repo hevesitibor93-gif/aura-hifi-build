@@ -170,6 +170,7 @@ class MainActivity : Activity() {
     private var onixSpectrumView: OnixSpectrumView? = null
     private var onixVisualizer: Visualizer? = null
     private var onixSpectrumMode = 0
+    private var onixVuMode = 0
     private val onixSpectrumPermissionRequest = 7901
     private val abQuickButtons = mutableMapOf<String, Button>()
     private var abQuickStatus: TextView? = null
@@ -949,12 +950,14 @@ class MainActivity : Activity() {
             background = if (isOnix)
                 GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(2, 4, 8), Color.rgb(19, 25, 34), Color.rgb(3, 6, 11)))
             else GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
-            setPadding(dp(if (isOnix) 10 else 18), dp(12), dp(if (isOnix) 10 else 18), dp(12))
+            val landscapeOnix = isOnix && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            setPadding(dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18), dp(if (landscapeOnix) 0 else 12), dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18), dp(if (landscapeOnix) 0 else 12))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
                 val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
-                val sidePadding = dp(if (isOnix) 10 else 18)
-                view.setPadding(sidePadding, dp(12) + topInset, sidePadding, dp(12) + bottomInset)
+                val landscapeOnix = isOnix && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                val sidePadding = dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18)
+                view.setPadding(sidePadding, (if (landscapeOnix) 0 else dp(12)) + topInset, sidePadding, (if (landscapeOnix) 0 else dp(12)) + bottomInset)
                 insets
             }
         }
@@ -1122,7 +1125,7 @@ class MainActivity : Activity() {
             val deck = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(12), dp(8), dp(12), dp(8))
+                setPadding(dp(3), dp(2), dp(3), dp(2))
                 // Átlátszó fedélzet: az eredeti BLACK-ONIX háttérkép teljesen látható marad.
                 background = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
             }
@@ -1132,7 +1135,7 @@ class MainActivity : Activity() {
             sideVuLeft = VuView(true, 0).apply { setStyle("car"); setActive(player?.isPlaying == true) }
             sideVuRight = VuView(true, 1).apply { setStyle("car"); setActive(player?.isPlaying == true) }
             val visualRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-            visualRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(12), dp(62)).apply { marginEnd = dp(5) })
+            visualRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(18), dp(58)).apply { marginEnd = dp(4) })
             val spectrumDeck = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
             onixSpectrumView = OnixSpectrumView()
             spectrumDeck.addView(onixSpectrumView, LinearLayout.LayoutParams(-1, dp(52)))
@@ -1152,9 +1155,31 @@ class MainActivity : Activity() {
                 modeRow.addView(b, LinearLayout.LayoutParams(dp(28), dp(16)))
             }
             spectrumDeck.addView(modeRow)
-            visualRow.addView(spectrumDeck, LinearLayout.LayoutParams(0, dp(64), 1f))
-            visualRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(12), dp(62)).apply { marginStart = dp(5) })
-            deck.addView(visualRow, LinearLayout.LayoutParams(-1, dp(66)))
+            visualRow.addView(spectrumDeck, LinearLayout.LayoutParams(0, dp(60), 1f))
+            visualRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(18), dp(58)).apply { marginStart = dp(4) })
+            deck.addView(visualRow, LinearLayout.LayoutParams(-1, dp(62)))
+
+            val vuModeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+            vuModeRow.addView(label("VU", 8f, Color.rgb(170, 180, 192)).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(-2, dp(18)).apply { marginEnd = dp(5) })
+            listOf("1", "2", "3").forEachIndexed { index, caption ->
+                val modeButton = TextView(this).apply {
+                    text = caption; textSize = 8f; gravity = Gravity.CENTER
+                    setTextColor(if (index == onixVuMode) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
+                    setPadding(dp(7), 0, dp(7), 0)
+                    setOnClickListener {
+                        onixVuMode = index
+                        sideVuLeft?.setOnixMode(index)
+                        sideVuRight?.setOnixMode(index)
+                        for (n in 0 until vuModeRow.childCount) {
+                            val child = vuModeRow.getChildAt(n)
+                            if (child is TextView && child.text.toString() in listOf("1", "2", "3"))
+                                child.setTextColor(if (child.text.toString().toInt() - 1 == index) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
+                        }
+                    }
+                }
+                vuModeRow.addView(modeButton, LinearLayout.LayoutParams(dp(22), dp(18)))
+            }
+            deck.addView(vuModeRow, LinearLayout.LayoutParams(-1, dp(18)))
 
             trackLabel.apply {
                 textSize = 17f
@@ -1226,6 +1251,7 @@ class MainActivity : Activity() {
             })
             deck.addView(onixModes, LinearLayout.LayoutParams(-1, dp(34)))
 
+            playerPage.gravity = Gravity.CENTER
             playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
             startOnixVisualizer()
             artFrame.visibility = View.GONE
@@ -5335,7 +5361,7 @@ class MainActivity : Activity() {
         if (counter != null && elapsed != null) {
             timeLabel.text = "-${formatTime(duration - position)}"
             elapsed.text = formatTime(position)
-            counter.text = if (queue.isEmpty()) "0/0" else "${(currentIndex + 1).coerceAtMost(queue.size)}/${queue.size}"
+            counter.text = if (queue.isEmpty()) "0 HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} HÁTRA"
         } else {
             timeLabel.text = if (activeRadioStationName != null) timeText else "$timeText   •   $trackCount"
         }
@@ -5509,6 +5535,8 @@ class MainActivity : Activity() {
         private var left = 0f
         private var right = 0f
         private var style = "car"
+        private var onixMode = 0
+        fun setOnixMode(value: Int) { onixMode = value.coerceIn(0, 2); invalidate() }
         private var brightness = 80
         private var animationEnabled = true
         private var active = false
@@ -5638,7 +5666,11 @@ class MainActivity : Activity() {
 
         private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
             if (blackOnixSkinEnabled) {
-                drawBlackOnixVertical(c, w, h)
+                when (onixMode) {
+                    0 -> drawBlackOnixVertical(c, w, h)
+                    1 -> drawVerticalMultiBand(c, w, h)
+                    else -> drawCustomVertical(c, w, h, false)
+                }
                 return
             }
             if (style == "line" || style == "custom") { drawCustomVertical(c, w, h, style == "line"); return }
