@@ -334,7 +334,7 @@ class MplayThemeActivity : Activity() {
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
             }
-            valueLabel.text = "\${prefs.getInt("eq_band_$index", 0).coerceIn(-12, 12)} dB"
+            valueLabel.text = "${prefs.getInt("eq_band_$index", 0).coerceIn(-12, 12)} dB"
             card.addView(TextView(this).apply {
                 text = name
                 textSize = 9f
@@ -365,7 +365,7 @@ class MplayThemeActivity : Activity() {
                 thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(230, 174, 82))
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                        current.text = "$label  \${"%.1f".format(java.util.Locale.ROOT, progress / 10f)} dB"
+                        current.text = "$label  ${"%.1f".format(java.util.Locale.ROOT, progress / 10f)} dB"
                         if (fromUser) {
                             prefs.edit().putInt(key, progress).apply()
                             if (key == "eq_bass") AuraPlaybackService.eqProcessor.setBassBoostDb(progress / 10f)
@@ -376,7 +376,7 @@ class MplayThemeActivity : Activity() {
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
             }
-            current.text = "$label  \${"%.1f".format(java.util.Locale.ROOT, bar.progress / 10f)} dB"
+            current.text = "$label  ${"%.1f".format(java.util.Locale.ROOT, bar.progress / 10f)} dB"
             column.addView(current)
             column.addView(bar, LinearLayout.LayoutParams(-1, dp(30)))
             toneRow.addView(column, LinearLayout.LayoutParams(0, -2, 1f).apply {
