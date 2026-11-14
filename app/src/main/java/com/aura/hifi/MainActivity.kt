@@ -953,11 +953,14 @@ class MainActivity : Activity() {
             val landscapeOnix = isOnix && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             setPadding(dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18), dp(if (landscapeOnix) 0 else 12), dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18), dp(if (landscapeOnix) 0 else 12))
             setOnApplyWindowInsetsListener { view, insets ->
-                val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
-                val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
+                val systemInsets = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.systemBars()) else null
+                val topInset = systemInsets?.top ?: insets.systemWindowInsetTop
+                val bottomInset = systemInsets?.bottom ?: insets.systemWindowInsetBottom
                 val landscapeOnix = isOnix && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
                 val sidePadding = dp(if (landscapeOnix) 0 else if (isOnix) 10 else 18)
-                view.setPadding(sidePadding, (if (landscapeOnix) 0 else dp(12)) + topInset, sidePadding, (if (landscapeOnix) 0 else dp(12)) + bottomInset)
+                val leftInset = if (landscapeOnix) (systemInsets?.left ?: insets.systemWindowInsetLeft) else 0
+                val rightInset = if (landscapeOnix) (systemInsets?.right ?: insets.systemWindowInsetRight) else 0
+                view.setPadding(sidePadding + leftInset, (if (landscapeOnix) 0 else dp(12)) + topInset, sidePadding + rightInset, (if (landscapeOnix) 0 else dp(12)) + bottomInset)
                 insets
             }
         }
