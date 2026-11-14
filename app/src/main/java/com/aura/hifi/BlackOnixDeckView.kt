@@ -40,7 +40,8 @@ class BlackOnixDeckView(
     private val onMainMenu: () -> Unit,
     private val onMinimize: () -> Unit,
     private val onExit: () -> Unit,
-    private val onVuModeChanged: (Int) -> Unit
+    private val onVuModeChanged: (Int) -> Unit,
+    private val onSpectrumModeChanged: (Int) -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -52,6 +53,7 @@ class BlackOnixDeckView(
     private var repeatMode = 0
     private var trackCounter = "0 DAL HÁTRA"
     private var vuMode = 0
+    private var spectrumMode = 0
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
     private var fft = ByteArray(0)
@@ -180,6 +182,12 @@ class BlackOnixDeckView(
         invalidate()
     }
 
+    fun setSpectrumMode(mode: Int) {
+        spectrumMode = mode.coerceIn(0, 2)
+        onSpectrumModeChanged(spectrumMode)
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val scale = min(width / 899f, height / 401f)
@@ -212,6 +220,9 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f, if (vuMode == 0) 1 else 0, 6)
         sprite(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f, if (vuMode == 1) 3 else 2, 6)
         sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode == 2) 5 else 4, 6)
+        sprite(R.drawable.onix_s_mode_a_skin, canvas, 799f, 223f, 21f, 25f, if (spectrumMode == 0) 1 else 0, 6)
+        sprite(R.drawable.onix_s_mode_b_skin, canvas, 829f, 223f, 21f, 25f, if (spectrumMode == 1) 3 else 2, 6)
+        sprite(R.drawable.onix_s_mode_c_skin, canvas, 859f, 223f, 21f, 25f, if (spectrumMode == 2) 5 else 4, 6)
 
         // Original scrolling-title strip and the two time readouts.
         sprite(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f, 0, 2)
@@ -246,20 +257,41 @@ class BlackOnixDeckView(
 
         // SpectrumA1 is positioned inside SpecModeA1: container origin (279,159),
         // control margins (6,0,5,3), exact 330x80 display area.
-        draw(R.drawable.onix_spec_mode_a1_texture, canvas, 279f, 159f, 341f, 99f)
+        val spectrumBackground = when (spectrumMode) {
+            1 -> R.drawable.onix_spec_mode_b1_texture
+            2 -> R.drawable.onix_spec_mode_c1_texture
+            else -> R.drawable.onix_spec_mode_a1_texture
+        }
+        draw(spectrumBackground, canvas, 279f, 159f, 341f, 99f)
         for (i in 0 until 30) {
             val value = spectrumLevels[i].coerceIn(0f, 1f)
-            val barHeight = max(2f, value * 73f)
             val x = 286f + i * 11f
             val t = i / 29f
             val red = if (t < .62f) (45 + t / .62f * 190).toInt() else 235
             val green = if (t < .62f) 205 else (205 - (t - .62f) / .38f * 150).toInt()
             val blue = if (t < .62f) 95 else 45
             spectrumPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), blue)
-            canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
-            if (value > .12f) {
-                spectrumPaint.color = Color.argb(150, 245, 220, 160)
-                canvas.drawRect(x, 239f - barHeight, x + 8f, 237f - barHeight, spectrumPaint)
+            when (spectrumMode) {
+                1 -> {
+                    val barHeight = max(1.5f, value * 34f)
+                    canvas.drawRoundRect(RectF(x, 199f - barHeight, x + 8f, 199f + barHeight), 1.5f, 1.5f, spectrumPaint)
+                }
+                2 -> {
+                    val segments = 8
+                    val lit = (value * segments).toInt().coerceIn(0, segments)
+                    for (segment in 0 until lit) {
+                        val top = 239f - (segment + 1) * 9f
+                        canvas.drawRoundRect(RectF(x, top, x + 8f, top + 7f), 1f, 1f, spectrumPaint)
+                    }
+                }
+                else -> {
+                    val barHeight = max(2f, value * 73f)
+                    canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
+                    if (value > .12f) {
+                        spectrumPaint.color = Color.argb(150, 245, 220, 160)
+                        canvas.drawRect(x, 239f - barHeight, x + 8f, 237f - barHeight, spectrumPaint)
+                    }
+                }
             }
         }
 
@@ -366,6 +398,9 @@ class BlackOnixDeckView(
         hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(2) }
+        hitTargets += RectF(799f, 223f, 820f, 248f) to { setSpectrumMode(0) }
+        hitTargets += RectF(829f, 223f, 850f, 248f) to { setSpectrumMode(1) }
+        hitTargets += RectF(859f, 223f, 880f, 248f) to { setSpectrumMode(2) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
