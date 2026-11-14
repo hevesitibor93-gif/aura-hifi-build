@@ -76,7 +76,7 @@ jobs:
           prefixes = (
               "Base", "Container", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
               "ScreenMain", "VUMode", "PPMMode", "RunningLine", "TimeDisplay", "TimeSystem", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
-              "SpectrumA1", "SpecMode", "SMode", "ButtonStop", "ButtonOpen", "ButtonSleep",
+              "SpectrumA1", "SpecMode", "SMode", "ButtonStop", "ButtonOpen", "ButtonSleep", "ButtonMuteVolume",
               "ButtonShuffle", "ButtonRepeat", "ButtonManager", "ButtonLibrary", "ButtonRadio", "PLScr", "EQScr", "VUPPMMode", "ButtonTopMainMenu", "ButtonTopOptions",
               "ButtonTopUtilities", "CloseBtn", "ToTrayBtn"
           )
