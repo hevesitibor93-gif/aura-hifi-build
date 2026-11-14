@@ -65,6 +65,37 @@ jobs:
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
+      - name: Import complete BLACK-ONIX player layers and meters
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("black-onix-assets/Images")
+          target = Path("app/src/main/res/drawable-nodpi")
+          target.mkdir(parents=True, exist_ok=True)
+          prefixes = (
+              "Base", "ContainerMain", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
+              "RunningLine", "TimeDisplay", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
+              "SpectrumA1", "SpecModeA", "ButtonStop", "ButtonOpen", "ButtonSleep",
+              "ButtonShuffle", "ButtonRepeat", "ButtonTopMainMenu", "ButtonTopOptions",
+              "ButtonTopUtilities", "CloseBtn", "ToTrayBtn"
+          )
+          imported = 0
+          for path in sorted(source.glob("*.png")):
+              if not path.name.startswith(prefixes):
+                  continue
+              stem = path.name[:-4]
+              resource = re.sub(r"[^a-zA-Z0-9]+", "_", stem).strip("_").lower()
+              if not resource or not resource[0].isalpha():
+                  continue
+              path_out = target / f"onix_{resource}.png"
+              path_out.write_bytes(path.read_bytes())
+              imported += 1
+          print(f"Imported {imported} original BLACK-ONIX image assets")
+          if imported < 40:
+              raise SystemExit("BLACK-ONIX asset import unexpectedly incomplete")
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
