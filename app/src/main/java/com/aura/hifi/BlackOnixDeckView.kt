@@ -30,7 +30,15 @@ class BlackOnixDeckView(
     private val onShuffle: () -> Unit,
     private val onRepeat: () -> Unit,
     private val onOpen: () -> Unit,
-    private val onSleep: () -> Unit
+    private val onSleep: () -> Unit,
+    private val onPlaylist: () -> Unit,
+    private val onEqualizer: () -> Unit,
+    private val onUtilities: () -> Unit,
+    private val onRadio: () -> Unit,
+    private val onSettings: () -> Unit,
+    private val onMainMenu: () -> Unit,
+    private val onMinimize: () -> Unit,
+    private val onExit: () -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -45,6 +53,7 @@ class BlackOnixDeckView(
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
     private var fft = ByteArray(0)
+    private val spectrumLevels = FloatArray(30)
     private var scroll = 0f
     private var lastFrame = 0L
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -107,19 +116,37 @@ class BlackOnixDeckView(
 
     fun setFft(data: ByteArray?) {
         fft = data?.copyOf() ?: ByteArray(0)
-        var l = 0f
-        var r = 0f
         if (fft.size > 8) {
-            val half = fft.size / 2
-            for (i in 2 until min(half, 48)) {
-                val re = fft[i * 2].toInt()
-                val im = fft[i * 2 + 1].toInt()
-                val mag = (kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat() / 180f).coerceIn(0f, 1f)
-                if (i < 24) l = max(l, mag) else r = max(r, mag)
+            val bins = fft.size / 2
+            for (i in 0 until 30) {
+                val startBin = (2.0.pow(i / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(1)
+                val endBin = (2.0.pow((i + 1) / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(startBin + 1)
+                var peak = 0f
+                for (bin in startBin until min(endBin, bins - 1)) {
+                    val offset = 2 + bin * 2
+                    if (offset + 1 >= fft.size) break
+                    val re = fft[offset].toInt()
+                    val im = fft[offset + 1].toInt()
+                    peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
+                }
+                val target = (peak / 155f).coerceIn(0f, 1f).let { kotlin.math.sqrt(it) }
+                spectrumLevels[i] = if (target > spectrumLevels[i]) {
+                    spectrumLevels[i] * .32f + target * .68f
+                } else {
+                    spectrumLevels[i] * .82f + target * .18f
+                }
             }
+        } else {
+            for (i in spectrumLevels.indices) spectrumLevels[i] *= .82f
         }
-        leftLevel = (leftLevel * .55f + l * .45f).coerceIn(.02f, 1f)
-        rightLevel = (rightLevel * .55f + r * .45f).coerceIn(.02f, 1f)
+        postInvalidateOnAnimation()
+    }
+
+    fun setLevels(left: Float, right: Float) {
+        val l = left.coerceIn(0f, 1f)
+        val r = right.coerceIn(0f, 1f)
+        leftLevel = if (l >= leftLevel) leftLevel * .28f + l * .72f else leftLevel * .78f + l * .22f
+        rightLevel = if (r >= rightLevel) rightLevel * .28f + r * .72f else rightLevel * .78f + r * .22f
         postInvalidateOnAnimation()
     }
 
@@ -192,29 +219,22 @@ class BlackOnixDeckView(
         spriteHorizontal(R.drawable.onix_vu_right_l_skin, canvas, 625f, 159f, 5f, 82f, rf, 2)
         spriteHorizontal(R.drawable.onix_vu_right_r_skin, canvas, 631f, 159f, 5f, 82f, rf, 2)
 
-        // Spectrum area: FFT-driven bars in the original A1 spectrum window.
-        draw(R.drawable.onix_spec_mode_a1_texture, canvas, 285f, 175f, 330f, 80f)
-        val bars = 30
-        val gap = 2.2f
-        val bw = (326f - gap * (bars - 1)) / bars
-        for (i in 0 until bars) {
-            val rawIndex = 2 + i * 2
-            val value = if (rawIndex + 1 < fft.size) {
-                val re = fft[rawIndex].toInt()
-                val im = fft[rawIndex + 1].toInt()
-                (kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat() / 145f).coerceIn(0f, 1f)
-            } else 0.025f
-            val bh = max(2f, value * 66f)
-            val x = 287f + i * (bw + gap)
-            val spectrumSkin = bitmap(R.drawable.onix_spectrum_a1_skin)
-            if (spectrumSkin != null) {
-                val sourceX = (i * spectrumSkin.width / bars).coerceAtMost(spectrumSkin.width - 1)
-                val sourceRight = ((i + 1) * spectrumSkin.width / bars).coerceAtMost(spectrumSkin.width)
-                val sourceTop = (spectrumSkin.height - bh.toInt().coerceAtLeast(1)).coerceAtLeast(0)
+        // SpectrumA1 is positioned inside SpecModeA1: container origin (279,159),
+        // control margins (6,0,5,3), exact 330x80 display area.
+        draw(R.drawable.onix_spec_mode_a1_texture, canvas, 279f, 159f, 341f, 99f)
+        val spectrumSkin = bitmap(R.drawable.onix_spectrum_a1_skin)
+        if (spectrumSkin != null) {
+            for (i in 0 until 30) {
+                val value = spectrumLevels[i]
+                val barHeight = max(1f, value * 74f)
+                val sourceLeft = (i * spectrumSkin.width / 30).coerceAtMost(spectrumSkin.width - 1)
+                val sourceRight = ((i + 1) * spectrumSkin.width / 30).coerceAtMost(spectrumSkin.width)
+                val sourceTop = (spectrumSkin.height - barHeight.toInt()).coerceAtLeast(0)
+                val x = 285f + i * 11f
                 canvas.drawBitmap(
                     spectrumSkin,
-                    Rect(sourceX, sourceTop, sourceRight, spectrumSkin.height),
-                    RectF(x, 250f - bh, x + bw, 250f),
+                    Rect(sourceLeft, sourceTop, sourceRight, spectrumSkin.height),
+                    RectF(x, 239f - barHeight, x + 11f, 239f),
                     paint
                 )
             }
@@ -233,15 +253,27 @@ class BlackOnixDeckView(
         sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
         sprite(prefixVu[3], canvas, 327f, 154f, 245f, 6f, frameR, 36)
 
-        // Transport controls keep the source skin's sprite artwork.
+        // Top bar: original AIMP skin controls in ContainerMainTop and BaseTop.
+        sprite(R.drawable.onix_button_top_main_menu_skin, canvas, 10f, 27f, 23f, 23f, 0, 4)
+        sprite(R.drawable.onix_button_top_options_skin, canvas, 40f, 27f, 23f, 23f, 0, 4)
+        sprite(R.drawable.onix_button_top_utilities_skin, canvas, 70f, 27f, 23f, 23f, 0, 4)
+        sprite(R.drawable.onix_to_tray_btn_skin, canvas, 805f, 27f, 23f, 23f, 0, 4)
+        sprite(R.drawable.onix_close_btn_skin, canvas, 865f, 27f, 23f, 23f, 0, 4)
+
+        // Original upper action row (ContainerMainTop starts at x=113, y=57).
+        sprite(R.drawable.onix_button_open_skin, canvas, 511f, 73f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_sleep_skin, canvas, 547f, 73f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_manager_skin, canvas, 583f, 73f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_library_skin, canvas, 619f, 73f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_repeat_skin, canvas, 655f, 73f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_shuffle_skin, canvas, 691f, 73f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_radio_skin, canvas, 727f, 73f, 37f, 27f, 0, 6)
+
+        // Original five-button transport row in its source order.
         sprite(R.drawable.black_onix_prev_normal, canvas, 123f, 328f, 73f, 49f, 0, 1)
-        sprite(if (playing) R.drawable.black_onix_pause_normal else R.drawable.black_onix_play_normal, canvas, 196f, 328f, 73f, 49f, 0, 1)
-        sprite(R.drawable.black_onix_next_normal, canvas, 269f, 328f, 73f, 49f, 0, 1)
-        sprite(R.drawable.onix_button_stop_skin, canvas, 342f, 328f, 73f, 49f, 0, 8)
-        sprite(R.drawable.onix_button_open_skin, canvas, 515f, 339f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_sleep_skin, canvas, 551f, 339f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
-        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_stop_skin, canvas, 196f, 328f, 73f, 49f, 0, 8)
+        sprite(if (playing) R.drawable.black_onix_pause_normal else R.drawable.black_onix_play_normal, canvas, 269f, 328f, 73f, 49f, 0, 1)
+        sprite(R.drawable.black_onix_next_normal, canvas, 415f, 328f, 73f, 49f, 0, 1)
         canvas.restore()
         buildHitTargets()
     }
@@ -267,13 +299,22 @@ class BlackOnixDeckView(
     private fun buildHitTargets() {
         hitTargets.clear()
         hitTargets += RectF(123f, 328f, 196f, 377f) to onPrevious
-        hitTargets += RectF(196f, 328f, 269f, 377f) to onPlayPause
-        hitTargets += RectF(269f, 328f, 342f, 377f) to onNext
-        hitTargets += RectF(342f, 328f, 415f, 377f) to onStop
-        hitTargets += RectF(515f, 339f, 552f, 366f) to onOpen
-        hitTargets += RectF(551f, 339f, 588f, 366f) to onSleep
-        hitTargets += RectF(659f, 339f, 696f, 366f) to onRepeat
-        hitTargets += RectF(695f, 339f, 732f, 366f) to onShuffle
+        hitTargets += RectF(196f, 328f, 269f, 377f) to onStop
+        hitTargets += RectF(269f, 328f, 342f, 377f) to onPlayPause
+        hitTargets += RectF(342f, 328f, 415f, 377f) to onPlayPause
+        hitTargets += RectF(415f, 328f, 488f, 377f) to onNext
+        hitTargets += RectF(511f, 73f, 548f, 100f) to onOpen
+        hitTargets += RectF(547f, 73f, 584f, 100f) to onSleep
+        hitTargets += RectF(583f, 73f, 620f, 100f) to onEqualizer
+        hitTargets += RectF(619f, 73f, 656f, 100f) to onPlaylist
+        hitTargets += RectF(655f, 73f, 692f, 100f) to onRepeat
+        hitTargets += RectF(691f, 73f, 728f, 100f) to onShuffle
+        hitTargets += RectF(727f, 73f, 764f, 100f) to onRadio
+        hitTargets += RectF(10f, 27f, 33f, 50f) to onMainMenu
+        hitTargets += RectF(40f, 27f, 63f, 50f) to onSettings
+        hitTargets += RectF(70f, 27f, 93f, 50f) to onUtilities
+        hitTargets += RectF(805f, 27f, 828f, 50f) to onMinimize
+        hitTargets += RectF(865f, 27f, 888f, 50f) to onExit
         hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(2) }
