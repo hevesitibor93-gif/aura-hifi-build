@@ -176,6 +176,8 @@ class MainActivity : Activity() {
     private var onixVisualizerSessionId = 0
     private var onixSpectrumMode = 0
     private var onixVuMode = 0
+    private var onixMuted = false
+    private var onixPreMuteVolume = 1f
     private val onixSpectrumPermissionRequest = 7901
     private val abQuickButtons = mutableMapOf<String, Button>()
     private var abQuickStatus: TextView? = null
@@ -833,6 +835,19 @@ class MainActivity : Activity() {
         getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean(prefix + name, value).apply()
     }
 
+    private fun toggleOnixMute() {
+        val p = player ?: return
+        if (onixMuted) {
+            p.volume = onixPreMuteVolume.coerceIn(0f, 1f).takeIf { it > 0f } ?: 1f
+            onixMuted = false
+        } else {
+            onixPreMuteVolume = p.volume.coerceIn(0f, 1f).takeIf { it > 0f } ?: 1f
+            p.volume = 0f
+            onixMuted = true
+        }
+        blackOnixDeck?.setMuted(onixMuted)
+    }
+
     private fun setVuActive(value: Boolean) {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
@@ -1170,13 +1185,15 @@ class MainActivity : Activity() {
                     onixSpectrumMode = mode
                     getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_spectrum_mode", mode).apply()
                 },
-                onSeekTo = { position -> player?.seekTo(position) }
+                onSeekTo = { position -> player?.seekTo(position) },
+                onMute = { toggleOnixMute() }
             )
             blackOnixDeck = deck
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-            onixVuMode = onixPrefs.getInt("onix_vu_mode", onixVuMode).coerceIn(0, 2)
+            onixVuMode = onixPrefs.getInt("onix_vu_mode", onixVuMode).coerceIn(0, 3)
             onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", onixSpectrumMode).coerceIn(0, 2)
             deck.setVuMode(onixVuMode)
+            deck.setMuted(onixMuted)
             deck.setSpectrumMode(onixSpectrumMode)
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
             val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
