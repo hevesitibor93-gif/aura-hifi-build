@@ -12,6 +12,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -32,6 +33,7 @@ class MplayThemeActivity : Activity() {
     private var playButton: Button? = null
     private var leftBars: List<View> = emptyList()
     private var rightBars: List<View> = emptyList()
+    private var eqDeck: LinearLayout? = null
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -184,6 +186,13 @@ class MplayThemeActivity : Activity() {
         ampDeck.addView(volumeRow)
         rack.addView(ampDeck)
 
+        val eqToggle = actionButton("EQUALIZER  •  12 BAND") {
+            eqDeck?.visibility = if (eqDeck?.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
+        rack.addView(eqToggle, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(10) })
+        eqDeck = buildEqDeck().apply { visibility = View.GONE }
+        rack.addView(eqDeck)
+
         val libraryDeck = chassis(112, LinearLayout.HORIZONTAL)
         val libraryText = TextView(this).apply {
             text = "LOCAL LIBRARY\nAURA ZENETÁR"
@@ -250,6 +259,142 @@ class MplayThemeActivity : Activity() {
             setStroke(dp(2), Color.rgb(5, 7, 7))
         }
         elevation = dp(3).toFloat()
+    }
+
+    private fun buildEqDeck(): LinearLayout {
+        val deck = chassis(202)
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        deck.addView(TextView(this).apply {
+            text = "AURA EQUALIZER  •  12 BAND"
+            textSize = 10f
+            letterSpacing = 0.12f
+            setTextColor(Color.rgb(211, 174, 105))
+            setPadding(0, 0, 0, dp(7))
+        })
+        val presets = listOf(
+            "FLAT" to intArrayOf(0,0,0,0,0,0,0,0,0,0,0,0),
+            "ROCK" to intArrayOf(5,4,3,1,-1,-1,0,2,4,5,5,4),
+            "POP" to intArrayOf(-1,1,3,4,2,0,-1,-1,1,2,2,2),
+            "JAZZ" to intArrayOf(3,2,1,0,-1,-1,0,2,3,3,2,1),
+            "CLASSIC" to intArrayOf(4,3,2,1,-1,-2,-1,1,2,3,3,3),
+            "DANCE" to intArrayOf(5,4,2,0,0,2,3,4,4,3,2,1)
+        )
+        val presetScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val presetRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        presets.forEach { preset ->
+            presetRow.addView(actionButton(preset.first) {
+                val edit = prefs.edit()
+                preset.second.forEachIndexed { index, value ->
+                    edit.putInt("eq_band_$index", value)
+                    AuraPlaybackService.eqProcessor.setBandGainDb(index, value.toFloat())
+                }
+                edit.apply()
+                refreshEqControls(deck)
+            }, LinearLayout.LayoutParams(dp(66), dp(31)).apply { marginEnd = dp(5) })
+        }
+        presetScroll.addView(presetRow)
+        deck.addView(presetScroll, LinearLayout.LayoutParams(-1, dp(34)))
+
+        val bandScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val bandRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val names = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "12k", "14k", "16k")
+        names.forEachIndexed { index, name ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = displayWell().background
+                setPadding(dp(5), dp(4), dp(5), dp(3))
+            }
+            val valueLabel = TextView(this).apply {
+                textSize = 9f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(211, 174, 105))
+            }
+            val bandBar = SeekBar(this).apply {
+                max = 24
+                progress = prefs.getInt("eq_band_$index", 0).coerceIn(-12, 12) + 12
+                progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(201, 137, 48))
+                thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(230, 174, 82))
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                        val db = progress - 12
+                        valueLabel.text = if (db > 0) "+$db dB" else "$db dB"
+                        if (fromUser) {
+                            prefs.edit().putInt("eq_band_$index", db).apply()
+                            AuraPlaybackService.eqProcessor.setBandGainDb(index, db.toFloat())
+                        }
+                    }
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                })
+            }
+            valueLabel.text = "\${prefs.getInt("eq_band_$index", 0).coerceIn(-12, 12)} dB"
+            card.addView(TextView(this).apply {
+                text = name
+                textSize = 9f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(180, 174, 159))
+            })
+            card.addView(valueLabel)
+            card.addView(bandBar, LinearLayout.LayoutParams(dp(78), dp(34)))
+            bandRow.addView(card, LinearLayout.LayoutParams(dp(88), dp(76)).apply { marginEnd = dp(5) })
+        }
+        bandScroll.addView(bandRow)
+        deck.addView(bandScroll, LinearLayout.LayoutParams(-1, dp(82)).apply { topMargin = dp(7) })
+
+        val toneRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        listOf("BASS" to "eq_bass", "TREBLE" to "eq_treble").forEach { (label, key) ->
+            val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val current = TextView(this).apply {
+                textSize = 9f
+                setTextColor(Color.rgb(211, 174, 105))
+            }
+            val bar = SeekBar(this).apply {
+                max = 120
+                progress = prefs.getInt(key, 0).coerceIn(0, 120)
+                progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(201, 137, 48))
+                thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(230, 174, 82))
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                        current.text = "$label  \${"%.1f".format(java.util.Locale.ROOT, progress / 10f)} dB"
+                        if (fromUser) {
+                            prefs.edit().putInt(key, progress).apply()
+                            if (key == "eq_bass") AuraPlaybackService.eqProcessor.setBassBoostDb(progress / 10f)
+                            else AuraPlaybackService.eqProcessor.setTrebleBoostDb(progress / 10f)
+                        }
+                    }
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                })
+            }
+            current.text = "$label  \${"%.1f".format(java.util.Locale.ROOT, bar.progress / 10f)} dB"
+            column.addView(current)
+            column.addView(bar, LinearLayout.LayoutParams(-1, dp(30)))
+            toneRow.addView(column, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                if (label == "BASS") marginEnd = dp(8) else marginStart = dp(8)
+            })
+        }
+        deck.addView(toneRow, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(3) })
+        return deck
+    }
+
+    private fun refreshEqControls(oldDeck: LinearLayout) {
+        val parent = oldDeck.parent as? ViewGroup ?: return
+        val index = parent.indexOfChild(oldDeck)
+        val visible = oldDeck.visibility
+        parent.removeView(oldDeck)
+        val replacement = buildEqDeck().apply { visibility = visible }
+        parent.addView(replacement, index)
+        eqDeck = replacement
     }
 
     private fun meterPanel(name: String): Pair<LinearLayout, List<View>> {
