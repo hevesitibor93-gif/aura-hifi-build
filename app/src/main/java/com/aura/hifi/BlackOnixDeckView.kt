@@ -133,8 +133,8 @@ class BlackOnixDeckView(
 
         // Outer frame and the original main screen composition.
         draw(R.drawable.onix_base_top_texture, canvas, 0f, 0f)
-        draw(R.drawable.onix_base_left_texture, canvas, 0f, 57f)
-        draw(R.drawable.onix_base_right_texture, canvas, 848f, 57f)
+        draw(R.drawable.onix_base_left_texture, canvas, 0f, 0f)
+        draw(R.drawable.onix_base_right_texture, canvas, 848f, 0f)
         draw(R.drawable.onix_base_bottom_texture, canvas, 0f, 380f)
         draw(R.drawable.onix_container_left_top_main_texture, canvas, 0f, 57f)
         draw(R.drawable.onix_container_left_bottom_texture, canvas, 0f, 157f)
