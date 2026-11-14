@@ -5252,6 +5252,7 @@ class MainActivity : Activity() {
                 "-${formatTime(duration - position)}"
             )
             blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode != 0, repeatMode != 0)
+            blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
         if (counter != null && elapsed != null) {
