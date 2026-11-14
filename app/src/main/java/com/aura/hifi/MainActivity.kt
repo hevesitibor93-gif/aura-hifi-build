@@ -5362,6 +5362,23 @@ class MainActivity : Activity() {
 
     private inner class VuView(private val verticalSingle: Boolean = false, private val channelOnly: Int = -1) : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val blackOnixSkinEnabled = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            .getString("aura_theme", "classic") != "classic"
+        private val blackOnixGaugeFrames by lazy {
+            listOf(
+                R.drawable.black_onix_vu_left_l,
+                R.drawable.black_onix_vu_left_r,
+                R.drawable.black_onix_vu_right_l,
+                R.drawable.black_onix_vu_right_r
+            ).map { resourceId ->
+                val sprite = BitmapFactory.decodeResource(resources, resourceId)
+                val frameWidth = (sprite.width / 2).coerceAtLeast(1)
+                val inactive = Bitmap.createBitmap(sprite, 0, 0, frameWidth, sprite.height)
+                val activeFrame = Bitmap.createBitmap(sprite, frameWidth, 0, frameWidth, sprite.height)
+                sprite.recycle()
+                inactive to activeFrame
+            }
+        }
         private var left = 0f
         private var right = 0f
         private var style = "car"
@@ -5463,7 +5480,40 @@ class MainActivity : Activity() {
             }
         }
 
+        private fun drawBlackOnixVertical(c: Canvas, w: Float, h: Float) {
+            val frames = if (channelOnly == 1) {
+                listOf(blackOnixGaugeFrames[2], blackOnixGaugeFrames[3])
+            } else {
+                listOf(blackOnixGaugeFrames[0], blackOnixGaugeFrames[1])
+            }
+            val levels = floatArrayOf(left, right)
+            val barWidth = min(dp(7).toFloat(), w * 0.22f).coerceAtLeast(dp(3).toFloat())
+            val gap = (w - barWidth * 2f) / 3f
+            val top = dp(2).toFloat()
+            val bottom = (h - dp(2)).coerceAtLeast(top + dp(8))
+            val targetHeight = bottom - top
+            p.alpha = (brightness * 255 / 100).coerceIn(0, 255)
+            for (index in 0..1) {
+                val x = gap * (index + 1) + barWidth * index
+                val bounds = RectF(x, top, x + barWidth, bottom)
+                val (inactive, activeFrame) = frames[index]
+                c.drawBitmap(inactive, null, bounds, p)
+                val activeHeight = targetHeight * levels[index].coerceIn(0f, 1f)
+                if (activeHeight > 0f) {
+                    val save = c.save()
+                    c.clipRect(bounds.left, bottom - activeHeight, bounds.right, bottom)
+                    c.drawBitmap(activeFrame, null, bounds, p)
+                    c.restoreToCount(save)
+                }
+            }
+            p.alpha = 255
+        }
+
         private fun drawVerticalSingle(c: Canvas, w: Float, h: Float) {
+            if (blackOnixSkinEnabled) {
+                drawBlackOnixVertical(c, w, h)
+                return
+            }
             if (style == "line" || style == "custom") { drawCustomVertical(c, w, h, style == "line"); return }
             if (style == "multiband" || style == "spectrum") { drawVerticalMultiBand(c, w, h); return }
             val simpleStyle = style == "simple"
