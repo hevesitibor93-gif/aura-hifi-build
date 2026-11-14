@@ -1175,6 +1175,15 @@ class MainActivity : Activity() {
             }
         }
 
+        if (landscape && isOnix) {
+            // In the ONIX cockpit the EQ controls are moved to their own page,
+            // rather than being discarded with the generic player body.
+            eqPage.addView(button("‹  VISSZA A LEJÁTSZÓHOZ", Color.rgb(32, 39, 49), Color.rgb(226, 195, 143)) {
+                openPlayerPage?.invoke()
+            }, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(8) })
+            original.drop(11).forEach { eqPage.addView(it) }
+        }
+
         // AURA Original tuner deck.
         val radioPanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1265,6 +1274,11 @@ class MainActivity : Activity() {
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
         val landscapeLibrary = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (landscapeLibrary && isOnix) {
+            songsPage.addView(button("‹  VISSZA A LEJÁTSZÓHOZ", Color.rgb(32, 39, 49), Color.rgb(226, 195, 143)) {
+                openPlayerPage?.invoke()
+            }, LinearLayout.LayoutParams(-1, dp(34)).apply { bottomMargin = dp(6) })
+        }
         songsPage.addView(label("AURA  /  HI-FI STUDIO", if (landscapeLibrary) 8f else 10f, Color.rgb(183, 150, 255)).apply { letterSpacing = 0.18f; typeface = Typeface.DEFAULT_BOLD; setPadding(dp(4), dp(2), 0, 0) })
         songsPage.addView(label("ZENETÁR", if (landscapeLibrary) 18f else 23f, Color.WHITE).apply { typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.04f; setPadding(dp(4), 0, 0, dp(if (landscapeLibrary) 3 else 8)) })
         val librarySearch = EditText(this).apply {
