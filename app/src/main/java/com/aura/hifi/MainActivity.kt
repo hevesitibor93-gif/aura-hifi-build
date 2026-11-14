@@ -412,6 +412,7 @@ class MainActivity : Activity() {
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) startOnixVisualizer()
                 setVuActive(isPlaying)
                 updatePlayButtonVisual(isPlaying)
                 vinylView.invalidate()
@@ -3756,6 +3757,7 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
         else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
+        if (requestCode == onixSpectrumPermissionRequest && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startOnixVisualizer()
     }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
@@ -5378,11 +5380,6 @@ class MainActivity : Activity() {
             v.enabled = true
             onixVisualizer = v
         } catch (_: Exception) { onixVisualizer = null }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == onixSpectrumPermissionRequest && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startOnixVisualizer()
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
