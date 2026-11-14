@@ -884,9 +884,15 @@ class MainActivity : Activity() {
             setOnTouchListener { view, event ->
                 val button = view as ImageButton
                 when (event.action) {
-                    android.view.MotionEvent.ACTION_DOWN -> button.setImageResource(pressedRes)
+                    android.view.MotionEvent.ACTION_DOWN -> button.setImageResource(
+                        if (description == "Lejátszás") {
+                            if (player?.isPlaying == true) R.drawable.black_onix_pause_pressed else R.drawable.black_onix_play_pressed
+                        } else pressedRes
+                    )
                     android.view.MotionEvent.ACTION_UP,
-                    android.view.MotionEvent.ACTION_CANCEL -> button.setImageResource(normalRes)
+                    android.view.MotionEvent.ACTION_CANCEL -> button.setImageResource(
+                        if (description == "Lejátszás" && player?.isPlaying == true) R.drawable.black_onix_pause_normal else normalRes
+                    )
                 }
                 false
             }
