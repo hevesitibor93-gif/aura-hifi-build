@@ -292,21 +292,21 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_close_btn_skin, canvas, 865f, 27f, 23f, 23f, 0, 4)
 
         // Original action strip sits beside the transport controls in the lower panel.
-        sprite(R.drawable.onix_button_open_skin, canvas, 511f, 338f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_sleep_skin, canvas, 547f, 338f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_manager_skin, canvas, 583f, 338f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_library_skin, canvas, 619f, 338f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_repeat_skin, canvas, 655f, 338f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
-        sprite(R.drawable.onix_button_shuffle_skin, canvas, 691f, 338f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
-        sprite(R.drawable.onix_button_radio_skin, canvas, 727f, 338f, 37f, 27f, 0, 6)
+        sprite(R.drawable.onix_button_open_skin, canvas, 515f, 339f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_sleep_skin, canvas, 551f, 339f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_manager_skin, canvas, 587f, 339f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_library_skin, canvas, 623f, 339f, 37f, 27f, 0, 4)
+        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_radio_skin, canvas, 731f, 339f, 37f, 27f, 0, 6)
 
         // Live phone/system information in the original right-hand display field.
         smallPaint.color = Color.rgb(222, 190, 137)
         smallPaint.textSize = 10f
-        canvas.drawText("SYSTEM  $systemClock", 635f, 151f, smallPaint)
-        canvas.drawText("VOLUME  $systemVolume%", 635f, 174f, smallPaint)
-        canvas.drawText("FREQ.   $sampleRateText", 635f, 197f, smallPaint)
-        canvas.drawText("BITRATE $bitrateText", 635f, 220f, smallPaint)
+        canvas.drawText(systemClock, 684f, 145f, smallPaint)
+        canvas.drawText("$systemVolume%", 163f, 171f, smallPaint)
+        canvas.drawText(sampleRateText, 149f, 222f, smallPaint)
+        canvas.drawText(bitrateText, 140f, 242f, smallPaint)
         // Original AIMP screen tabs on the left bottom panel.
         sprite(R.drawable.onix_pl_scr_a_skin, canvas, 26f, 341f, 44f, 19f, 0, 4)
         sprite(R.drawable.onix_eq_scr_a_skin, canvas, 70f, 341f, 44f, 19f, 0, 4)
@@ -349,13 +349,13 @@ class BlackOnixDeckView(
         if (playing) hitTargets += RectF(342f, 328f, 415f, 377f) to onPlayPause
         else hitTargets += RectF(269f, 328f, 342f, 377f) to onPlayPause
         hitTargets += RectF(415f, 328f, 488f, 377f) to onNext
-        hitTargets += RectF(511f, 338f, 548f, 365f) to onOpen
-        hitTargets += RectF(547f, 338f, 584f, 365f) to onSleep
-        hitTargets += RectF(583f, 338f, 620f, 365f) to onUtilities
-        hitTargets += RectF(619f, 338f, 656f, 365f) to onMainMenu
-        hitTargets += RectF(655f, 338f, 692f, 365f) to onRepeat
-        hitTargets += RectF(691f, 338f, 728f, 365f) to onShuffle
-        hitTargets += RectF(727f, 338f, 764f, 365f) to onRadio
+        hitTargets += RectF(515f, 339f, 552f, 366f) to onOpen
+        hitTargets += RectF(551f, 339f, 588f, 366f) to onSleep
+        hitTargets += RectF(587f, 339f, 624f, 366f) to onUtilities
+        hitTargets += RectF(623f, 339f, 660f, 366f) to onMainMenu
+        hitTargets += RectF(659f, 339f, 696f, 366f) to onRepeat
+        hitTargets += RectF(695f, 339f, 732f, 366f) to onShuffle
+        hitTargets += RectF(731f, 339f, 768f, 366f) to onRadio
         hitTargets += RectF(26f, 341f, 70f, 360f) to onPlaylist
         hitTargets += RectF(70f, 341f, 114f, 360f) to onEqualizer
         hitTargets += RectF(10f, 27f, 33f, 50f) to onMainMenu
@@ -381,7 +381,7 @@ class BlackOnixDeckView(
         val x = (event.x - ox) / scale
         val y = (event.y - oy) / scale
         val held = event.eventTime - touchDownTime
-        if (RectF(655f, 338f, 692f, 365f).contains(x, y) && held >= 500L) {
+        if (RectF(659f, 339f, 696f, 366f).contains(x, y) && held >= 500L) {
             onRepeatLong()
         } else {
             hitTargets.firstOrNull { it.first.contains(x, y) }?.second?.invoke()
