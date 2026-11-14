@@ -349,7 +349,7 @@ class BlackOnixDeckView(
 
         // Replace the old skin branding with AURA.
         val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(205, 4, 7, 11) }
-        canvas.drawRoundRect(RectF(414f, 5f, 485f, 25f), 4f, 4f, brandBg)
+        canvas.drawRoundRect(RectF(300f, 3f, 600f, 27f), 4f, 4f, brandBg)
         val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(224, 190, 128)
             textSize = 14f
