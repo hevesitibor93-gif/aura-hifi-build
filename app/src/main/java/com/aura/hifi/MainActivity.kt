@@ -164,6 +164,8 @@ class MainActivity : Activity() {
     private var folderRepeatOriginalQueue: List<Uri>? = null
     private var shuffleButton: Button? = null
     private var repeatButton: Button? = null
+    private var onixShuffleButton: ImageView? = null
+    private var onixRepeatButton: ImageView? = null
     private val abQuickButtons = mutableMapOf<String, Button>()
     private var abQuickStatus: TextView? = null
     private var selectAbQuickSlot: ((String) -> Unit)? = null
@@ -873,6 +875,30 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun createOnixModeButton(
+        resourceId: Int,
+        description: String,
+        active: () -> Boolean,
+        action: () -> Unit
+    ): ImageView {
+        val sheet = BitmapFactory.decodeResource(resources, resourceId)
+        val frameHeight = (sheet.height / 6).coerceAtLeast(1)
+        val normal = Bitmap.createBitmap(sheet, 0, 0, sheet.width, frameHeight)
+        val selected = Bitmap.createBitmap(sheet, 0, frameHeight * 4, sheet.width, frameHeight)
+        sheet.recycle()
+        return ImageView(this).apply {
+            contentDescription = description
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(3), dp(2), dp(3), dp(2))
+            setImageBitmap(if (active()) selected else normal)
+            tag = Pair(normal, selected)
+            setOnClickListener {
+                action()
+                setImageBitmap(if (active()) selected else normal)
+            }
+        }
+    }
+
     private fun createOnixTransportButton(
         normalRes: Int,
         pressedRes: Int,
@@ -1095,33 +1121,9 @@ class MainActivity : Activity() {
             }
             landscapeHeadUnit = deck
 
-            // Az eredeti ONIX két függőleges VU-gauge grafikája; nem az AURA VU-stílusai.
-            val meterRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.rgb(4, 7, 11), Color.rgb(14, 19, 26), Color.rgb(4, 7, 11))
-                ).apply { setStroke(dp(1), Color.rgb(76, 88, 103)) }
-            }
-            sideVuLeft = VuView(true, 0).apply {
-                setActive(player?.isPlaying == true)
-                setBrightness(100)
-                setAnimationEnabled(true)
-            }
-            sideVuRight = VuView(true, 1).apply {
-                setActive(player?.isPlaying == true)
-                setBrightness(100)
-                setAnimationEnabled(true)
-            }
-            meterRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(24), dp(92)).apply {
-                marginStart = dp(12); marginEnd = dp(10)
-            })
-            meterRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(24), dp(92)).apply {
-                marginStart = dp(10); marginEnd = dp(12)
-            })
-            deck.addView(meterRow, LinearLayout.LayoutParams(-1, 0, 1f).apply {
-                setMargins(dp(4), dp(4), dp(4), dp(5))
-            })
+            // A VU-kijelzők most kimaradnak; az ONIX kezelőszervei kapják a helyet.
+            sideVuLeft = null
+            sideVuRight = null
 
             trackLabel.apply {
                 textSize = 17f
@@ -1167,16 +1169,18 @@ class MainActivity : Activity() {
             }
             transportExtras.removeView(shuffleControl)
             transportExtras.removeView(repeatControl)
-            listOf(shuffleControl, repeatControl).forEach { control ->
-                control.textSize = 10f
-                control.setTextColor(Color.rgb(221, 204, 171))
-                control.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.rgb(55, 62, 71), Color.rgb(12, 16, 22))
-                ).apply { cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(112, 123, 137)) }
-                onixModes.addView(control, LinearLayout.LayoutParams(dp(112), dp(30)).apply {
-                    setMargins(dp(7), dp(2), dp(7), dp(2))
-                })
-            }
+            onixShuffleButton = createOnixModeButton(
+                R.drawable.black_onix_shuffle_sprite, "Keverés", { shuffleMode != 0 }
+            ) { cycleShuffleMode() }
+            onixRepeatButton = createOnixModeButton(
+                R.drawable.black_onix_repeat_sprite, "Ismétlés", { repeatMode != 0 }
+            ) { cycleRepeatMode() }
+            onixModes.addView(onixShuffleButton, LinearLayout.LayoutParams(dp(37), dp(27)).apply {
+                setMargins(dp(8), dp(2), dp(8), dp(2))
+            })
+            onixModes.addView(onixRepeatButton, LinearLayout.LayoutParams(dp(37), dp(27)).apply {
+                setMargins(dp(8), dp(2), dp(8), dp(2))
+            })
             deck.addView(onixModes, LinearLayout.LayoutParams(-1, dp(34)))
 
             playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
@@ -1190,7 +1194,7 @@ class MainActivity : Activity() {
             transportExtras.visibility = View.GONE
         } else {
             // Classic / portrait elrendezés: változatlan eredeti AURA felépítés.
-            vu.visibility = View.VISIBLE
+            vu.visibility = if (isOnix) View.GONE else View.VISIBLE
             centerAurixVu = null
             sideVuLeft = null
             sideVuRight = null
@@ -1266,7 +1270,7 @@ class MainActivity : Activity() {
         val tunerColumn = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
         tunerColumn.addView(radioPanel, LinearLayout.LayoutParams(-1, -2))
         tunerColumn.addView(tunerControls, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(4) })
-        if (landscape) {
+        if (landscape && !isOnix) {
             // In landscape, the tuner becomes part of the player's header instead of a separate card.
             radioPanel.removeView(tunerDisplay)
             radioPanel.removeView(favoriteRow)
@@ -1283,8 +1287,10 @@ class MainActivity : Activity() {
             landscapeRadioBar.addView(tunerControls, LinearLayout.LayoutParams(0, dp(31), 1.45f))
             landscapeHeadUnit?.addView(landscapeRadioBar, 0, LinearLayout.LayoutParams(-1, dp(38)))
             tunerColumn.visibility = View.GONE
-        } else {
+        } else if (!isOnix) {
             playerPage.addView(tunerColumn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(2) })
+        } else {
+            tunerColumn.visibility = View.GONE
         }
 
         songsPage.setPadding(dp(12), dp(10), dp(12), dp(14))
@@ -2593,6 +2599,7 @@ class MainActivity : Activity() {
         }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, if (isOnix) Color.rgb(30, 39, 51) else Color.rgb(29, 29, 30), if (isOnix) Color.rgb(220, 190, 139) else Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
+        nav.visibility = if (isOnix) View.GONE else View.VISIBLE
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
         setContentView(root)
@@ -3774,6 +3781,8 @@ class MainActivity : Activity() {
         repeatButton?.text = when (repeatMode) { 1 -> "ISMÉTLÉS: DAL"; 2 -> "ISMÉTLÉS: LISTA"; 3 -> "ISMÉTLÉS: MAPPÁK"; else -> "ISMÉTLÉS: KI" }
         shuffleButton?.setTextColor(if (shuffleMode == 0) Color.WHITE else gold)
         repeatButton?.setTextColor(if (repeatMode == 0) Color.WHITE else gold)
+        onixShuffleButton?.let { button -> (button.tag as? Pair<*, *>)?.let { frames -> button.setImageBitmap(if (shuffleMode == 0) frames.first as Bitmap else frames.second as Bitmap) } }
+        onixRepeatButton?.let { button -> (button.tag as? Pair<*, *>)?.let { frames -> button.setImageBitmap(if (repeatMode == 0) frames.first as Bitmap else frames.second as Bitmap) } }
     }
     private fun cycleShuffleMode() {
         if (shuffleMode == 0) shuffleOriginalQueue = queue.toList()
