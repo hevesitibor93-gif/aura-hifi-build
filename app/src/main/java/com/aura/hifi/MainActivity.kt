@@ -1136,7 +1136,7 @@ class MainActivity : Activity() {
             )
             blackOnixDeck = deck
             deck.setVuMode(onixVuMode)
-            deck.setPlaybackState(player?.isPlaying == true, shuffleMode != 0, repeatMode != 0)
+            deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
             deck.setTrack(
                 trackLabel.text?.toString() ?: "AURA Hi-Fi",
                 formatTime(player?.currentPosition ?: 0L),
@@ -5251,7 +5251,7 @@ class MainActivity : Activity() {
                 formatTime(position),
                 "-${formatTime(duration - position)}"
             )
-            blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode != 0, repeatMode != 0)
+            blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
             blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
