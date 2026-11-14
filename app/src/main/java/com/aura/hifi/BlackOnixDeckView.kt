@@ -149,9 +149,9 @@ class BlackOnixDeckView(
         draw(R.drawable.onix_panel_bottom_left_texture, canvas, 0f, 323f)
         draw(R.drawable.onix_panel_bottom_center_main_texture, canvas, 117f, 323f)
         draw(R.drawable.onix_panel_bottom_right_texture, canvas, 782f, 323f)
-        draw(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f)
-        draw(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f)
-        draw(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f)
+        sprite(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f, if (vuMode == 0) 1 else 0, 6)
+        sprite(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f, if (vuMode == 1) 3 else 2, 6)
+        sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode == 2) 5 else 4, 6)
 
         // Original scrolling-title strip and the two time readouts.
         draw(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f)
@@ -198,8 +198,18 @@ class BlackOnixDeckView(
             } else 0.025f
             val bh = max(2f, value * 66f)
             val x = 287f + i * (bw + gap)
-            spectrumPaint.color = if (value > .78f) Color.rgb(239, 67, 48) else if (value > .48f) Color.rgb(245, 174, 63) else Color.rgb(195, 202, 174)
-            canvas.drawRoundRect(RectF(x, 250f - bh, x + bw, 250f), 1.2f, 1.2f, spectrumPaint)
+            val spectrumSkin = bitmap(R.drawable.onix_spectrum_a1_skin)
+            if (spectrumSkin != null) {
+                val sourceX = (i * spectrumSkin.width / bars).coerceAtMost(spectrumSkin.width - 1)
+                val sourceRight = ((i + 1) * spectrumSkin.width / bars).coerceAtMost(spectrumSkin.width)
+                val sourceTop = (spectrumSkin.height - bh.toInt().coerceAtLeast(1)).coerceAtLeast(0)
+                canvas.drawBitmap(
+                    spectrumSkin,
+                    Rect(sourceX, sourceTop, sourceRight, spectrumSkin.height),
+                    RectF(x, 250f - bh, x + bw, 250f),
+                    paint
+                )
+            }
         }
 
         // The four independent red/amber side-meter sprite sets (three selectable modes).
@@ -222,8 +232,8 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_stop_skin, canvas, 342f, 328f, 73f, 49f)
         sprite(R.drawable.onix_button_open_skin, canvas, 515f, 339f, 37f, 27f)
         sprite(R.drawable.onix_button_sleep_skin, canvas, 551f, 339f, 37f, 27f)
-        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f)
-        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f)
+        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f, if (repeat) 1 else 0)
+        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, if (shuffle) 1 else 0)
         canvas.restore()
         buildHitTargets()
     }
