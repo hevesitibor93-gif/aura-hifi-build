@@ -121,6 +121,7 @@ class MainActivity : Activity() {
     private var showRemaining = false
     private val handler = Handler(Looper.getMainLooper())
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
+    private val onixSystemInfoTask = object : Runnable { override fun run() { updateOnixSystemInfo(); handler.postDelayed(this, 1000L) } }
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
     private var vuSmoothedLevel = 0f
@@ -283,12 +284,15 @@ class MainActivity : Activity() {
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         if (isSoundProfileSaved(prefs, soundOutputProfile)) saveSoundProfile(prefs, soundOutputProfile)
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        handler.removeCallbacks(onixSystemInfoTask)
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
         applyKeepScreenOnPreference()
+        handler.removeCallbacks(onixSystemInfoTask)
+        handler.post(onixSystemInfoTask)
         // Reattach the meter whenever the screen returns, not only after a track change.
         handler.post {
             val exo = player
@@ -4563,7 +4567,8 @@ class MainActivity : Activity() {
             pendingRadioStation = stationName to streamUrl
             pendingRadioNavigationStations = navigation
             pendingRadioStartAttempts = 0
-            pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
+            handler.removeCallbacks(onixSystemInfoTask)
+        pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
             try { startService(Intent(this, AuraPlaybackService::class.java)) } catch (_: Exception) {}
             val retry = object : Runnable {
                 override fun run() {
@@ -5315,28 +5320,7 @@ class MainActivity : Activity() {
             )
             blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
             blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
-            if (blackOnixDeck != null) {
-                val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-                val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-                val currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
-                val volumePercent = (currentVolume * 100f / maxVolume).toInt().coerceIn(0, 100)
-                val selectedAudioFormat = p.currentTracks.groups.asSequence()
-                    .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
-                    .flatMap { group ->
-                        (0 until group.length).asSequence()
-                            .filter { group.isTrackSelected(it) }
-                            .map { group.getTrackFormat(it) }
-                    }.firstOrNull()
-                val sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
-                    ?.let { "%.1f".format(java.util.Locale.US, it / 1000f) } ?: "--"
-                val metadataBitrate = technicalLabel.text?.toString()?.substringAfter("•", "")?.trim()
-                    ?.substringBefore(" ")?.takeIf { it.toIntOrNull() != null }
-                val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
-                    ?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
-                val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-                    .format(java.util.Date())
-                blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
-            }
+            updateOnixSystemInfo()
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
         if (counter != null && elapsed != null) {
@@ -5346,6 +5330,33 @@ class MainActivity : Activity() {
         } else {
             timeLabel.text = if (activeRadioStationName != null) timeText else "$timeText   •   $trackCount"
         }
+        } catch (_: Exception) {}
+    }
+
+    private fun updateOnixSystemInfo() {
+        val p = player ?: return
+        val deck = blackOnixDeck ?: return
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+            val currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val volumePercent = (currentVolume * 100f / maxVolume).toInt().coerceIn(0, 100)
+            val selectedAudioFormat = p.currentTracks.groups.asSequence()
+                .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+                .flatMap { group ->
+                    (0 until group.length).asSequence()
+                        .filter { group.isTrackSelected(it) }
+                        .map { group.getTrackFormat(it) }
+                }.firstOrNull()
+            val sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
+                ?.let { "%.1f".format(java.util.Locale.US, it / 1000f) } ?: "--"
+            val metadataBitrate = technicalLabel.text?.toString()?.substringAfter("•", "")?.trim()
+                ?.substringBefore(" ")?.takeIf { it.toIntOrNull() != null }
+            val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
+                ?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
+            val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            deck.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
         } catch (_: Exception) {}
     }
 
