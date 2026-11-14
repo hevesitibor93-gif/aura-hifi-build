@@ -316,8 +316,8 @@ class BlackOnixDeckView(
         hitTargets += RectF(415f, 328f, 488f, 377f) to onNext
         hitTargets += RectF(511f, 73f, 548f, 100f) to onOpen
         hitTargets += RectF(547f, 73f, 584f, 100f) to onSleep
-        hitTargets += RectF(583f, 73f, 620f, 100f) to onEqualizer
-        hitTargets += RectF(619f, 73f, 656f, 100f) to onPlaylist
+        hitTargets += RectF(583f, 73f, 620f, 100f) to onUtilities
+        hitTargets += RectF(619f, 73f, 656f, 100f) to onMainMenu
         hitTargets += RectF(655f, 73f, 692f, 100f) to onRepeat
         hitTargets += RectF(691f, 73f, 728f, 100f) to onShuffle
         hitTargets += RectF(727f, 73f, 764f, 100f) to onRadio
