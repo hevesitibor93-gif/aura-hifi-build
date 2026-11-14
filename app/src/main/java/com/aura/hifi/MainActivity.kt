@@ -798,6 +798,8 @@ class MainActivity : Activity() {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
+        AuraVuBridge.left = left.coerceIn(0f, 1f)
+        AuraVuBridge.right = right.coerceIn(0f, 1f)
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
