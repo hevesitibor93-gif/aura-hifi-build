@@ -32,6 +32,7 @@ jobs:
           cp black-onix-assets/ScreenMain.Texture.png app/src/main/res/drawable-nodpi/black_onix_main_texture.png
           cp black-onix-assets/Images/ScreenEQ.Texture.png app/src/main/res/drawable-nodpi/black_onix_eq_texture.png
           cp black-onix-assets/Images/ScreenPL.Texture.png app/src/main/res/drawable-nodpi/black_onix_playlist_texture.png
+          python3 -m pip install --user pillow
           python3 - <<'PY'
           from PIL import Image
           from pathlib import Path
