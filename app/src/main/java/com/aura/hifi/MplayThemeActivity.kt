@@ -153,10 +153,10 @@ class MplayThemeActivity : Activity() {
         playButton = actionButton("▶") { togglePlayback() }
         transport.addView(playButton, LinearLayout.LayoutParams(dp(56), dp(42)).apply { marginEnd = dp(10) })
         transport.addView(actionButton("▶|") { player?.let { AuraPlaybackService.onNextRequested?.invoke() ?: it.seekToNextMediaItem() } }, LinearLayout.LayoutParams(dp(44), dp(38)))
-        playerDeck.addView(transport)
+        playerDeck.addView(transport, LinearLayout.LayoutParams(-1, dp(46)))
         rack.addView(playerDeck)
 
-        val ampDeck = chassis(152)
+        val ampDeck = chassis(152, LinearLayout.HORIZONTAL)
         val meters = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
         val leftMeter = meterPanel("LEFT")
         val rightMeter = meterPanel("RIGHT")
@@ -184,7 +184,7 @@ class MplayThemeActivity : Activity() {
         ampDeck.addView(volumeRow)
         rack.addView(ampDeck)
 
-        val libraryDeck = chassis(112)
+        val libraryDeck = chassis(112, LinearLayout.HORIZONTAL)
         val libraryText = TextView(this).apply {
             text = "LOCAL LIBRARY\nAURA ZENETÁR"
             gravity = Gravity.CENTER
@@ -229,8 +229,8 @@ class MplayThemeActivity : Activity() {
         setContentView(root)
     }
 
-    private fun chassis(height: Int): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
+    private fun chassis(height: Int, direction: Int = LinearLayout.VERTICAL): LinearLayout = LinearLayout(this).apply {
+        orientation = direction
         gravity = Gravity.CENTER_VERTICAL
         background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
             intArrayOf(Color.rgb(76, 77, 75), Color.rgb(38, 40, 40), Color.rgb(19, 20, 20))).apply {
