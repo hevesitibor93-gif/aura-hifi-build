@@ -74,7 +74,7 @@ jobs:
           target = Path("app/src/main/res/drawable-nodpi")
           target.mkdir(parents=True, exist_ok=True)
           prefixes = (
-              "Base", "ContainerMain", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
+              "Base", "Container", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
               "RunningLine", "TimeDisplay", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
               "SpectrumA1", "SpecModeA", "ButtonStop", "ButtonOpen", "ButtonSleep",
               "ButtonShuffle", "ButtonRepeat", "ButtonTopMainMenu", "ButtonTopOptions",
