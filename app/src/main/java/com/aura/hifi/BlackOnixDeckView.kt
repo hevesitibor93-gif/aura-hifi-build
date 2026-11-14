@@ -136,6 +136,10 @@ class BlackOnixDeckView(
         draw(R.drawable.onix_base_left_texture, canvas, 0f, 57f)
         draw(R.drawable.onix_base_right_texture, canvas, 848f, 57f)
         draw(R.drawable.onix_base_bottom_texture, canvas, 0f, 380f)
+        draw(R.drawable.onix_container_left_top_main_texture, canvas, 0f, 57f)
+        draw(R.drawable.onix_container_left_bottom_texture, canvas, 0f, 157f)
+        draw(R.drawable.onix_container_right_top_texture, canvas, 786f, 57f)
+        draw(R.drawable.onix_container_right_bottom_main_texture, canvas, 786f, 181f)
         draw(R.drawable.onix_screen_main_texture, canvas, 113f, 57f)
         draw(R.drawable.onix_container_main_top_texture, canvas, 113f, 57f)
         draw(R.drawable.onix_container_main_left_texture, canvas, 113f, 127f)
@@ -145,9 +149,9 @@ class BlackOnixDeckView(
         draw(R.drawable.onix_panel_bottom_left_texture, canvas, 0f, 323f)
         draw(R.drawable.onix_panel_bottom_center_main_texture, canvas, 117f, 323f)
         draw(R.drawable.onix_panel_bottom_right_texture, canvas, 782f, 323f)
-        draw(R.drawable.onix_vuppm_mode1_skin, canvas, 70f, 121f, 27f, 27f)
-        draw(R.drawable.onix_vuppm_mode2_skin, canvas, 97f, 121f, 27f, 27f)
-        draw(R.drawable.onix_vuppm_mode3_skin, canvas, 124f, 121f, 27f, 27f)
+        draw(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f)
+        draw(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f)
+        draw(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f)
 
         // Original scrolling-title strip and the two time readouts.
         draw(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f)
@@ -234,9 +238,9 @@ class BlackOnixDeckView(
         hitTargets += RectF(551f, 339f, 588f, 366f) to onSleep
         hitTargets += RectF(659f, 339f, 696f, 366f) to onRepeat
         hitTargets += RectF(695f, 339f, 732f, 366f) to onShuffle
-        hitTargets += RectF(70f, 121f, 97f, 148f) to { setVuMode(0) }
-        hitTargets += RectF(97f, 121f, 124f, 148f) to { setVuMode(1) }
-        hitTargets += RectF(124f, 121f, 151f, 148f) to { setVuMode(2) }
+        hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(0) }
+        hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(1) }
+        hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(2) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
