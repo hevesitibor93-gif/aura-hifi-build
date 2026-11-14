@@ -14,6 +14,7 @@ import android.view.View
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 /**
  * Landscape BLACK-ONIX skin surface.
