@@ -1157,6 +1157,7 @@ class MainActivity : Activity() {
             }
             deck.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(18)))
 
+            controlStack.removeView(controls)
             controls.setPadding(0, dp(2), 0, dp(2))
             controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(66), dp(45)).apply { marginEnd = dp(16) }
             controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(72), dp(49)).apply { marginEnd = dp(16) }
@@ -1168,6 +1169,8 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
             }
+            transportExtras.removeView(shuffleControl)
+            transportExtras.removeView(repeatControl)
             listOf(shuffleControl, repeatControl).forEach { control ->
                 control.textSize = 10f
                 control.setTextColor(Color.rgb(221, 204, 171))
