@@ -144,7 +144,7 @@ class AuraStudioActivity : Activity() {
         transport.addView(controlButton("◀◀") { AuraPlaybackService.previousFromWidget() },
             LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(7) })
         playButton = controlButton("▶") { AuraPlaybackService.togglePlaybackFromWidget() }
-        transport.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.25f).apply { marginHorizontal = dp(7) })
+        transport.addView(playButton, LinearLayout.LayoutParams(0, dp(48), 1.25f).apply { marginStart = dp(7); marginEnd = dp(7) })
         transport.addView(controlButton("▶▶") { AuraPlaybackService.nextFromWidget() },
             LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(7) })
         controls.addView(transport, LinearLayout.LayoutParams(-1, -2))
