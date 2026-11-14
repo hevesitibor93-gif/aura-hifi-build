@@ -272,6 +272,9 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_repeat_skin, canvas, 655f, 73f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
         sprite(R.drawable.onix_button_shuffle_skin, canvas, 691f, 73f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
         sprite(R.drawable.onix_button_radio_skin, canvas, 727f, 73f, 37f, 27f, 0, 6)
+        // Original AIMP screen tabs on the left bottom panel.
+        sprite(R.drawable.onix_pl_scr_a_skin, canvas, 26f, 341f, 44f, 19f, 0, 4)
+        sprite(R.drawable.onix_eq_scr_a_skin, canvas, 70f, 341f, 44f, 19f, 0, 4)
 
         // Original five-button transport row in its source order.
         sprite(R.drawable.black_onix_prev_normal, canvas, 123f, 328f, 73f, 49f, 0, 1)
@@ -318,6 +321,8 @@ class BlackOnixDeckView(
         hitTargets += RectF(655f, 73f, 692f, 100f) to onRepeat
         hitTargets += RectF(691f, 73f, 728f, 100f) to onShuffle
         hitTargets += RectF(727f, 73f, 764f, 100f) to onRadio
+        hitTargets += RectF(26f, 341f, 70f, 360f) to onPlaylist
+        hitTargets += RectF(70f, 341f, 114f, 360f) to onEqualizer
         hitTargets += RectF(10f, 27f, 33f, 50f) to onMainMenu
         hitTargets += RectF(40f, 27f, 63f, 50f) to onSettings
         hitTargets += RectF(70f, 27f, 93f, 50f) to onUtilities
