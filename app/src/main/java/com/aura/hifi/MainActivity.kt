@@ -172,6 +172,7 @@ class MainActivity : Activity() {
     private var onixSpectrumView: OnixSpectrumView? = null
     private var blackOnixDeck: BlackOnixDeckView? = null
     private var onixVisualizer: Visualizer? = null
+    private var onixVisualizerSessionId = 0
     private var onixSpectrumMode = 0
     private var onixVuMode = 0
     private val onixSpectrumPermissionRequest = 7901
@@ -234,6 +235,15 @@ class MainActivity : Activity() {
             }
         }
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
+    }
+
+    override fun onBackPressed() {
+        if (activePageIndex != 0) {
+            if (activePageIndex == 4 || activePageIndex == 5) openSettingsPage?.invoke()
+            else openPlayerPage?.invoke()
+            return
+        }
+        super.onBackPressed()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -456,6 +466,7 @@ class MainActivity : Activity() {
                 updateNextTrack()
                 renderQueue()
                 updateProgress()
+                if (exo.isPlaying) handler.postDelayed({ startOnixVisualizer() }, 250L)
             }
         }
         playbackListener = listener
@@ -1153,8 +1164,11 @@ class MainActivity : Activity() {
             onixVuMode = getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("onix_vu_mode", onixVuMode).coerceIn(0, 2)
             deck.setVuMode(onixVuMode)
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
+            val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
+                .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+                .distinct().joinToString("   •   ").ifBlank { "AURA Hi-Fi" }
             deck.setTrack(
-                trackLabel.text?.toString() ?: "AURA Hi-Fi",
+                initialTrackInfo,
                 formatTime(player?.currentPosition ?: 0L),
                 "-${formatTime((player?.duration ?: 0L) - (player?.currentPosition ?: 0L))}"
             )
@@ -5281,13 +5295,37 @@ class MainActivity : Activity() {
             val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             // Radio mode has no meaningful local playlist position; show it again for MP3 playback.
+            val onixTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
+                .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+                .distinct().joinToString("   •   ").ifBlank { "AURA Hi-Fi" }
             blackOnixDeck?.setTrack(
-                trackLabel.text?.toString() ?: "AURA Hi-Fi",
+                onixTrackInfo,
                 formatTime(position),
                 "-${formatTime(duration - position)}"
             )
             blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
             blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
+            if (blackOnixDeck != null) {
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                val currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                val volumePercent = (currentVolume * 100f / maxVolume).toInt().coerceIn(0, 100)
+                val selectedAudioFormat = p.currentTracks.groups.asSequence()
+                    .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+                    .flatMap { group ->
+                        (0 until group.length).asSequence()
+                            .filter { group.isTrackSelected(it) }
+                            .map { group.getTrackFormat(it) }
+                    }.firstOrNull()
+                val sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
+                    ?.let { "%.1f kHz".format(java.util.Locale.US, it / 1000f) } ?: "-- kHz"
+                val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
+                    ?.let { "${it / 1000} kbps" } ?: "-- kbps"
+                val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                    .format(java.util.Date())
+                blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
+                if (p.isPlaying && onixVisualizer == null) startOnixVisualizer()
+            }
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
         if (counter != null && elapsed != null) {
@@ -5309,8 +5347,9 @@ class MainActivity : Activity() {
     }
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
-        try { onixVisualizer?.release() } catch (_: Exception) {}
+        try { onixVisualizer?.enabled = false; onixVisualizer?.release() } catch (_: Exception) {}
         onixVisualizer = null
+        onixVisualizerSessionId = 0
         if (::vu.isInitialized) {
             setVuActive(false)
             setVuLevels(0f, 0f)
@@ -5325,19 +5364,31 @@ class MainActivity : Activity() {
             return
         }
         val sessionId = player?.audioSessionId ?: 0
-        if (sessionId <= 0 || onixVisualizer != null) return
+        if (sessionId <= 0) return
+        if (onixVisualizer != null && onixVisualizerSessionId == sessionId) return
         try {
-            val v = Visualizer(sessionId)
-            v.captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)
-            v.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+            try { onixVisualizer?.enabled = false; onixVisualizer?.release() } catch (_: Exception) {}
+            onixVisualizer = null
+            onixVisualizerSessionId = 0
+            val visualizer = Visualizer(sessionId)
+            visualizer.captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)
+            visualizer.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                 override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
                 override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                    if (fft != null) { onixSpectrumView?.post { onixSpectrumView?.setFft(fft) }; blackOnixDeck?.post { blackOnixDeck?.setFft(fft) } }
+                    if (fft != null) {
+                        val frame = fft.copyOf()
+                        blackOnixDeck?.post { blackOnixDeck?.setFft(frame) }
+                    }
                 }
-            }, Visualizer.getMaxCaptureRate() / 2, false, true)
-            v.enabled = true
-            onixVisualizer = v
-        } catch (_: Exception) { onixVisualizer = null }
+            }, Visualizer.getMaxCaptureRate(), false, true)
+            visualizer.enabled = true
+            onixVisualizer = visualizer
+            onixVisualizerSessionId = sessionId
+        } catch (_: Exception) {
+            try { onixVisualizer?.release() } catch (_: Exception) {}
+            onixVisualizer = null
+            onixVisualizerSessionId = 0
+        }
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
