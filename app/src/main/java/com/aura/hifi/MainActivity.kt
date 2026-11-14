@@ -1133,6 +1133,7 @@ class MainActivity : Activity() {
                 onStop = { player?.let { it.pause(); it.seekTo(0L) } },
                 onShuffle = { cycleShuffleMode() },
                 onRepeat = { cycleRepeatMode() },
+                onRepeatLong = { showRepeatOptions() },
                 onOpen = { openAudio() },
                 onSleep = { toast("Hátralévő zeneszámok: ${(queue.size - currentIndex).coerceAtLeast(0)}") },
                 onPlaylist = { openLibraryPage?.invoke(); showPlaylists() },
