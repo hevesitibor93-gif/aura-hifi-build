@@ -29,6 +29,7 @@ class BlackOnixDeckView(
     private val onStop: () -> Unit,
     private val onShuffle: () -> Unit,
     private val onRepeat: () -> Unit,
+    private val onRepeatLong: () -> Unit,
     private val onOpen: () -> Unit,
     private val onSleep: () -> Unit,
     private val onPlaylist: () -> Unit,
@@ -69,6 +70,7 @@ class BlackOnixDeckView(
     }
     private val spectrumPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val hitTargets = ArrayList<Pair<RectF, () -> Unit>>()
+    private var touchDownTime = 0L
 
     private fun bitmap(id: Int): Bitmap? {
         if (!bitmaps.containsKey(id)) {
@@ -251,9 +253,9 @@ class BlackOnixDeckView(
         val frameL = (leftLevel * 35f).toInt().coerceIn(0, 35)
         val frameR = (rightLevel * 35f).toInt().coerceIn(0, 35)
         sprite(prefixVu[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
-        sprite(prefixVu[2], canvas, 327f, 139f, 245f, 6f, frameL, 36)
+        sprite(prefixVu[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
         sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
-        sprite(prefixVu[3], canvas, 327f, 154f, 245f, 6f, frameR, 36)
+        sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
 
         // Top bar: original AIMP skin controls in ContainerMainTop and BaseTop.
         sprite(R.drawable.onix_button_top_main_menu_skin, canvas, 10f, 27f, 23f, 23f, 0, 4)
@@ -274,7 +276,11 @@ class BlackOnixDeckView(
         // Original five-button transport row in its source order.
         sprite(R.drawable.black_onix_prev_normal, canvas, 123f, 328f, 73f, 49f, 0, 1)
         sprite(R.drawable.onix_button_stop_skin, canvas, 196f, 328f, 73f, 49f, 0, 8)
-        sprite(if (playing) R.drawable.black_onix_pause_normal else R.drawable.black_onix_play_normal, canvas, 269f, 328f, 73f, 49f, 0, 1)
+        if (playing) {
+            sprite(R.drawable.black_onix_pause_normal, canvas, 342f, 328f, 73f, 49f, 0, 1)
+        } else {
+            sprite(R.drawable.black_onix_play_normal, canvas, 269f, 328f, 73f, 49f, 0, 1)
+        }
         sprite(R.drawable.black_onix_next_normal, canvas, 415f, 328f, 73f, 49f, 0, 1)
         canvas.restore()
         buildHitTargets()
@@ -323,13 +329,23 @@ class BlackOnixDeckView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            touchDownTime = event.eventTime
+            return true
+        }
+        if (event.action == MotionEvent.ACTION_CANCEL) return true
         if (event.action != MotionEvent.ACTION_UP) return true
         val scale = min(width / 899f, height / 401f)
         val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         val x = (event.x - ox) / scale
         val y = (event.y - oy) / scale
-        hitTargets.firstOrNull { it.first.contains(x, y) }?.second?.invoke()
+        val held = event.eventTime - touchDownTime
+        if (RectF(655f, 73f, 692f, 100f).contains(x, y) && held >= 500L) {
+            onRepeatLong()
+        } else {
+            hitTargets.firstOrNull { it.first.contains(x, y) }?.second?.invoke()
+        }
         performClick()
         return true
     }
