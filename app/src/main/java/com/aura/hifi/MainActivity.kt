@@ -428,7 +428,7 @@ class MainActivity : Activity() {
                     }
                 }
                 setVuActive(false)
-                playButton.text = "▶"
+                updatePlayButtonVisual(false)
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -447,7 +447,7 @@ class MainActivity : Activity() {
 
         val isPlaying = exo.isPlaying
         setVuActive(isPlaying)
-        playButton.text = if (isPlaying) "Ⅱ" else "▶"
+        updatePlayButtonVisual(isPlaying)
         vinylView.invalidate()
         if (isPlaying) {
             handler.removeCallbacks(progressTask)
@@ -4509,7 +4509,7 @@ class MainActivity : Activity() {
             radioSongTitleLabel?.text = "VÁLASSZ ZENÉT A KÖNYVTÁRBÓL"
             tunerNextTrackLabel?.visibility = View.VISIBLE
             updateNextTrack()
-            playButton.text = "▶"
+            updatePlayButtonVisual(false)
             setVuActive(false)
             return
         }
@@ -4637,7 +4637,7 @@ class MainActivity : Activity() {
                 }
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     setVuActive(isPlaying)
-                    playButton.text = if (isPlaying) "Ⅱ" else "▶"
+                    updatePlayButtonVisual(isPlaying)
                     vinylView.invalidate()
                     if (!radioStreamError) {
                         radioStatusLabel?.apply {
@@ -4650,7 +4650,7 @@ class MainActivity : Activity() {
                 override fun onPlayerError(error: PlaybackException) {
                     radioStreamError = true
                     setVuActive(false)
-                    playButton.text = "▶"
+                    updatePlayButtonVisual(false)
                     radioStatusLabel?.apply {
                         text = "STREAM ERROR  •  $stationName"
                         setTextColor(Color.rgb(255, 125, 105))
@@ -4666,7 +4666,7 @@ class MainActivity : Activity() {
         } catch (e: Exception) {
             radioStreamError = true
             setVuActive(false)
-            playButton.text = "▶"
+            updatePlayButtonVisual(false)
             radioStatusLabel?.apply {
                 text = "STREAM ERROR  •  $stationName"
                 setTextColor(Color.rgb(255, 125, 105))
@@ -4769,16 +4769,16 @@ class MainActivity : Activity() {
                                 repeatMode == 1 -> { exo.seekTo(0); exo.play() }
                                 currentIndex + 1 < queue.size -> { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
                                 repeatMode == 2 || shuffleMode != 0 -> { currentIndex = 0; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
-                                else -> { playButton.text = "▶"; updateNextTrack() }
+                                else -> { updatePlayButtonVisual(false); updateNextTrack() }
                             }
                         }
                     }
                 }
                 override fun onPlayerError(error: PlaybackException) {
-                    playButton.text = "▶"; toast("Lejátszási hiba: " + (error.message ?: "ismeretlen hiba"))
+                    updatePlayButtonVisual(false); toast("Lejátszási hiba: " + (error.message ?: "ismeretlen hiba"))
                 }
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    setVuActive(isPlaying); playButton.text = if (isPlaying) "Ⅱ" else "▶"; vinylView.invalidate()
+                    setVuActive(isPlaying); updatePlayButtonVisual(isPlaying); vinylView.invalidate()
                 }
             }
             playbackListener = listener
@@ -4794,7 +4794,7 @@ class MainActivity : Activity() {
             exo.playWhenReady = true
         } catch (e: Exception) {
             try { player?.stop() } catch (_: Exception) {}
-            playButton.text = "▶"
+            updatePlayButtonVisual(false)
             toast("Nem sikerült megnyitni: " + (e.message ?: "ismeretlen hiba"))
         }
     }
@@ -4802,8 +4802,8 @@ class MainActivity : Activity() {
         val p = player
         if (p == null) { selectedUri?.let { startTrack(it) } ?: openAudio(); return }
         try {
-            if (p.isPlaying) { p.pause(); setVuActive(false); playButton.text = "▶"; vinylView.invalidate() }
-            else { p.play(); setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate() }
+            if (p.isPlaying) { p.pause(); setVuActive(false); updatePlayButtonVisual(false); vinylView.invalidate() }
+            else { p.play(); setVuActive(true); updatePlayButtonVisual(true); vinylView.invalidate() }
         } catch (_: Exception) {}
     }
     private fun renderEqualizer() {
