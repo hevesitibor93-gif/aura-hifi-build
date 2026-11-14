@@ -10,7 +10,7 @@ on:
       - feature/aura-studio-theme
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -19,6 +19,26 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Checkout BLACK-ONIX source assets
+        uses: actions/checkout@v4
+        with:
+          ref: black-onix-assets
+          path: black-onix-assets
+
+      - name: Import selected BLACK-ONIX textures
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          cp black-onix-assets/ScreenMain.Texture.png app/src/main/res/drawable-nodpi/black_onix_main_texture.png
+          cp black-onix-assets/ScreenEQ.Texture.png app/src/main/res/drawable-nodpi/black_onix_eq_texture.png
+          cp black-onix-assets/ScreenPL.Texture.png app/src/main/res/drawable-nodpi/black_onix_playlist_texture.png
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/res/drawable-nodpi/black_onix_*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Import selected BLACK-ONIX skin textures"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
