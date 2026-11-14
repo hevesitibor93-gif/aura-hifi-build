@@ -38,7 +38,8 @@ class BlackOnixDeckView(
     private val onSettings: () -> Unit,
     private val onMainMenu: () -> Unit,
     private val onMinimize: () -> Unit,
-    private val onExit: () -> Unit
+    private val onExit: () -> Unit,
+    private val onVuModeChanged: (Int) -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -152,6 +153,7 @@ class BlackOnixDeckView(
 
     fun setVuMode(mode: Int) {
         vuMode = mode.coerceIn(0, 2)
+        onVuModeChanged(vuMode)
         invalidate()
     }
 
