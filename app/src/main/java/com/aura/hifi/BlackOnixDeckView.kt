@@ -38,8 +38,8 @@ class BlackOnixDeckView(
     private var elapsed = "00:00"
     private var remaining = "-00:00"
     private var playing = false
-    private var shuffle = false
-    private var repeat = false
+    private var shuffleMode = 0
+    private var repeatMode = 0
     private var trackCounter = "0 DAL HÁTRA"
     private var vuMode = 0
     private var leftLevel = 0.08f
@@ -90,10 +90,10 @@ class BlackOnixDeckView(
 
     fun setTrackCounter(value: String) { trackCounter = value; invalidate() }
 
-    fun setPlaybackState(isPlaying: Boolean, shuffleEnabled: Boolean, repeatEnabled: Boolean) {
+    fun setPlaybackState(isPlaying: Boolean, shuffleState: Int, repeatState: Int) {
         playing = isPlaying
-        shuffle = shuffleEnabled
-        repeat = repeatEnabled
+        shuffleMode = shuffleState.coerceIn(0, 2)
+        repeatMode = repeatState.coerceIn(0, 3)
         invalidate()
     }
 
@@ -232,8 +232,8 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_stop_skin, canvas, 342f, 328f, 73f, 49f, 0, 8)
         sprite(R.drawable.onix_button_open_skin, canvas, 515f, 339f, 37f, 27f, 0, 4)
         sprite(R.drawable.onix_button_sleep_skin, canvas, 551f, 339f, 37f, 27f, 0, 4)
-        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f, if (repeat) 1 else 0, 6)
-        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, if (shuffle) 1 else 0, 6)
+        sprite(R.drawable.onix_button_repeat_skin, canvas, 659f, 339f, 37f, 27f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
         canvas.restore()
         buildHitTargets()
     }
