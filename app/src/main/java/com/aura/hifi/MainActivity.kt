@@ -870,7 +870,6 @@ class MainActivity : Activity() {
         }
         themePrefs.edit().putString("aura_theme", themeId).apply()
         val isOnix = themeId != "classic"
-        val onixPortraitOnly = themeId == "black_onix_portrait"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = if (isOnix)
@@ -1018,6 +1017,10 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (landscape && isOnix) {
+            eqPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_eq_texture))
+            songsPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_playlist_texture))
+        }
         var landscapeHeadUnit: LinearLayout? = null
         var landscapeBrandHeader: View? = null
         if (landscape) {
@@ -1048,10 +1051,11 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(3), dp(10), dp(3))
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    if (isOnix) intArrayOf(Color.rgb(12, 17, 25), Color.rgb(43, 52, 65), Color.rgb(4, 8, 14)) else intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
+                background = if (isOnix) android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_main_texture))
+                else GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
                     cornerRadius = dp(17).toFloat()
-                    setStroke(dp(2), if (isOnix) Color.rgb(190, 151, 91) else Color.rgb(104, 126, 149))
+                    setStroke(dp(2), Color.rgb(104, 126, 149))
                 }
                 elevation = dp(10).toFloat()
             }
