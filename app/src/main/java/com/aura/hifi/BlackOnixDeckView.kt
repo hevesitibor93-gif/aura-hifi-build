@@ -81,6 +81,14 @@ class BlackOnixDeckView(
         canvas.drawBitmap(b, Rect(0, index * fh, b.width, (index + 1) * fh), RectF(x, y, x + w, y + h), paint)
     }
 
+    private fun spriteHorizontal(id: Int, canvas: Canvas, x: Float, y: Float, w: Float, h: Float, frame: Int, frames: Int) {
+        val b = bitmap(id) ?: return
+        val fw = b.width / frames
+        if (fw <= 0) return
+        val index = frame.coerceIn(0, frames - 1)
+        canvas.drawBitmap(b, Rect(index * fw, 0, (index + 1) * fw, b.height), RectF(x, y, x + w, y + h), paint)
+    }
+
     fun setTrack(title: String, elapsed: String, remaining: String) {
         this.title = title.ifBlank { "AURA Hi-Fi" }
         this.elapsed = elapsed
@@ -179,10 +187,10 @@ class BlackOnixDeckView(
         // Original left/right dual VU strips. The level changes the active frame.
         val lf = if (leftLevel > .62f) 1 else 0
         val rf = if (rightLevel > .62f) 1 else 0
-        sprite(R.drawable.onix_vu_left_l_skin, canvas, 263f, 159f, 5f, 82f, lf)
-        sprite(R.drawable.onix_vu_left_r_skin, canvas, 269f, 159f, 5f, 82f, lf)
-        sprite(R.drawable.onix_vu_right_l_skin, canvas, 625f, 159f, 5f, 82f, rf)
-        sprite(R.drawable.onix_vu_right_r_skin, canvas, 631f, 159f, 5f, 82f, rf)
+        spriteHorizontal(R.drawable.onix_vu_left_l_skin, canvas, 263f, 159f, 5f, 82f, lf, 2)
+        spriteHorizontal(R.drawable.onix_vu_left_r_skin, canvas, 269f, 159f, 5f, 82f, lf, 2)
+        spriteHorizontal(R.drawable.onix_vu_right_l_skin, canvas, 625f, 159f, 5f, 82f, rf, 2)
+        spriteHorizontal(R.drawable.onix_vu_right_r_skin, canvas, 631f, 159f, 5f, 82f, rf, 2)
 
         // Spectrum area: FFT-driven bars in the original A1 spectrum window.
         draw(R.drawable.onix_spec_mode_a1_texture, canvas, 285f, 175f, 330f, 80f)
