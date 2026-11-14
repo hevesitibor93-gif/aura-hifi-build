@@ -156,7 +156,7 @@ class MplayThemeActivity : Activity() {
         playerDeck.addView(transport, LinearLayout.LayoutParams(-1, dp(46)))
         rack.addView(playerDeck)
 
-        val ampDeck = chassis(152, LinearLayout.HORIZONTAL)
+        val ampDeck = chassis(152)
         val meters = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
         val leftMeter = meterPanel("LEFT")
         val rightMeter = meterPanel("RIGHT")
