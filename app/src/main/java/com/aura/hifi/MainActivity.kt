@@ -1077,7 +1077,7 @@ class MainActivity : Activity() {
             songsPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_playlist_texture))
         }
         var landscapeHeadUnit: LinearLayout? = null
-        if (landscape) {
+        if (landscape && isOnix) {
             // BLACK-ONIX fekvő: kizárólag az ONIX lejátszófedélzet elemei.
             // A Classic és az álló nézet saját felépítése változatlan marad.
             playerPage.orientation = LinearLayout.HORIZONTAL
@@ -1090,12 +1090,8 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(12), dp(8), dp(12), dp(8))
-                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(7, 10, 15), Color.rgb(30, 36, 45), Color.rgb(5, 8, 13))
-                ).apply {
-                    cornerRadius = dp(5).toFloat()
-                    setStroke(dp(1), Color.rgb(111, 125, 143))
-                }
+                // Átlátszó fedélzet: az eredeti BLACK-ONIX háttérkép teljesen látható marad.
+                background = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
             }
             landscapeHeadUnit = deck
 
