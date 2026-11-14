@@ -219,6 +219,9 @@ class MainActivity : Activity() {
         if (intent.getBooleanExtra("aura_open_player", false)) {
             openPlayerPage?.invoke()
         }
+        if (intent.getBooleanExtra("aura_open_library", false)) {
+            openLibraryPage?.invoke()
+        }
     }
 
     private fun openBackupExport() {
@@ -1927,7 +1930,11 @@ class MainActivity : Activity() {
         keepScreenOnRow.addView(keepScreenOnSwitch)
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
-        appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        appearanceSettingsPage.addView(label("AURA CLASSIC  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(5)) })
+        appearanceSettingsPage.addView(label("Az eredeti Classic felület változatlan marad. A második felület külön képernyőként nyitható meg.", 10f, Color.rgb(145, 153, 166)).apply { setPadding(dp(3), 0, dp(3), dp(10)) })
+        appearanceSettingsPage.addView(button("▣  MPLAY HI-FI FELÜLET MEGNYITÁSA", Color.rgb(63, 48, 29), Color.rgb(255, 207, 112)) {
+            startActivity(Intent(this, MplayThemeActivity::class.java))
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(12) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
