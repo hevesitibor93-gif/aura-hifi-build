@@ -75,7 +75,7 @@ jobs:
           target.mkdir(parents=True, exist_ok=True)
           prefixes = (
               "Base", "Container", "PanelBottom", "BottomGW", "LeftGW", "RightGW",
-              "ScreenMain", "VUMode", "PPMMode", "RunningLine", "TimeDisplay", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
+              "ScreenMain", "VUMode", "PPMMode", "RunningLine", "TimeDisplay", "TimeSystem", "VU_Mode", "PPM_Mode", "VULeft", "VURight",
               "SpectrumA1", "SpecMode", "SMode", "ButtonStop", "ButtonOpen", "ButtonSleep",
               "ButtonShuffle", "ButtonRepeat", "ButtonManager", "ButtonLibrary", "ButtonRadio", "PLScr", "EQScr", "VUPPMMode", "ButtonTopMainMenu", "ButtonTopOptions",
               "ButtonTopUtilities", "CloseBtn", "ToTrayBtn"
