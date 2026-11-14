@@ -14,7 +14,6 @@ import android.view.View
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * Landscape BLACK-ONIX skin surface.
@@ -120,8 +119,8 @@ class BlackOnixDeckView(
         if (fft.size > 8) {
             val bins = fft.size / 2
             for (i in 0 until 30) {
-                val startBin = (2.0.pow(i / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(1)
-                val endBin = (2.0.pow((i + 1) / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(startBin + 1)
+                val startBin = (Math.pow(2.0, i / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(1)
+                val endBin = (Math.pow(2.0, (i + 1) / 29.0 * kotlin.math.ln(220.0) / kotlin.math.ln(2.0))).toInt().coerceAtLeast(startBin + 1)
                 var peak = 0f
                 for (bin in startBin until min(endBin, bins - 1)) {
                     val offset = 2 + bin * 2
