@@ -192,7 +192,11 @@ class MainActivity : Activity() {
         applyEqualizerSettings(prefs)
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
-        requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        requestedOrientation = when (prefs.getString("aura_theme", "classic")) {
+            "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            "black_onix" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            else -> if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         buildUi()
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -859,27 +863,36 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        // AURA Original is the only active theme. Legacy themes are retired.
-        themePrefs.edit().putString("aura_theme", "original").apply()
+        val themeId = when (themePrefs.getString("aura_theme", "classic")) {
+            "black_onix" -> "black_onix"
+            "black_onix_portrait" -> "black_onix_portrait"
+            else -> "classic"
+        }
+        themePrefs.edit().putString("aura_theme", themeId).apply()
+        val isOnix = themeId != "classic"
+        val onixPortraitOnly = themeId == "black_onix_portrait"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
-            setPadding(dp(18), dp(12), dp(18), dp(12))
+            background = if (isOnix)
+                GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(2, 4, 8), Color.rgb(19, 25, 34), Color.rgb(3, 6, 11)))
+            else GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(7, 9, 13), Color.rgb(20, 22, 29), Color.rgb(8, 10, 14)))
+            setPadding(dp(if (isOnix) 10 else 18), dp(12), dp(if (isOnix) 10 else 18), dp(12))
             setOnApplyWindowInsetsListener { view, insets ->
                 val topInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.statusBars()).top else insets.systemWindowInsetTop
                 val bottomInset = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(WindowInsets.Type.navigationBars()).bottom else insets.systemWindowInsetBottom
-                view.setPadding(dp(18), dp(12) + topInset, dp(18), dp(12) + bottomInset)
+                val sidePadding = dp(if (isOnix) 10 else 18)
+                view.setPadding(sidePadding, dp(12) + topInset, sidePadding, dp(12) + bottomInset)
                 insets
             }
         }
         val scroll = ScrollView(this).apply { isFillViewport = true }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val brand = TextView(this).apply { text = "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
-        val hi = TextView(this).apply { text = "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
+        val brand = TextView(this).apply { text = if (isOnix) "BLACK" else "AURA"; textSize = 24f; letterSpacing = 0.16f; setTextColor(if (isOnix) Color.rgb(210, 218, 228) else Color.rgb(238, 202, 137)); typeface = Typeface.create("sans-serif-black", Typeface.BOLD) }
+        val hi = TextView(this).apply { text = if (isOnix) "  ONIX  •  HI-FI SYSTEM" else "  HI-FI STUDIO"; textSize = 10f; letterSpacing = 0.13f; setTextColor(if (isOnix) Color.rgb(190, 145, 82) else Color.rgb(180, 151, 105)); typeface = Typeface.DEFAULT_BOLD }
         header.addView(brand); header.addView(hi); header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         body.addView(header)
-        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
+        val artFrame = LinearLayout(this).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, if (isOnix) intArrayOf(Color.rgb(61, 69, 79), Color.rgb(7, 11, 17), Color.rgb(35, 43, 53)) else intArrayOf(Color.rgb(39, 35, 29), Color.rgb(13, 16, 22), Color.rgb(31, 29, 26))).apply { cornerRadius = dp(21).toFloat(); setStroke(dp(1), if (isOnix) Color.rgb(137, 151, 169) else Color.rgb(139, 111, 68)) }; setPadding(dp(6), dp(6), dp(6), dp(6)); elevation = dp(10).toFloat() }
         artworkView = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(82, 65, 39), Color.rgb(18, 20, 26), Color.rgb(47, 37, 24))).apply { cornerRadius = dp(16).toFloat() }; setImageDrawable(null) }
         vinylView = VinylView()
         artFrame.addView(artworkView, LinearLayout.LayoutParams(dp(154), dp(154)))
@@ -981,9 +994,10 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(5, 7, 11), Color.rgb(27, 27, 29), Color.rgb(10, 12, 16), Color.rgb(4, 6, 10))).apply {
+                if (isOnix) intArrayOf(Color.rgb(2, 5, 9), Color.rgb(34, 43, 55), Color.rgb(8, 13, 21), Color.rgb(1, 3, 7))
+                else intArrayOf(Color.rgb(5, 7, 11), Color.rgb(27, 27, 29), Color.rgb(10, 12, 16), Color.rgb(4, 6, 10))).apply {
                 cornerRadius = dp(26).toFloat()
-                setStroke(dp(1), Color.rgb(112, 91, 61))
+                setStroke(dp(if (isOnix) 2 else 1), if (isOnix) Color.rgb(126, 145, 167) else Color.rgb(112, 91, 61))
             }
             elevation = dp(12).toFloat()
         }
@@ -1020,8 +1034,8 @@ class MainActivity : Activity() {
                 setPadding(dp(3), dp(5), dp(3), dp(5))
                 background = GradientDrawable(
                     if (reverse) GradientDrawable.Orientation.RIGHT_LEFT else GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
-                ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), Color.rgb(83, 94, 110)) }
+                    if (isOnix) intArrayOf(Color.rgb(57, 65, 76), Color.rgb(3, 6, 11)) else intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
+                ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), if (isOnix) Color.rgb(153, 166, 184) else Color.rgb(83, 94, 110)) }
             }
             val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
             val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; "circular", "aurix" -> 72; else -> 54 }
@@ -1035,9 +1049,9 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(3), dp(10), dp(3))
                 background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
+                    if (isOnix) intArrayOf(Color.rgb(12, 17, 25), Color.rgb(43, 52, 65), Color.rgb(4, 8, 14)) else intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
                     cornerRadius = dp(17).toFloat()
-                    setStroke(dp(2), Color.rgb(104, 126, 149))
+                    setStroke(dp(2), if (isOnix) Color.rgb(190, 151, 91) else Color.rgb(104, 126, 149))
                 }
                 elevation = dp(10).toFloat()
             }
@@ -1145,8 +1159,9 @@ class MainActivity : Activity() {
         val radioPanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(77, 80, 82), Color.rgb(35, 38, 41), Color.rgb(12, 15, 19))
-            ).apply { cornerRadius = dp(9).toFloat(); setStroke(dp(1), Color.rgb(145, 132, 108)) }
+                if (isOnix) intArrayOf(Color.rgb(66, 74, 85), Color.rgb(24, 31, 41), Color.rgb(5, 9, 15))
+                else intArrayOf(Color.rgb(77, 80, 82), Color.rgb(35, 38, 41), Color.rgb(12, 15, 19))
+            ).apply { cornerRadius = dp(9).toFloat(); setStroke(dp(1), if (isOnix) Color.rgb(176, 144, 91) else Color.rgb(145, 132, 108)) }
             setPadding(dp(8), dp(4), dp(8), dp(4)); elevation = dp(5).toFloat()
         }
         val tunerHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -1932,7 +1947,25 @@ class MainActivity : Activity() {
         keepScreenOnRow.addView(keepScreenOnSwitch)
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
-        appearanceSettingsPage.addView(label("AURA ORIGINAL  •  EREDETI FELÜLET", 11f, Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        val activeThemeName = when (themeId) {
+            "black_onix" -> "BLACK-ONIX  •  AUTOMATIKUS ÁLLÓ / FEKVŐ"
+            "black_onix_portrait" -> "BLACK-ONIX  •  TELEFONOS ÁLLÓ NÉZET"
+            else -> "CLASSIC  •  EREDETI AURA FELÜLET"
+        }
+        appearanceSettingsPage.addView(label("AKTÍV TÉMA: " + activeThemeName, 11f, if (isOnix) Color.rgb(220, 184, 119) else Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(8)) })
+        fun selectAuraTheme(id: String) {
+            themePrefs.edit().putString("aura_theme", id).apply()
+            requestedOrientation = when (id) {
+                "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                "black_onix" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                else -> if (themePrefs.getBoolean("screen_rotation", true)) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+            recreate()
+        }
+        appearanceSettingsPage.addView(button("CLASSIC  •  EREDETI AURA", if (themeId == "classic") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("classic") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ / FEKVŐ", if (themeId == "black_onix") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ TELEFONNÉZET", if (themeId == "black_onix_portrait") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix_portrait") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
+        appearanceSettingsPage.addView(label("A BLACK-ONIX automatikusan a fekvő vagy álló elrendezést használja. A külön álló változat mindig telefonos állásban marad.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
@@ -2517,7 +2550,7 @@ class MainActivity : Activity() {
             if (activeLibraryRenderer == null) showLibraryHome() else activeLibraryRenderer?.invoke()
             scrollToCurrentLibraryRow()
         }
-        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, if (isOnix) Color.rgb(30, 39, 51) else Color.rgb(29, 29, 30), if (isOnix) Color.rgb(220, 190, 139) else Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
