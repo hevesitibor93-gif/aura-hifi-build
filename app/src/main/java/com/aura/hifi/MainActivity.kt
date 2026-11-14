@@ -1142,16 +1142,18 @@ class MainActivity : Activity() {
             playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
             playerPage.addView(headUnit, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(7), 0, dp(7), 0) })
             playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
-            artFrame.visibility = View.GONE
-            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(174)).apply { setMargins(dp(4), dp(2), dp(4), dp(3)) }
+            artFrame.visibility = View.VISIBLE
+            artFrame.layoutParams = LinearLayout.LayoutParams(dp(112), dp(112)).apply {
+                setMargins(dp(3), dp(2), dp(10), dp(2))
+            }
             artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply {
                 cornerRadius = dp(14).toFloat()
                 setStroke(dp(2), Color.rgb(111,133,157))
             }
             artFrame.setPadding(dp(5), dp(5), dp(5), dp(5))
-            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(164); height = dp(164) }
-            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(164); height = dp(164) }
+            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(100); height = dp(100) }
+            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(100); height = dp(100) }
             trackLabel.textSize = 12f
             trackLabel.setPadding(dp(3), dp(2), dp(3), 0)
             metadataLabel.textSize = 10f
@@ -1179,7 +1181,18 @@ class MainActivity : Activity() {
                 isClickable = true
                 setOnClickListener { openVuSettingsPage?.invoke() }
             }
-            headUnit.addView(centerAurixVu, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
+            val visualDeck = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+            }
+            visualDeck.addView(artFrame, LinearLayout.LayoutParams(dp(116), dp(116)).apply {
+                marginEnd = dp(8)
+            })
+            visualDeck.addView(centerAurixVu, LinearLayout.LayoutParams(0, -1, 1f).apply {
+                setMargins(dp(2), dp(3), dp(2), dp(3))
+            })
+            headUnit.addView(visualDeck, LinearLayout.LayoutParams(-1, 0, 1f))
             trackLabel.textSize = 16f
             trackLabel.setTextColor(Color.WHITE)
             trackLabel.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
