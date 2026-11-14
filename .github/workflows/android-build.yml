@@ -30,8 +30,8 @@ jobs:
         run: |
           mkdir -p app/src/main/res/drawable-nodpi
           cp black-onix-assets/ScreenMain.Texture.png app/src/main/res/drawable-nodpi/black_onix_main_texture.png
-          cp black-onix-assets/ScreenEQ.Texture.png app/src/main/res/drawable-nodpi/black_onix_eq_texture.png
-          cp black-onix-assets/ScreenPL.Texture.png app/src/main/res/drawable-nodpi/black_onix_playlist_texture.png
+          cp black-onix-assets/Images/ScreenEQ.Texture.png app/src/main/res/drawable-nodpi/black_onix_eq_texture.png
+          cp black-onix-assets/Images/ScreenPL.Texture.png app/src/main/res/drawable-nodpi/black_onix_playlist_texture.png
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/res/drawable-nodpi/black_onix_*.png
