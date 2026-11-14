@@ -1127,11 +1127,7 @@ class MainActivity : Activity() {
             sideVuLeft?.isClickable = true
             sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            leftPanel.addView(
-                if (isOnix) createOnixTransportButton(R.drawable.black_onix_prev_normal, R.drawable.black_onix_prev_pressed, "Előző szám") { playPrevious() }
-                else neonRoundButton("◀", 42, false) { playPrevious() },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) }
-            )
+            // A transport gombok a középső vezérlősoron maradnak; az oldalpanelek a VU-mérőké.
             leftPanel.addView(neonRoundButton("−", 42, false) { player?.volume = 0.65f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
@@ -1140,11 +1136,6 @@ class MainActivity : Activity() {
             sideVuRight?.isClickable = true
             sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            rightPanel.addView(
-                if (isOnix) createOnixTransportButton(R.drawable.black_onix_next_normal, R.drawable.black_onix_next_pressed, "Következő szám") { playNext() }
-                else neonRoundButton("▶", 42, false) { playNext() },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) }
-            )
             rightPanel.addView(neonRoundButton("＋", 42, false) { player?.volume = 1f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
