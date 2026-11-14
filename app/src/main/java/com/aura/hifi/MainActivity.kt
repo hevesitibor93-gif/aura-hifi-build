@@ -149,6 +149,7 @@ class MainActivity : Activity() {
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
     private var openEqualizerPage: (() -> Unit)? = null
+    private var openSettingsPage: (() -> Unit)? = null
     private var activeLibraryRenderer: (() -> Unit)? = null
     private var libraryScrollView: ScrollView? = null
     private var currentTrackRow: View? = null
@@ -1138,7 +1139,7 @@ class MainActivity : Activity() {
                 onEqualizer = { openEqualizerPage?.invoke() },
                 onUtilities = { openSoundEnginePage?.invoke() },
                 onRadio = { showFavoriteRadioStations() },
-                onSettings = { openVuSettingsPage?.invoke() },
+                onSettings = { openSettingsPage?.invoke() },
                 onMainMenu = { openLibraryPage?.invoke() },
                 onMinimize = { moveTaskToBack(true) },
                 onExit = { finish() }
@@ -2561,6 +2562,7 @@ class MainActivity : Activity() {
         }
         openSoundEnginePage = { showPage(5, false) }
         openEqualizerPage = { showPage(2, false) }
+        openSettingsPage = { showPage(3, false) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
@@ -3962,7 +3964,10 @@ class MainActivity : Activity() {
             val displayLeft = if (mono) (leftLevel + rightLevel) * 0.5f else leftLevel
             val displayRight = if (mono) displayLeft else rightLevel
             handler.postDelayed({
-                if (player?.isPlaying == true) setVuLevels(displayLeft, displayRight)
+                if (player?.isPlaying == true) {
+                    setVuLevels(displayLeft, displayRight)
+                    blackOnixDeck?.setLevels(displayLeft, displayRight)
+                }
             }, delay)
         }
     }
