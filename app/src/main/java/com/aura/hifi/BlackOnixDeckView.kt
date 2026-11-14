@@ -40,6 +40,7 @@ class BlackOnixDeckView(
     private var playing = false
     private var shuffle = false
     private var repeat = false
+    private var trackCounter = "0 DAL HÁTRA"
     private var vuMode = 0
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
@@ -86,6 +87,8 @@ class BlackOnixDeckView(
         this.remaining = remaining
         invalidate()
     }
+
+    fun setTrackCounter(value: String) { trackCounter = value; invalidate() }
 
     fun setPlaybackState(isPlaying: Boolean, shuffleEnabled: Boolean, repeatEnabled: Boolean) {
         playing = isPlaying
@@ -142,6 +145,9 @@ class BlackOnixDeckView(
         draw(R.drawable.onix_panel_bottom_left_texture, canvas, 0f, 323f)
         draw(R.drawable.onix_panel_bottom_center_main_texture, canvas, 117f, 323f)
         draw(R.drawable.onix_panel_bottom_right_texture, canvas, 782f, 323f)
+        draw(R.drawable.onix_vuppm_mode1_skin, canvas, 70f, 121f, 27f, 27f)
+        draw(R.drawable.onix_vuppm_mode2_skin, canvas, 97f, 121f, 27f, 27f)
+        draw(R.drawable.onix_vuppm_mode3_skin, canvas, 124f, 121f, 27f, 27f)
 
         // Original scrolling-title strip and the two time readouts.
         draw(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f)
@@ -164,6 +170,7 @@ class BlackOnixDeckView(
         canvas.restore()
         canvas.drawText(remaining, 149f, 119f, smallPaint)
         canvas.drawText(elapsed, 688f, 119f, smallPaint)
+        canvas.drawText(trackCounter, 12f, 365f, smallPaint)
 
         // Original left/right dual VU strips. The level changes the active frame.
         val lf = if (leftLevel > .62f) 1 else 0
@@ -227,6 +234,9 @@ class BlackOnixDeckView(
         hitTargets += RectF(551f, 339f, 588f, 366f) to onSleep
         hitTargets += RectF(659f, 339f, 696f, 366f) to onRepeat
         hitTargets += RectF(695f, 339f, 732f, 366f) to onShuffle
+        hitTargets += RectF(70f, 121f, 97f, 148f) to { setVuMode(0) }
+        hitTargets += RectF(97f, 121f, 124f, 148f) to { setVuMode(1) }
+        hitTargets += RectF(124f, 121f, 151f, 148f) to { setVuMode(2) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
