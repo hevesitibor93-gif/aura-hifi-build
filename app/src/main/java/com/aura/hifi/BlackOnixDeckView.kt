@@ -42,7 +42,8 @@ class BlackOnixDeckView(
     private val onExit: () -> Unit,
     private val onVuModeChanged: (Int) -> Unit,
     private val onSpectrumModeChanged: (Int) -> Unit,
-    private val onSeekTo: (Long) -> Unit
+    private val onSeekTo: (Long) -> Unit,
+    private val onMute: () -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -54,6 +55,7 @@ class BlackOnixDeckView(
     private var repeatMode = 0
     private var trackCounter = "0 DAL HÁTRA"
     private var vuMode = 0
+    private var muted = false
     private var spectrumMode = 0
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
@@ -189,10 +191,12 @@ class BlackOnixDeckView(
     }
 
     fun setVuMode(mode: Int) {
-        vuMode = mode.coerceIn(0, 2)
+        vuMode = mode.coerceIn(0, 3)
         onVuModeChanged(vuMode)
         invalidate()
     }
+
+    fun setMuted(value: Boolean) { muted = value; invalidate() }
 
     fun setSpectrumMode(mode: Int) {
         spectrumMode = mode.coerceIn(0, 2)
@@ -202,8 +206,8 @@ class BlackOnixDeckView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val scale = min(width / 899f, height / 401f)
-        val ox = (width - 899f * scale) / 2f
+        val scale = width / 899f
+        val ox = 0f
         val oy = (height - 401f * scale) / 2f
         canvas.save()
         canvas.translate(ox, oy)
@@ -260,13 +264,13 @@ class BlackOnixDeckView(
         drawTimeString(canvas, R.drawable.onix_time_system_skin, 684f, 135f, systemClock)
         canvas.drawText(trackCounter, 149f, 137f, smallPaint)
 
-        // Original left/right dual VU strips. The level changes the active frame.
-        val lf = if (leftLevel > .62f) 1 else 0
-        val rf = if (rightLevel > .62f) 1 else 0
-        spriteHorizontal(R.drawable.onix_vu_left_l_skin, canvas, 263f, 159f, 5f, 82f, lf, 2)
-        spriteHorizontal(R.drawable.onix_vu_left_r_skin, canvas, 269f, 159f, 5f, 82f, lf, 2)
-        spriteHorizontal(R.drawable.onix_vu_right_l_skin, canvas, 625f, 159f, 5f, 82f, rf, 2)
-        spriteHorizontal(R.drawable.onix_vu_right_r_skin, canvas, 631f, 159f, 5f, 82f, rf, 2)
+        // Stereo side meters: independent L/R levels, with a continuous calibrated scale.
+        if (vuMode != 3) {
+            drawSideMeter(canvas, 263f, 159f, leftLevel)
+            drawSideMeter(canvas, 269f, 159f, rightLevel)
+            drawSideMeter(canvas, 625f, 159f, leftLevel)
+            drawSideMeter(canvas, 631f, 159f, rightLevel)
+        }
 
         // SpectrumA1 is positioned inside SpecModeA1: container origin (279,159),
         // control margins (6,0,5,3), exact 330x80 display area.
@@ -311,14 +315,14 @@ class BlackOnixDeckView(
         // AURA playback seek control in the gap directly below the spectrum.
         val seekLeft = 286f
         val seekRight = 615f
-        val seekY = 249f
+        val seekY = 257f
         val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
-        spectrumPaint.color = Color.rgb(48, 54, 62)
-        canvas.drawRoundRect(RectF(seekLeft, seekY - 1.5f, seekRight, seekY + 1.5f), 2f, 2f, spectrumPaint)
+        spectrumPaint.color = Color.rgb(27, 31, 38)
+        canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, seekRight, seekY + 2f), 2f, 2f, spectrumPaint)
         spectrumPaint.color = Color.rgb(193, 153, 91)
-        canvas.drawRoundRect(RectF(seekLeft, seekY - 1.5f, seekLeft + (seekRight - seekLeft) * fraction, seekY + 1.5f), 2f, 2f, spectrumPaint)
+        canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, seekLeft + (seekRight - seekLeft) * fraction, seekY + 2f), 2f, 2f, spectrumPaint)
         spectrumPaint.color = Color.rgb(238, 213, 164)
-        canvas.drawCircle(seekLeft + (seekRight - seekLeft) * fraction, seekY, 4.2f, spectrumPaint)
+        canvas.drawCircle(seekLeft + (seekRight - seekLeft) * fraction, seekY, 3.4f, spectrumPaint)
 
         // Original 341x32 VU mode background, followed by its animated level sprites.
         val vuTexture = when (vuMode) {
@@ -326,7 +330,7 @@ class BlackOnixDeckView(
             2 -> R.drawable.onix_vu_mode3_texture
             else -> R.drawable.onix_vu_mode1_texture
         }
-        draw(vuTexture, canvas, 279f, 127f, 341f, 32f)
+        if (vuMode != 3) draw(vuTexture, canvas, 279f, 127f, 341f, 32f)
 
         // The four independent red/amber side-meter sprite sets (three selectable modes).
         val prefixVu = when (vuMode) {
@@ -334,12 +338,14 @@ class BlackOnixDeckView(
             2 -> arrayOf(R.drawable.onix_vu_mode3_top_skin, R.drawable.onix_vu_mode3_bottom_skin, R.drawable.onix_vu_mode3_add_top_skin, R.drawable.onix_vu_mode3_add_bottom_skin)
             else -> arrayOf(R.drawable.onix_vu_mode1_top_skin, R.drawable.onix_vu_mode1_bottom_skin, R.drawable.onix_vu_mode1_add_top_skin, R.drawable.onix_vu_mode1_add_bottom_skin)
         }
-        val frameL = (leftLevel * 35f).toInt().coerceIn(0, 35)
-        val frameR = (rightLevel * 35f).toInt().coerceIn(0, 35)
-        sprite(prefixVu[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
-        sprite(prefixVu[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
-        sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
-        sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
+        if (vuMode != 3) {
+            val frameL = (leftLevel * 35f).toInt().coerceIn(0, 35)
+            val frameR = (rightLevel * 35f).toInt().coerceIn(0, 35)
+            sprite(prefixVu[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
+            sprite(prefixVu[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
+            sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
+            sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
+        }
 
         // Replace the old skin branding with AURA.
         val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(205, 4, 7, 11) }
@@ -352,6 +358,7 @@ class BlackOnixDeckView(
             setShadowLayer(2f, 0f, 1f, Color.BLACK)
         }
         canvas.drawText("AURA", 449.5f, 20f, brandPaint)
+        sprite(R.drawable.onix_button_mute_volume_skin, canvas, 126f, 130f, 41f, 25f, if (muted) 3 else 0, 6)
 
         // Top bar: original ONIX controls.
         sprite(R.drawable.onix_button_top_main_menu_skin, canvas, 10f, 27f, 23f, 23f, 0, 4)
@@ -431,23 +438,24 @@ class BlackOnixDeckView(
         hitTargets += RectF(70f, 27f, 93f, 50f) to onUtilities
         hitTargets += RectF(805f, 27f, 828f, 50f) to onMinimize
         hitTargets += RectF(865f, 27f, 888f, 50f) to onExit
-        hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(0) }
-        hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(1) }
-        hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(2) }
+        hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(if (vuMode == 0) 3 else 0) }
+        hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(if (vuMode == 1) 3 else 1) }
+        hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(if (vuMode == 2) 3 else 2) }
+        hitTargets += RectF(126f, 130f, 167f, 155f) to onMute
         hitTargets += RectF(799f, 223f, 820f, 248f) to { setSpectrumMode(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { setSpectrumMode(1) }
         hitTargets += RectF(859f, 223f, 880f, 248f) to { setSpectrumMode(2) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val scale = min(width / 899f, height / 401f)
-        val ox = (width - 899f * scale) / 2f
+        val scale = width / 899f
+        val ox = 0f
         val oy = (height - 401f * scale) / 2f
         val x = (event.x - ox) / scale
         val y = (event.y - oy) / scale
         if (event.action == MotionEvent.ACTION_DOWN) {
             touchDownTime = event.eventTime
-            if (RectF(278f, 240f, 623f, 258f).contains(x, y) && trackDurationMs > 0L) {
+            if (RectF(278f, 248f, 623f, 264f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
                 updateSeekPreview(x)
             }
@@ -479,6 +487,26 @@ class BlackOnixDeckView(
         }
         performClick()
         return true
+    }
+
+    private fun drawSideMeter(canvas: Canvas, x: Float, y: Float, rawLevel: Float) {
+        val level = rawLevel.coerceIn(0f, 1f)
+        val h = 82f
+        val segments = 30
+        val gap = 1f
+        val segmentH = (h - gap * (segments - 1)) / segments
+        for (i in 0 until segments) {
+            val active = i < (level * segments).toInt()
+            val ratio = i.toFloat() / (segments - 1)
+            val color = when {
+                ratio > .88f -> Color.rgb(235, 42, 35)
+                ratio > .70f -> Color.rgb(242, 150, 42)
+                else -> Color.rgb(112, 190, 92)
+            }
+            spectrumPaint.color = if (active) color else Color.rgb(31, 35, 40)
+            val top = y + h - (i + 1) * segmentH - i * gap
+            canvas.drawRoundRect(RectF(x, top, x + 4f, top + segmentH), 1f, 1f, spectrumPaint)
+        }
     }
 
     private fun updateSeekPreview(x: Float) {
