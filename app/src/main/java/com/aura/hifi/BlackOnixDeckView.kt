@@ -154,7 +154,7 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode == 2) 5 else 4, 6)
 
         // Original scrolling-title strip and the two time readouts.
-        draw(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f)
+        sprite(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f, 0, 2)
         canvas.save()
         canvas.clipRect(129f, 81f, 770f, 101f)
         val textWidth = textPaint.measureText(title)
@@ -172,8 +172,8 @@ class BlackOnixDeckView(
             canvas.drawText(title, 135f, 96f, textPaint)
         }
         canvas.restore()
-        canvas.drawText(remaining, 149f, 119f, smallPaint)
-        canvas.drawText(elapsed, 688f, 119f, smallPaint)
+        drawTimeString(canvas, R.drawable.onix_time_display_skin, 149f, 110f, remaining)
+        drawTimeString(canvas, R.drawable.onix_time_display1_skin, 688f, 110f, elapsed)
         canvas.drawText(trackCounter, 12f, 365f, smallPaint)
 
         // Original left/right dual VU strips. The level changes the active frame.
@@ -236,6 +236,24 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, if (shuffle) 1 else 0, 6)
         canvas.restore()
         buildHitTargets()
+    }
+
+
+    private fun drawTimeString(canvas: Canvas, resource: Int, x: Float, y: Float, value: String) {
+        val sheet = bitmap(resource) ?: return
+        val cellWidth = sheet.width / 13
+        val cellHeight = sheet.height
+        value.take(8).forEachIndexed { index, char ->
+            val frame = when (char) {
+                in '0'..'9' -> char - '0'
+                ':' -> 10
+                '-' -> 11
+                else -> 12
+            }
+            val left = frame * cellWidth
+            canvas.drawBitmap(sheet, Rect(left, 0, left + cellWidth, cellHeight),
+                RectF(x + index * cellWidth, y, x + (index + 1) * cellWidth, y + cellHeight), paint)
+        }
     }
 
     private fun buildHitTargets() {
