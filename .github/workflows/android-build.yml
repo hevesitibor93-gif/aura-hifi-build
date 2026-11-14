@@ -32,6 +32,26 @@ jobs:
           cp black-onix-assets/ScreenMain.Texture.png app/src/main/res/drawable-nodpi/black_onix_main_texture.png
           cp black-onix-assets/Images/ScreenEQ.Texture.png app/src/main/res/drawable-nodpi/black_onix_eq_texture.png
           cp black-onix-assets/Images/ScreenPL.Texture.png app/src/main/res/drawable-nodpi/black_onix_playlist_texture.png
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          source = Path("black-onix-assets/Images")
+          target = Path("app/src/main/res/drawable-nodpi")
+          sprites = {
+              "ButtonPrev.Skin.png": ("black_onix_prev", 8),
+              "ButtonPlay.Skin.png": ("black_onix_play", 12),
+              "ButtonPause.Skin.png": ("black_onix_pause", 12),
+              "ButtonNext.Skin.png": ("black_onix_next", 8),
+          }
+          for filename, (name, frames) in sprites.items():
+              image = Image.open(source / filename).convert("RGBA")
+              frame_height = image.height // frames
+              if image.height % frames:
+                  raise SystemExit(f"Unexpected sprite dimensions: {filename} {image.size}")
+              for state, index in (("normal", 0), ("pressed", 1)):
+                  frame = image.crop((0, index * frame_height, image.width, (index + 1) * frame_height))
+                  frame.save(target / f"{name}_{state}.png", optimize=True)
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/res/drawable-nodpi/black_onix_*.png
