@@ -110,6 +110,7 @@ class MainActivity : Activity() {
     private var currentArtworkData: ByteArray? = null
     private lateinit var trackLabel: TextView
     private lateinit var playButton: Button
+    private var playImageButton: ImageButton? = null
     private lateinit var eqContainer: LinearLayout
     private lateinit var seekBar: SeekBar
     private lateinit var timeLabel: TextView
@@ -395,13 +396,13 @@ class MainActivity : Activity() {
                 if (playbackState == Player.STATE_READY) updateProgress()
                 if (playbackState == Player.STATE_ENDED) {
                     setVuActive(false)
-                    playButton.text = "▶"
+                    updatePlayButtonVisual(false)
                 }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 setVuActive(isPlaying)
-                playButton.text = if (isPlaying) "Ⅱ" else "▶"
+                updatePlayButtonVisual(isPlaying)
                 vinylView.invalidate()
                 if (!radioStreamError) activeRadioStationName?.let { stationName ->
                     radioStatusLabel?.apply {
@@ -861,6 +862,38 @@ class MainActivity : Activity() {
         views.forEach { it.setCustomAppearance(thickness, spacing, segments, gap, color) }
     }
 
+    private fun updatePlayButtonVisual(isPlaying: Boolean) {
+        if (::playButton.isInitialized) playButton.text = if (isPlaying) "Ⅱ" else "▶"
+        playImageButton?.setImageResource(
+            if (isPlaying) R.drawable.black_onix_pause_normal else R.drawable.black_onix_play_normal
+        )
+    }
+
+    private fun createOnixTransportButton(
+        normalRes: Int,
+        pressedRes: Int,
+        description: String,
+        action: () -> Unit
+    ): ImageButton {
+        return ImageButton(this).apply {
+            contentDescription = description
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            setBackgroundColor(Color.TRANSPARENT)
+            setImageResource(normalRes)
+            setOnTouchListener { view, event ->
+                val button = view as ImageButton
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> button.setImageResource(pressedRes)
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> button.setImageResource(normalRes)
+                }
+                false
+            }
+            setOnClickListener { action() }
+        }
+    }
+
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val themeId = when (themePrefs.getString("aura_theme", "classic")) {
@@ -933,11 +966,24 @@ class MainActivity : Activity() {
         body.addView(nextTrackLabel)
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }
         playButton = neonRoundButton("Ⅱ", 58, true) { togglePlayback() }
-        val previous = neonRoundButton("◀", 48, false) { playPrevious() }
-        val next = neonRoundButton("▶", 48, false) { playNext() }
-        controls.addView(previous, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(22) })
-        controls.addView(playButton, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginEnd = dp(22) })
-        controls.addView(next, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val previous: View
+        val centerControl: View
+        val next: View
+        if (isOnix) {
+            playButton.visibility = View.GONE
+            previous = createOnixTransportButton(R.drawable.black_onix_prev_normal, R.drawable.black_onix_prev_pressed, "Előző szám") { playPrevious() }
+            playImageButton = createOnixTransportButton(R.drawable.black_onix_play_normal, R.drawable.black_onix_play_pressed, "Lejátszás") { togglePlayback() }
+            centerControl = playImageButton!!
+            next = createOnixTransportButton(R.drawable.black_onix_next_normal, R.drawable.black_onix_next_pressed, "Következő szám") { playNext() }
+        } else {
+            playImageButton = null
+            previous = neonRoundButton("◀", 48, false) { playPrevious() }
+            centerControl = playButton
+            next = neonRoundButton("▶", 48, false) { playNext() }
+        }
+        controls.addView(previous, LinearLayout.LayoutParams(dp(if (isOnix) 64 else 48), dp(48)).apply { marginEnd = dp(22) })
+        controls.addView(centerControl, LinearLayout.LayoutParams(dp(if (isOnix) 72 else 58), dp(if (isOnix) 58 else 58)).apply { marginEnd = dp(22) })
+        controls.addView(next, LinearLayout.LayoutParams(dp(if (isOnix) 64 else 48), dp(48)))
         val transportExtras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(2), 0, dp(5)) }
         val rewindButton = neonRoundButton("↶ 10", 38, false) { seekBy(-10_000L) }
         val forwardButton = neonRoundButton("10 ↷", 38, false) { seekBy(10_000L) }
@@ -4714,7 +4760,7 @@ class MainActivity : Activity() {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
                         Player.STATE_READY -> if (exo.playWhenReady) {
-                            setVuActive(true); playButton.text = "Ⅱ"; vinylView.invalidate()
+                            setVuActive(true); updatePlayButtonVisual(true); vinylView.invalidate()
                             handler.removeCallbacks(progressTask); handler.post(progressTask)
                         }
                         Player.STATE_ENDED -> {
