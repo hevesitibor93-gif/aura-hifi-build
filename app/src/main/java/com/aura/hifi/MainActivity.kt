@@ -1285,7 +1285,6 @@ class MainActivity : Activity() {
             landscapeRadioBar.addView(tunerDisplay, LinearLayout.LayoutParams(0, dp(34), 1.15f).apply { marginEnd = dp(4) })
             landscapeRadioBar.addView(favoriteRow, LinearLayout.LayoutParams(0, dp(30), 2.25f).apply { marginEnd = dp(4) })
             landscapeRadioBar.addView(tunerControls, LinearLayout.LayoutParams(0, dp(31), 1.45f))
-            landscapeBrandHeader?.visibility = View.GONE
             landscapeHeadUnit?.addView(landscapeRadioBar, 0, LinearLayout.LayoutParams(-1, dp(38)))
             tunerColumn.visibility = View.GONE
         } else {
