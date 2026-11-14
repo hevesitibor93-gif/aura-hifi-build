@@ -85,6 +85,7 @@ jobs:
               if not path.name.startswith(prefixes):
                   continue
               stem = path.name[:-4]
+              stem = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", stem)
               stem = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", stem)
               resource = re.sub(r"[^a-zA-Z0-9]+", "_", stem).strip("_").lower()
               if not resource or not resource[0].isalpha():
