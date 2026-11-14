@@ -349,7 +349,7 @@ class BlackOnixDeckView(
 
         // Replace the old skin branding with AURA.
         val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(205, 4, 7, 11) }
-        canvas.drawRoundRect(RectF(300f, 3f, 600f, 27f), 4f, 4f, brandBg)
+        canvas.drawRoundRect(RectF(0f, 0f, 899f, 26f), 4f, 4f, brandBg)
         val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(224, 190, 128)
             textSize = 14f
@@ -358,7 +358,7 @@ class BlackOnixDeckView(
             setShadowLayer(2f, 0f, 1f, Color.BLACK)
         }
         canvas.drawText("AURA", 449.5f, 20f, brandPaint)
-        sprite(R.drawable.onix_button_mute_volume_skin, canvas, 126f, 130f, 41f, 25f, if (muted) 3 else 0, 6)
+        sprite(R.drawable.onix_button_mute_volume_skin, canvas, 799f, 184f, 41f, 25f, if (muted) 3 else 0, 6)
 
         // Top bar: original ONIX controls.
         sprite(R.drawable.onix_button_top_main_menu_skin, canvas, 10f, 27f, 23f, 23f, 0, 4)
@@ -441,7 +441,7 @@ class BlackOnixDeckView(
         hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(if (vuMode == 0) 3 else 0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(if (vuMode == 1) 3 else 1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(if (vuMode == 2) 3 else 2) }
-        hitTargets += RectF(126f, 130f, 167f, 155f) to onMute
+        hitTargets += RectF(799f, 184f, 840f, 209f) to onMute
         hitTargets += RectF(799f, 223f, 820f, 248f) to { setSpectrumMode(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { setSpectrumMode(1) }
         hitTargets += RectF(859f, 223f, 880f, 248f) to { setSpectrumMode(2) }
