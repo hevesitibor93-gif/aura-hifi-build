@@ -1161,11 +1161,18 @@ class MainActivity : Activity() {
                 onVuModeChanged = { mode ->
                     onixVuMode = mode
                     getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_vu_mode", mode).apply()
+                },
+                onSpectrumModeChanged = { mode ->
+                    onixSpectrumMode = mode
+                    getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_spectrum_mode", mode).apply()
                 }
             )
             blackOnixDeck = deck
-            onixVuMode = getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("onix_vu_mode", onixVuMode).coerceIn(0, 2)
+            val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            onixVuMode = onixPrefs.getInt("onix_vu_mode", onixVuMode).coerceIn(0, 2)
+            onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", onixSpectrumMode).coerceIn(0, 2)
             deck.setVuMode(onixVuMode)
+            deck.setSpectrumMode(onixSpectrumMode)
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
             val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
                 .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
