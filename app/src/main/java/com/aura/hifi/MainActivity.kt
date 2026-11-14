@@ -193,9 +193,13 @@ class MainActivity : Activity() {
         applyEqualizerSettings(prefs)
         loadVuProfile(vuProfile)
         val allowRotation = prefs.getBoolean("screen_rotation", true)
-        requestedOrientation = when (prefs.getString("aura_theme", "classic")) {
-            "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            "black_onix" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        val savedTheme = prefs.getString("aura_theme", "classic")
+        // A korábbi külön álló BLACK-ONIX opciót az egységes témába vezetjük át.
+        if (savedTheme == "black_onix_portrait") {
+            prefs.edit().putString("aura_theme", "black_onix").apply()
+        }
+        requestedOrientation = when (savedTheme) {
+            "black_onix", "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
             else -> if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         buildUi()
@@ -903,8 +907,7 @@ class MainActivity : Activity() {
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         val themeId = when (themePrefs.getString("aura_theme", "classic")) {
-            "black_onix" -> "black_onix"
-            "black_onix_portrait" -> "black_onix_portrait"
+            "black_onix", "black_onix_portrait" -> "black_onix"
             else -> "classic"
         }
         themePrefs.edit().putString("aura_theme", themeId).apply()
@@ -1124,8 +1127,11 @@ class MainActivity : Activity() {
             sideVuLeft?.isClickable = true
             sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
             leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            leftPanel.addView(neonRoundButton("◀", 42, false) { playPrevious() },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
+            leftPanel.addView(
+                if (isOnix) createOnixTransportButton(R.drawable.black_onix_prev_normal, R.drawable.black_onix_prev_pressed, "Előző szám") { playPrevious() }
+                else neonRoundButton("◀", 42, false) { playPrevious() },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) }
+            )
             leftPanel.addView(neonRoundButton("−", 42, false) { player?.volume = 0.65f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
@@ -1134,8 +1140,11 @@ class MainActivity : Activity() {
             sideVuRight?.isClickable = true
             sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
             rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            rightPanel.addView(neonRoundButton("▶", 42, false) { playNext() },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) })
+            rightPanel.addView(
+                if (isOnix) createOnixTransportButton(R.drawable.black_onix_next_normal, R.drawable.black_onix_next_pressed, "Következő szám") { playNext() }
+                else neonRoundButton("▶", 42, false) { playNext() },
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(9), 0, dp(9)) }
+            )
             rightPanel.addView(neonRoundButton("＋", 42, false) { player?.volume = 1f },
                 LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
             rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
@@ -2003,25 +2012,21 @@ class MainActivity : Activity() {
         keepScreenOnRow.addView(keepScreenOnSwitch)
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
-        val activeThemeName = when (themeId) {
-            "black_onix" -> "BLACK-ONIX  •  AUTOMATIKUS ÁLLÓ / FEKVŐ"
-            "black_onix_portrait" -> "BLACK-ONIX  •  TELEFONOS ÁLLÓ NÉZET"
-            else -> "CLASSIC  •  EREDETI AURA FELÜLET"
-        }
+        val activeThemeName = if (themeId == "black_onix")
+            "BLACK-ONIX  •  AUTOMATIKUS ÁLLÓ / FEKVŐ"
+        else "CLASSIC  •  EREDETI AURA FELÜLET"
         appearanceSettingsPage.addView(label("AKTÍV TÉMA: " + activeThemeName, 11f, if (isOnix) Color.rgb(220, 184, 119) else Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(8)) })
         fun selectAuraTheme(id: String) {
             themePrefs.edit().putString("aura_theme", id).apply()
             requestedOrientation = when (id) {
-                "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 "black_onix" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
                 else -> if (themePrefs.getBoolean("screen_rotation", true)) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
             recreate()
         }
         appearanceSettingsPage.addView(button("CLASSIC  •  EREDETI AURA", if (themeId == "classic") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("classic") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ / FEKVŐ", if (themeId == "black_onix") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ TELEFONNÉZET", if (themeId == "black_onix_portrait") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix_portrait") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
-        appearanceSettingsPage.addView(label("A BLACK-ONIX automatikusan a fekvő vagy álló elrendezést használja. A külön álló változat mindig telefonos állásban marad.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ / FEKVŐ AUTOMATIKUS", if (themeId == "black_onix") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
+        appearanceSettingsPage.addView(label("Egyetlen BLACK-ONIX téma, külön kialakított álló és fekvő nézettel. A telefon elforgatásakor automatikusan vált.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
