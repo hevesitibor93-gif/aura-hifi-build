@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.media.MediaMetadataRetriever
+import android.media.audiofx.Visualizer
 import android.os.Handler
 import android.os.Looper
 import android.content.Context
@@ -166,6 +167,10 @@ class MainActivity : Activity() {
     private var repeatButton: Button? = null
     private var onixShuffleButton: ImageView? = null
     private var onixRepeatButton: ImageView? = null
+    private var onixSpectrumView: OnixSpectrumView? = null
+    private var onixVisualizer: Visualizer? = null
+    private var onixSpectrumMode = 0
+    private val onixSpectrumPermissionRequest = 7901
     private val abQuickButtons = mutableMapOf<String, Button>()
     private var abQuickStatus: TextView? = null
     private var selectAbQuickSlot: ((String) -> Unit)? = null
@@ -1098,6 +1103,7 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (landscape && isOnix) header.visibility = View.GONE
         if (landscape && isOnix) {
             eqPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_eq_texture))
             songsPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_playlist_texture))
@@ -1121,9 +1127,33 @@ class MainActivity : Activity() {
             }
             landscapeHeadUnit = deck
 
-            // A VU-kijelzők most kimaradnak; az ONIX kezelőszervei kapják a helyet.
-            sideVuLeft = null
-            sideVuRight = null
+            // ONIX dual VU + FFT spektrum, három választható megjelenítéssel.
+            sideVuLeft = VuView(true, 0).apply { setStyle("car"); setActive(player?.isPlaying == true) }
+            sideVuRight = VuView(true, 1).apply { setStyle("car"); setActive(player?.isPlaying == true) }
+            val visualRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+            visualRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(12), dp(62)).apply { marginEnd = dp(5) })
+            val spectrumDeck = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+            onixSpectrumView = OnixSpectrumView()
+            spectrumDeck.addView(onixSpectrumView, LinearLayout.LayoutParams(-1, dp(52)))
+            val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+            listOf("A", "B", "C").forEachIndexed { index, caption ->
+                val b = TextView(this).apply {
+                    text = caption; textSize = 8f; gravity = Gravity.CENTER
+                    setTextColor(if (index == 0) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
+                    setPadding(dp(9), 0, dp(9), 0)
+                    setOnClickListener {
+                        onixSpectrumMode = index
+                        onixSpectrumView?.setMode(index)
+                        for (n in 0 until modeRow.childCount) (modeRow.getChildAt(n) as TextView)
+                            .setTextColor(if (n == index) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
+                    }
+                }
+                modeRow.addView(b, LinearLayout.LayoutParams(dp(28), dp(16)))
+            }
+            spectrumDeck.addView(modeRow)
+            visualRow.addView(spectrumDeck, LinearLayout.LayoutParams(0, dp(64), 1f))
+            visualRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(12), dp(62)).apply { marginStart = dp(5) })
+            deck.addView(visualRow, LinearLayout.LayoutParams(-1, dp(66)))
 
             trackLabel.apply {
                 textSize = 17f
@@ -1147,13 +1177,25 @@ class MainActivity : Activity() {
             seekBar.progressDrawable?.setTint(Color.rgb(177, 145, 92))
             seekBar.thumb?.setTint(Color.rgb(222, 190, 132))
             deck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
+            val onixTimeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             timeLabel.apply {
-                textSize = 10f
-                setTextColor(Color.rgb(210, 190, 153))
-                gravity = Gravity.CENTER
-                typeface = Typeface.create("monospace", Typeface.BOLD)
+                textSize = 10f; setTextColor(Color.rgb(210, 190, 153))
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_remaining_time"
             }
-            deck.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(18)))
+            val counterLabel = TextView(this).apply {
+                textSize = 9f; setTextColor(Color.rgb(210, 190, 153)); gravity = Gravity.CENTER
+                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_track_counter"
+            }
+            val elapsedLabel = TextView(this).apply {
+                textSize = 10f; setTextColor(Color.rgb(210, 190, 153))
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_elapsed_time"
+            }
+            onixTimeRow.addView(timeLabel, LinearLayout.LayoutParams(0, dp(18), 1f))
+            onixTimeRow.addView(counterLabel, LinearLayout.LayoutParams(dp(54), dp(18)))
+            onixTimeRow.addView(elapsedLabel, LinearLayout.LayoutParams(0, dp(18), 1f))
+            deck.addView(onixTimeRow, LinearLayout.LayoutParams(-1, dp(18)))
 
             controlStack.removeView(controls)
             controls.setPadding(0, dp(2), 0, dp(2))
@@ -1184,6 +1226,7 @@ class MainActivity : Activity() {
             deck.addView(onixModes, LinearLayout.LayoutParams(-1, dp(34)))
 
             playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
+            startOnixVisualizer()
             artFrame.visibility = View.GONE
             vu.visibility = View.GONE
             centerAurixVu = null
@@ -3975,6 +4018,7 @@ class MainActivity : Activity() {
         startTrack(queue[currentIndex])
     }
     private fun attachVuMeter() {
+        if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("aura_theme", "classic") != "classic") startOnixVisualizer()
         eqProcessor.onLevel = { left, right ->
             val threshold = vuThreshold
             val gain = vuGain
@@ -5284,7 +5328,15 @@ class MainActivity : Activity() {
             val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             // Radio mode has no meaningful local playlist position; show it again for MP3 playback.
+            val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
+        val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
+        if (counter != null && elapsed != null) {
+            timeLabel.text = "-${formatTime(duration - position)}"
+            elapsed.text = formatTime(position)
+            counter.text = if (queue.isEmpty()) "0/0" else "${(currentIndex + 1).coerceAtMost(queue.size)}/${queue.size}"
+        } else {
             timeLabel.text = if (activeRadioStationName != null) timeText else "$timeText   •   $trackCount"
+        }
         } catch (_: Exception) {}
     }
 
@@ -5297,6 +5349,8 @@ class MainActivity : Activity() {
     }
     private fun releaseAudio() {
         handler.removeCallbacks(progressTask)
+        try { onixVisualizer?.release() } catch (_: Exception) {}
+        onixVisualizer = null
         if (::vu.isInitialized) {
             setVuActive(false)
             setVuLevels(0f, 0f)
@@ -5305,6 +5359,32 @@ class MainActivity : Activity() {
         eqProcessor.onLevel = null
         eqProcessor.onClipping = null
     }
+    private fun startOnixVisualizer() {
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            if (!isFinishing) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), onixSpectrumPermissionRequest)
+            return
+        }
+        val sessionId = player?.audioSessionId ?: 0
+        if (sessionId <= 0 || onixVisualizer != null) return
+        try {
+            val v = Visualizer(sessionId)
+            v.captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)
+            v.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+                override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                    if (fft != null) onixSpectrumView?.post { onixSpectrumView?.setFft(fft) }
+                }
+            }, Visualizer.getMaxCaptureRate() / 2, false, true)
+            v.enabled = true
+            onixVisualizer = v
+        } catch (_: Exception) { onixVisualizer = null }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == onixSpectrumPermissionRequest && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) startOnixVisualizer()
+    }
+
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
         pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
@@ -5321,6 +5401,56 @@ class MainActivity : Activity() {
         releaseAudio()
         soundEngineProcessor.onClipping = null
         libraryExecutor.shutdownNow(); super.onDestroy()
+    }
+
+    private inner class OnixSpectrumView : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var levels = FloatArray(30)
+        private var peaks = FloatArray(30)
+        private var mode = 0
+        fun setMode(value: Int) { mode = value.coerceIn(0, 2); invalidate() }
+        fun setFft(data: ByteArray) {
+            val bins = data.size / 2
+            val next = FloatArray(levels.size)
+            for (i in next.indices) {
+                val start = 2 + (i * (bins - 2) / next.size)
+                val end = (2 + ((i + 1) * (bins - 2) / next.size)).coerceAtLeast(start + 1)
+                var sum = 0f
+                for (bin in start until end) {
+                    val re = data[bin * 2].toInt()
+                    val im = data[bin * 2 + 1].toInt()
+                    sum += kotlin.math.sqrt((re * re + im * im).toFloat())
+                }
+                val mag = sum / (end - start).coerceAtLeast(1)
+                next[i] = (kotlin.math.ln(1f + mag) / kotlin.math.ln(64f) * 1.35f).coerceIn(0f, 1f)
+            }
+            levels = FloatArray(next.size) { i -> max(next[i], levels[i] * 0.72f) }
+            peaks = FloatArray(next.size) { i -> max(next[i], peaks[i] - 0.035f).coerceIn(0f, 1f) }
+            invalidate()
+        }
+        override fun onDraw(c: Canvas) {
+            super.onDraw(c)
+            val w = width.toFloat(); val h = height.toFloat()
+            paint.color = Color.rgb(4, 8, 12); c.drawRect(0f, 0f, w, h, paint)
+            val gap = dp(2).toFloat()
+            val bw = (w - gap * (levels.size - 1)) / levels.size
+            for (i in levels.indices) {
+                val x = i * (bw + gap)
+                val bh = (h - dp(5)) * levels[i]
+                val top = if (mode == 0) h - bh else h * .5f - bh * .5f
+                val bottom = if (mode == 0) h else h * .5f + bh * .5f
+                paint.shader = android.graphics.LinearGradient(0f, h, 0f, 0f,
+                    intArrayOf(Color.rgb(35, 150, 220), Color.rgb(60, 210, 160), Color.rgb(244, 185, 72), Color.rgb(245, 72, 52)),
+                    null, android.graphics.Shader.TileMode.CLAMP)
+                c.drawRoundRect(RectF(x, top, x + bw, bottom), dp(1).toFloat(), dp(1).toFloat(), paint)
+                paint.shader = null
+                if (mode != 2) {
+                    paint.color = Color.rgb(255, 213, 140)
+                    val py = if (mode == 0) h - peaks[i] * (h - dp(5)) else h * .5f - peaks[i] * (h - dp(5)) * .5f
+                    c.drawRect(x, py, x + bw, py + dp(1), paint)
+                }
+            }
+        }
     }
 
     private inner class VinylView : View(this@MainActivity) {
