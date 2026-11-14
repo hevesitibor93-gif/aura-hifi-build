@@ -60,8 +60,8 @@ class BlackOnixDeckView(
     private var lastFrame = 0L
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(225, 221, 205)
-        textSize = 11f
-        typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+        textSize = 16f
+        typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
     }
     private val smallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(222, 190, 137)
@@ -308,8 +308,8 @@ class BlackOnixDeckView(
         hitTargets.clear()
         hitTargets += RectF(123f, 328f, 196f, 377f) to onPrevious
         hitTargets += RectF(196f, 328f, 269f, 377f) to onStop
-        hitTargets += RectF(269f, 328f, 342f, 377f) to onPlayPause
-        hitTargets += RectF(342f, 328f, 415f, 377f) to onPlayPause
+        if (playing) hitTargets += RectF(342f, 328f, 415f, 377f) to onPlayPause
+        else hitTargets += RectF(269f, 328f, 342f, 377f) to onPlayPause
         hitTargets += RectF(415f, 328f, 488f, 377f) to onNext
         hitTargets += RectF(511f, 73f, 548f, 100f) to onOpen
         hitTargets += RectF(547f, 73f, 584f, 100f) to onSleep
