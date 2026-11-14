@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - main
+      - restore/classic-only
+      - feature/aura-studio-theme
 
 permissions:
   contents: read
