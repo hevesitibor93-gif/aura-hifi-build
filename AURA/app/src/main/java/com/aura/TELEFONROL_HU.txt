@@ -1,0 +1,17 @@
+AURA Hi-Fi APK elkészítése kizárólag telefonról
+
+Ez a csomag még nem tartalmaz lefordított APK-t. A GitHub Actions felhőben fordítja le.
+
+1. Nyisd meg a https://github.com oldalt, és jelentkezz be (vagy hozz létre ingyenes fiókot).
+2. Hozz létre egy új, lehetőleg Private repository-t. Például: aura-hifi-build
+3. A repository főoldalán válaszd az Add file > Upload files lehetőséget, és töltsd fel az AURA_HiFi_Native.zip fájlt ebből a csomagból. Commitold a fájlt.
+4. Hozd létre a workflow fájlt: Add file > Create new file. A fájl neve pontosan:
+   .github/workflows/build-apk.yml
+5. Nyisd meg a build-apk.yml fájlt ebből a csomagból egy szövegszerkesztővel, másold be teljes tartalmát a GitHub szerkesztőbe, majd Commit changes.
+6. Nyisd meg a repository Actions lapját, válaszd a „Build AURA Hi-Fi APK” munkafolyamatot, majd Run workflow.
+7. Ha zöld pipával befejeződött, nyisd meg a futást, görgess az Artifacts részhez, és töltsd le az „AURA-HiFi-debug-APK” csomagot.
+8. Csomagold ki a letöltött ZIP-et a telefon Fájlok alkalmazásával. Az app-debug.apk fájlra koppintva telepítheted. Ha kéri, engedélyezd a böngészőnek vagy Fájlok alkalmazásnak az „Ismeretlen alkalmazások telepítése” engedélyt.
+
+Biztonság: csak a saját, általad feltöltött forrásból építsd az APK-t. Ne töltsd fel a GitHubra jelszavaidat vagy személyes fájljaidat.
+
+Ha a build hibával leáll, küldd el a piros hibaüzenet vagy a Build log képernyőképét, és segítek kijavítani.
