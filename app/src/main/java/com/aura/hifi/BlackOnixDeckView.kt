@@ -244,6 +244,14 @@ class BlackOnixDeckView(
             }
         }
 
+        // Original 341x32 VU mode background, followed by its animated level sprites.
+        val vuTexture = when (vuMode) {
+            1 -> R.drawable.onix_vu_mode2_texture
+            2 -> R.drawable.onix_vu_mode3_texture
+            else -> R.drawable.onix_vu_mode1_texture
+        }
+        draw(vuTexture, canvas, 279f, 127f, 341f, 32f)
+
         // The four independent red/amber side-meter sprite sets (three selectable modes).
         val prefixVu = when (vuMode) {
             1 -> arrayOf(R.drawable.onix_vu_mode2_top_skin, R.drawable.onix_vu_mode2_bottom_skin, R.drawable.onix_vu_mode2_add_top_skin, R.drawable.onix_vu_mode2_add_bottom_skin)
