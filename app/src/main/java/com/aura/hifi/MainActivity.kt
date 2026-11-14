@@ -426,7 +426,10 @@ class MainActivity : Activity() {
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) startOnixVisualizer()
+                if (isPlaying) {
+                    startOnixVisualizer()
+                    handler.postDelayed({ startOnixVisualizer() }, 350L)
+                }
                 setVuActive(isPlaying)
                 updatePlayButtonVisual(isPlaying)
                 vinylView.invalidate()
@@ -5324,7 +5327,6 @@ class MainActivity : Activity() {
                 val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                     .format(java.util.Date())
                 blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
-                if (p.isPlaying && onixVisualizer == null) startOnixVisualizer()
             }
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
