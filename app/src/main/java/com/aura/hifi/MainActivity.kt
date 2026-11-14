@@ -148,6 +148,7 @@ class MainActivity : Activity() {
     private var activePageIndex = 0
     private var librarySortMode = "Név szerint"
     private var openLibraryPage: (() -> Unit)? = null
+    private var openEqualizerPage: (() -> Unit)? = null
     private var activeLibraryRenderer: (() -> Unit)? = null
     private var libraryScrollView: ScrollView? = null
     private var currentTrackRow: View? = null
@@ -1132,7 +1133,15 @@ class MainActivity : Activity() {
                 onShuffle = { cycleShuffleMode() },
                 onRepeat = { cycleRepeatMode() },
                 onOpen = { openAudio() },
-                onSleep = { toast("A számláló a hátralévő zenét mutatja.") }
+                onSleep = { toast("Hátralévő zeneszámok: ${(queue.size - currentIndex).coerceAtLeast(0)}") },
+                onPlaylist = { openLibraryPage?.invoke(); showPlaylists() },
+                onEqualizer = { openEqualizerPage?.invoke() },
+                onUtilities = { openSoundEnginePage?.invoke() },
+                onRadio = { showFavoriteRadioStations() },
+                onSettings = { openVuSettingsPage?.invoke() },
+                onMainMenu = { openLibraryPage?.invoke() },
+                onMinimize = { moveTaskToBack(true) },
+                onExit = { finish() }
             )
             blackOnixDeck = deck
             deck.setVuMode(onixVuMode)
@@ -2551,6 +2560,7 @@ class MainActivity : Activity() {
             showPage(4, false)
         }
         openSoundEnginePage = { showPage(5, false) }
+        openEqualizerPage = { showPage(2, false) }
         openLibraryPage = {
             showPage(1, false)
             currentTrackRow = null
