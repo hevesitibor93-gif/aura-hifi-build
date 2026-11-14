@@ -5321,9 +5321,11 @@ class MainActivity : Activity() {
                             .map { group.getTrackFormat(it) }
                     }.firstOrNull()
                 val sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
-                    ?.let { "%.1f kHz".format(java.util.Locale.US, it / 1000f) } ?: "-- kHz"
+                    ?.let { "%.1f".format(java.util.Locale.US, it / 1000f) } ?: "--"
+                val metadataBitrate = technicalLabel.text?.toString()?.substringAfter("•", "")?.trim()
+                    ?.substringBefore(" ")?.takeIf { it.toIntOrNull() != null }
                 val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
-                    ?.let { "${it / 1000} kbps" } ?: "-- kbps"
+                    ?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
                 val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                     .format(java.util.Date())
                 blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
