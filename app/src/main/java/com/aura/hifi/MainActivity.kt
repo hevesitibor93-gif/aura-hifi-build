@@ -168,6 +168,7 @@ class MainActivity : Activity() {
     private var onixShuffleButton: ImageView? = null
     private var onixRepeatButton: ImageView? = null
     private var onixSpectrumView: OnixSpectrumView? = null
+    private var blackOnixDeck: BlackOnixDeckView? = null
     private var onixVisualizer: Visualizer? = null
     private var onixSpectrumMode = 0
     private var onixVuMode = 0
@@ -1117,146 +1118,32 @@ class MainActivity : Activity() {
         }
         var landscapeHeadUnit: LinearLayout? = null
         if (landscape && isOnix) {
-            // BLACK-ONIX fekvő: kizárólag az ONIX lejátszófedélzet elemei.
-            // A Classic és az álló nézet saját felépítése változatlan marad.
-            playerPage.orientation = LinearLayout.HORIZONTAL
-            playerPage.background = android.graphics.drawable.BitmapDrawable(
-                resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_main_texture)
+            // Native BLACK-ONIX skin renderer: the original 899x401 composition
+            // replaces the AURA landscape controls; Classic and portrait stay untouched.
+            playerPage.orientation = LinearLayout.VERTICAL
+            playerPage.setPadding(0, 0, 0, 0)
+            playerPage.background = android.graphics.drawable.ColorDrawable(Color.BLACK)
+            val deck = BlackOnixDeckView(
+                this,
+                onPrevious = { playPrevious() },
+                onPlayPause = { togglePlayback() },
+                onNext = { playNext() },
+                onStop = { player?.let { it.pause(); it.seekTo(0L) } },
+                onShuffle = { cycleShuffleMode() },
+                onRepeat = { cycleRepeatMode() },
+                onOpen = { openAudio() },
+                onSleep = { toast("A számláló a hátralévő zenét mutatja.") }
             )
-            playerPage.setPadding(dp(12), dp(8), dp(12), dp(8))
-
-            val deck = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(3), dp(2), dp(3), dp(2))
-                // Átlátszó fedélzet: az eredeti BLACK-ONIX háttérkép teljesen látható marad.
-                background = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
-            }
-            landscapeHeadUnit = deck
-
-            // ONIX dual VU + FFT spektrum, három választható megjelenítéssel.
-            sideVuLeft = VuView(true, 0).apply { setStyle("car"); setActive(player?.isPlaying == true) }
-            sideVuRight = VuView(true, 1).apply { setStyle("car"); setActive(player?.isPlaying == true) }
-            val visualRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-            visualRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(18), dp(58)).apply { marginEnd = dp(4) })
-            val spectrumDeck = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-            onixSpectrumView = OnixSpectrumView()
-            spectrumDeck.addView(onixSpectrumView, LinearLayout.LayoutParams(-1, dp(52)))
-            val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-            listOf("A", "B", "C").forEachIndexed { index, caption ->
-                val b = TextView(this).apply {
-                    text = caption; textSize = 8f; gravity = Gravity.CENTER
-                    setTextColor(if (index == 0) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
-                    setPadding(dp(9), 0, dp(9), 0)
-                    setOnClickListener {
-                        onixSpectrumMode = index
-                        onixSpectrumView?.setMode(index)
-                        for (n in 0 until modeRow.childCount) (modeRow.getChildAt(n) as TextView)
-                            .setTextColor(if (n == index) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
-                    }
-                }
-                modeRow.addView(b, LinearLayout.LayoutParams(dp(28), dp(16)))
-            }
-            spectrumDeck.addView(modeRow)
-            visualRow.addView(spectrumDeck, LinearLayout.LayoutParams(0, dp(60), 1f))
-            visualRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(18), dp(58)).apply { marginStart = dp(4) })
-            deck.addView(visualRow, LinearLayout.LayoutParams(-1, dp(62)))
-
-            val vuModeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-            vuModeRow.addView(label("VU", 8f, Color.rgb(170, 180, 192)).apply { typeface = Typeface.DEFAULT_BOLD }, LinearLayout.LayoutParams(-2, dp(18)).apply { marginEnd = dp(5) })
-            listOf("1", "2", "3").forEachIndexed { index, caption ->
-                val modeButton = TextView(this).apply {
-                    text = caption; textSize = 8f; gravity = Gravity.CENTER
-                    setTextColor(if (index == onixVuMode) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
-                    setPadding(dp(7), 0, dp(7), 0)
-                    setOnClickListener {
-                        onixVuMode = index
-                        sideVuLeft?.setOnixMode(index)
-                        sideVuRight?.setOnixMode(index)
-                        for (n in 0 until vuModeRow.childCount) {
-                            val child = vuModeRow.getChildAt(n)
-                            if (child is TextView && child.text.toString() in listOf("1", "2", "3"))
-                                child.setTextColor(if (child.text.toString().toInt() - 1 == index) Color.rgb(255, 210, 135) else Color.rgb(150, 160, 173))
-                        }
-                    }
-                }
-                vuModeRow.addView(modeButton, LinearLayout.LayoutParams(dp(22), dp(18)))
-            }
-            deck.addView(vuModeRow, LinearLayout.LayoutParams(-1, dp(18)))
-
-            trackLabel.apply {
-                textSize = 17f
-                setTextColor(Color.rgb(232, 237, 243))
-                typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-                gravity = Gravity.CENTER
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-                isSelected = true
-            }
-            deck.addView(trackLabel, LinearLayout.LayoutParams(-1, dp(28)))
-            metadataLabel.apply {
-                textSize = 11f
-                setTextColor(Color.rgb(185, 195, 207))
-                gravity = Gravity.CENTER
-                maxLines = 1
-            }
-            deck.addView(metadataLabel, LinearLayout.LayoutParams(-1, dp(18)))
-            albumLabel.visibility = View.GONE
-
-            seekBar.progressDrawable?.setTint(Color.rgb(177, 145, 92))
-            seekBar.thumb?.setTint(Color.rgb(222, 190, 132))
-            deck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
-            val onixTimeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            timeLabel.apply {
-                textSize = 10f; setTextColor(Color.rgb(210, 190, 153))
-                gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_remaining_time"
-            }
-            val counterLabel = TextView(this).apply {
-                textSize = 9f; setTextColor(Color.rgb(210, 190, 153)); gravity = Gravity.CENTER
-                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_track_counter"
-            }
-            val elapsedLabel = TextView(this).apply {
-                textSize = 10f; setTextColor(Color.rgb(210, 190, 153))
-                gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                typeface = Typeface.create("monospace", Typeface.BOLD); tag = "onix_elapsed_time"
-            }
-            onixTimeRow.addView(timeLabel, LinearLayout.LayoutParams(0, dp(18), 1f))
-            onixTimeRow.addView(counterLabel, LinearLayout.LayoutParams(dp(54), dp(18)))
-            onixTimeRow.addView(elapsedLabel, LinearLayout.LayoutParams(0, dp(18), 1f))
-            deck.addView(onixTimeRow, LinearLayout.LayoutParams(-1, dp(18)))
-
-            controlStack.removeView(controls)
-            controls.setPadding(0, dp(2), 0, dp(2))
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(66), dp(45)).apply { marginEnd = dp(16) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(72), dp(49)).apply { marginEnd = dp(16) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(66), dp(45))
-            deck.addView(controls, LinearLayout.LayoutParams(-1, dp(54)))
-
-            // ONIX decken csak a keverés és ismétlés marad; az AURA extra vezérlők eltűnnek.
-            val onixModes = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-            }
-            transportExtras.removeView(shuffleControl)
-            transportExtras.removeView(repeatControl)
-            onixShuffleButton = createOnixModeButton(
-                R.drawable.black_onix_shuffle_sprite, "Keverés", { shuffleMode != 0 }
-            ) { cycleShuffleMode() }
-            onixRepeatButton = createOnixModeButton(
-                R.drawable.black_onix_repeat_sprite, "Ismétlés", { repeatMode != 0 }
-            ) { cycleRepeatMode() }
-            onixModes.addView(onixShuffleButton, LinearLayout.LayoutParams(dp(37), dp(27)).apply {
-                setMargins(dp(8), dp(2), dp(8), dp(2))
-            })
-            onixModes.addView(onixRepeatButton, LinearLayout.LayoutParams(dp(37), dp(27)).apply {
-                setMargins(dp(8), dp(2), dp(8), dp(2))
-            })
-            deck.addView(onixModes, LinearLayout.LayoutParams(-1, dp(34)))
-
-            playerPage.gravity = Gravity.CENTER
+            blackOnixDeck = deck
+            deck.setVuMode(onixVuMode)
+            deck.setPlaybackState(player?.isPlaying == true, shuffleMode != 0, repeatMode != 0)
+            deck.setTrack(
+                trackLabel.text?.toString() ?: "AURA Hi-Fi",
+                formatTime(player?.currentPosition ?: 0L),
+                "-${formatTime((player?.duration ?: 0L) - (player?.currentPosition ?: 0L))}"
+            )
             playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
-            startOnixVisualizer()
+            landscapeHeadUnit = null
             artFrame.visibility = View.GONE
             vu.visibility = View.GONE
             centerAurixVu = null
@@ -5359,6 +5246,12 @@ class MainActivity : Activity() {
             val timeText = if (showRemaining) "-${formatTime(duration - position)}  /  ${formatTime(duration)}" else "${formatTime(position)}  /  ${formatTime(duration)}"
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             // Radio mode has no meaningful local playlist position; show it again for MP3 playback.
+            blackOnixDeck?.setTrack(
+                trackLabel.text?.toString() ?: "AURA Hi-Fi",
+                formatTime(position),
+                "-${formatTime(duration - position)}"
+            )
+            blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode != 0, repeatMode != 0)
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
         if (counter != null && elapsed != null) {
@@ -5403,7 +5296,7 @@ class MainActivity : Activity() {
             v.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                 override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
                 override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                    if (fft != null) onixSpectrumView?.post { onixSpectrumView?.setFft(fft) }
+                    if (fft != null) { onixSpectrumView?.post { onixSpectrumView?.setFft(fft) }; blackOnixDeck?.post { blackOnixDeck?.setFft(fft) } }
                 }
             }, Visualizer.getMaxCaptureRate() / 2, false, true)
             v.enabled = true
