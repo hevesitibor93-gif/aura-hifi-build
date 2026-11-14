@@ -1077,134 +1077,120 @@ class MainActivity : Activity() {
             songsPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_playlist_texture))
         }
         var landscapeHeadUnit: LinearLayout? = null
-        var landscapeBrandHeader: View? = null
         if (landscape) {
+            // BLACK-ONIX fekvő: kizárólag az ONIX lejátszófedélzet elemei.
+            // A Classic és az álló nézet saját felépítése változatlan marad.
             playerPage.orientation = LinearLayout.HORIZONTAL
-            playerPage.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(3, 5, 9), Color.rgb(48, 52, 61), Color.rgb(13, 17, 24), Color.rgb(2, 4, 8))).apply {
-                cornerRadius = dp(26).toFloat()
-                setStroke(dp(3), Color.rgb(117, 125, 137))
-            }
-            playerPage.setPadding(dp(8), dp(7), dp(8), dp(7))
-            fun makeSidePanel(reverse: Boolean) = LinearLayout(this).apply {
+            playerPage.background = android.graphics.drawable.BitmapDrawable(
+                resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_main_texture)
+            )
+            playerPage.setPadding(dp(12), dp(8), dp(12), dp(8))
+
+            val deck = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(3), dp(5), dp(3), dp(5))
-                background = GradientDrawable(
-                    if (reverse) GradientDrawable.Orientation.RIGHT_LEFT else GradientDrawable.Orientation.LEFT_RIGHT,
-                    if (isOnix) intArrayOf(Color.rgb(57, 65, 76), Color.rgb(3, 6, 11)) else intArrayOf(Color.rgb(34, 39, 48), Color.rgb(5, 8, 13))
-                ).apply { cornerRadius = dp(18).toFloat(); setStroke(dp(1), if (isOnix) Color.rgb(153, 166, 184) else Color.rgb(83, 94, 110)) }
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(7, 10, 15), Color.rgb(30, 36, 45), Color.rgb(5, 8, 13))
+                ).apply {
+                    cornerRadius = dp(5).toFloat()
+                    setStroke(dp(1), Color.rgb(111, 125, 143))
+                }
             }
-            val activeVuStyle = getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"
-            val sidePanelWidth = when (activeVuStyle) { "multiband", "spectrum" -> 62; "simple" -> 50; "circular", "aurix" -> 72; else -> 54 }
-            val sideVuHeight = when (activeVuStyle) { "multiband", "spectrum" -> 92; "simple" -> 76; else -> 82 }
-            val leftPanel = makeSidePanel(false)
-            val rightPanel = makeSidePanel(true)
-            landscapeVuLeftPanel = leftPanel
-            landscapeVuRightPanel = rightPanel
-            val headUnit = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+            landscapeHeadUnit = deck
+
+            // Az eredeti ONIX két függőleges VU-gauge grafikája; nem az AURA VU-stílusai.
+            val meterRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                setPadding(dp(10), dp(3), dp(10), dp(3))
-                background = if (isOnix) android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_main_texture))
-                else GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.rgb(5, 9, 15), Color.rgb(20, 26, 36), Color.rgb(4, 7, 12))).apply {
-                    cornerRadius = dp(17).toFloat()
-                    setStroke(dp(2), Color.rgb(104, 126, 149))
-                }
-                elevation = dp(10).toFloat()
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(4, 7, 11), Color.rgb(14, 19, 26), Color.rgb(4, 7, 11))
+                ).apply { setStroke(dp(1), Color.rgb(76, 88, 103)) }
             }
-            landscapeHeadUnit = headUnit
-            original.forEachIndexed { i, child ->
-                when (i) {
-                    in 0..10 -> headUnit.addView(child)
-                    in 11..15 -> eqPage.addView(child)
-                    else -> settingsPage.addView(child)
-                }
-            }
-            leftPanel.addView(label("L", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuLeft = VuView(true, 0).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
-            sideVuLeft?.isClickable = true
-            sideVuLeft?.setOnClickListener { openVuSettingsPage?.invoke() }
-            leftPanel.addView(sideVuLeft, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            // A transport gombok a középső vezérlősoron maradnak; az oldalpanelek a VU-mérőké.
-            leftPanel.addView(neonRoundButton("−", 42, false) { player?.volume = 0.65f },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
-            leftPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
-            rightPanel.addView(label("R", 11f, Color.rgb(255, 190, 65)).apply { gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD })
-            sideVuRight = VuView(true, 1).apply { setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car"); setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80)); setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true)); setActive(player?.isPlaying == true) }
-            sideVuRight?.isClickable = true
-            sideVuRight?.setOnClickListener { openVuSettingsPage?.invoke() }
-            rightPanel.addView(sideVuRight, LinearLayout.LayoutParams(-1, dp(sideVuHeight)).apply { setMargins(dp(2), dp(7), dp(2), dp(7)) })
-            rightPanel.addView(neonRoundButton("＋", 42, false) { player?.volume = 1f },
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { setMargins(0, dp(7), 0, dp(7)) })
-            rightPanel.addView(label("VOL", 8f, Color.LTGRAY).apply { gravity = Gravity.CENTER })
-            playerPage.addView(leftPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
-            playerPage.addView(headUnit, LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(7), 0, dp(7), 0) })
-            playerPage.addView(rightPanel, LinearLayout.LayoutParams(dp(sidePanelWidth), -1))
-            artFrame.visibility = View.GONE
-            artFrame.layoutParams = LinearLayout.LayoutParams(-1, dp(174)).apply {
-                setMargins(dp(4), dp(2), dp(4), dp(3))
-            }
-            artFrame.background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(3,6,10), Color.rgb(37,43,53), Color.rgb(4,7,12))).apply {
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(2), Color.rgb(111,133,157))
-            }
-            artFrame.setPadding(dp(5), dp(5), dp(5), dp(5))
-            (artworkView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(100); height = dp(100) }
-            (vinylView.layoutParams as LinearLayout.LayoutParams).apply { width = dp(100); height = dp(100) }
-            trackLabel.textSize = 12f
-            trackLabel.setPadding(dp(3), dp(2), dp(3), 0)
-            metadataLabel.textSize = 10f
-            albumLabel.textSize = 9f
-            metadataLabel.setPadding(0, 0, 0, 0)
-            vu.layoutParams = LinearLayout.LayoutParams(-1, dp(34)).apply { setMargins(dp(3), 0, dp(3), 0) }
-            seekBar.layoutParams = LinearLayout.LayoutParams(-1, dp(18))
-            timeLabel.textSize = 9f
-            technicalLabel.visibility = View.GONE
-            nextTrackLabel.visibility = View.GONE
-            controls.setPadding(0, 0, 0, 0)
-            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(13) }
-            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)).apply { marginEnd = dp(13) }
-            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
-            // Fekvő nézet: széles, arany AURIX VU középen, alatta jól olvasható cím.
-            val headerView = headUnit.getChildAt(0)
-            landscapeBrandHeader = headerView
-            headUnit.removeAllViews()
-            headUnit.addView(headerView, LinearLayout.LayoutParams(-1, dp(25)))
-            centerAurixVu = VuView(false).apply {
-                setStyle(getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("vu_style", "car") ?: "car")
+            sideVuLeft = VuView(true, 0).apply {
                 setActive(player?.isPlaying == true)
-                setBrightness(getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("vu_brightness", 80))
-                setAnimationEnabled(getSharedPreferences("aurix_settings", MODE_PRIVATE).getBoolean("vu_animation", true))
-                isClickable = true
-                setOnClickListener { openVuSettingsPage?.invoke() }
+                setBrightness(100)
+                setAnimationEnabled(true)
             }
-            // A BLACK-ONIX kijelző központi területe albumkép nélkül marad.
-            headUnit.addView(centerAurixVu, LinearLayout.LayoutParams(-1, 0, 1f).apply {
-                setMargins(dp(2), dp(3), dp(2), dp(3))
+            sideVuRight = VuView(true, 1).apply {
+                setActive(player?.isPlaying == true)
+                setBrightness(100)
+                setAnimationEnabled(true)
+            }
+            meterRow.addView(sideVuLeft, LinearLayout.LayoutParams(dp(24), dp(92)).apply {
+                marginStart = dp(12); marginEnd = dp(10)
             })
-            trackLabel.textSize = 16f
-            trackLabel.setTextColor(Color.WHITE)
-            trackLabel.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            trackLabel.gravity = Gravity.CENTER
-            trackLabel.maxLines = 1
-            trackLabel.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-            trackLabel.isSelected = true
-            headUnit.addView(trackLabel, LinearLayout.LayoutParams(-1, dp(27)))
-            metadataLabel.textSize = 11f
-            albumLabel.textSize = 9f
-            headUnit.addView(metadataLabel, LinearLayout.LayoutParams(-1, dp(17)))
-            headUnit.addView(albumLabel, LinearLayout.LayoutParams(-1, dp(14)))
-            headUnit.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
-            headUnit.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(16)))
-            headUnit.addView(controlStack, LinearLayout.LayoutParams(-1, -2))
+            meterRow.addView(sideVuRight, LinearLayout.LayoutParams(dp(24), dp(92)).apply {
+                marginStart = dp(10); marginEnd = dp(12)
+            })
+            deck.addView(meterRow, LinearLayout.LayoutParams(-1, 0, 1f).apply {
+                setMargins(dp(4), dp(4), dp(4), dp(5))
+            })
+
+            trackLabel.apply {
+                textSize = 17f
+                setTextColor(Color.rgb(232, 237, 243))
+                typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                isSelected = true
+            }
+            deck.addView(trackLabel, LinearLayout.LayoutParams(-1, dp(28)))
+            metadataLabel.apply {
+                textSize = 11f
+                setTextColor(Color.rgb(185, 195, 207))
+                gravity = Gravity.CENTER
+                maxLines = 1
+            }
+            deck.addView(metadataLabel, LinearLayout.LayoutParams(-1, dp(18)))
+            albumLabel.visibility = View.GONE
+
+            seekBar.progressDrawable?.setTint(Color.rgb(177, 145, 92))
+            seekBar.thumb?.setTint(Color.rgb(222, 190, 132))
+            deck.addView(seekBar, LinearLayout.LayoutParams(-1, dp(18)))
+            timeLabel.apply {
+                textSize = 10f
+                setTextColor(Color.rgb(210, 190, 153))
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("monospace", Typeface.BOLD)
+            }
+            deck.addView(timeLabel, LinearLayout.LayoutParams(-1, dp(18)))
+
+            controls.setPadding(0, dp(2), 0, dp(2))
+            controls.getChildAt(0).layoutParams = LinearLayout.LayoutParams(dp(66), dp(45)).apply { marginEnd = dp(16) }
+            controls.getChildAt(1).layoutParams = LinearLayout.LayoutParams(dp(72), dp(49)).apply { marginEnd = dp(16) }
+            controls.getChildAt(2).layoutParams = LinearLayout.LayoutParams(dp(66), dp(45))
+            deck.addView(controls, LinearLayout.LayoutParams(-1, dp(54)))
+
+            // ONIX decken csak a keverés és ismétlés marad; az AURA extra vezérlők eltűnnek.
+            val onixModes = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }
+            listOf(shuffleControl, repeatControl).forEach { control ->
+                control.textSize = 10f
+                control.setTextColor(Color.rgb(221, 204, 171))
+                control.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(55, 62, 71), Color.rgb(12, 16, 22))
+                ).apply { cornerRadius = dp(3).toFloat(); setStroke(dp(1), Color.rgb(112, 123, 137)) }
+                onixModes.addView(control, LinearLayout.LayoutParams(dp(112), dp(30)).apply {
+                    setMargins(dp(7), dp(2), dp(7), dp(2))
+                })
+            }
+            deck.addView(onixModes, LinearLayout.LayoutParams(-1, dp(34)))
+
+            playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
+            artFrame.visibility = View.GONE
             vu.visibility = View.GONE
+            centerAurixVu = null
+            landscapeVuLeftPanel = null
+            landscapeVuRightPanel = null
             technicalLabel.visibility = View.GONE
             nextTrackLabel.visibility = View.GONE
+            transportExtras.visibility = View.GONE
         } else {
-            // Portrait layout: AURA Original.
+            // Classic / portrait elrendezés: változatlan eredeti AURA felépítés.
             vu.visibility = View.VISIBLE
             centerAurixVu = null
             sideVuLeft = null
