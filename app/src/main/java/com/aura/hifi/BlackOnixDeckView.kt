@@ -41,7 +41,8 @@ class BlackOnixDeckView(
     private val onMinimize: () -> Unit,
     private val onExit: () -> Unit,
     private val onVuModeChanged: (Int) -> Unit,
-    private val onSpectrumModeChanged: (Int) -> Unit
+    private val onSpectrumModeChanged: (Int) -> Unit,
+    private val onSeekTo: (Long) -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -62,7 +63,11 @@ class BlackOnixDeckView(
     private var systemVolume = 0
     private var sampleRateText = "-- kHz"
     private var bitrateText = "-- kbps"
-    private var systemClock = "--:--"
+    private var systemClock = "--:--:--"
+    private var trackPositionMs = 0L
+    private var trackDurationMs = 0L
+    private var seekPreviewMs = 0L
+    private var seekDragging = false
     private var scroll = 0f
     private var lastFrame = 0L
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -116,6 +121,13 @@ class BlackOnixDeckView(
     }
 
     fun setTrackCounter(value: String) { trackCounter = value; invalidate() }
+
+    fun setTrackProgress(positionMs: Long, durationMs: Long) {
+        trackDurationMs = durationMs.coerceAtLeast(0L)
+        trackPositionMs = positionMs.coerceIn(0L, trackDurationMs)
+        if (!seekDragging) seekPreviewMs = trackPositionMs
+        invalidate()
+    }
 
     fun setSystemInfo(volumePercent: Int, sampleRate: String, bitrate: String, clock: String) {
         systemVolume = volumePercent.coerceIn(0, 100)
@@ -245,6 +257,7 @@ class BlackOnixDeckView(
         canvas.restore()
         drawTimeString(canvas, R.drawable.onix_time_display_skin, 149f, 110f, remaining)
         drawTimeString(canvas, R.drawable.onix_time_display1_skin, 688f, 110f, elapsed)
+        drawTimeString(canvas, R.drawable.onix_time_system_skin, 684f, 135f, systemClock)
         canvas.drawText(trackCounter, 149f, 137f, smallPaint)
 
         // Original left/right dual VU strips. The level changes the active frame.
@@ -295,6 +308,18 @@ class BlackOnixDeckView(
             }
         }
 
+        // AURA playback seek control in the gap directly below the spectrum.
+        val seekLeft = 286f
+        val seekRight = 615f
+        val seekY = 249f
+        val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
+        spectrumPaint.color = Color.rgb(48, 54, 62)
+        canvas.drawRoundRect(RectF(seekLeft, seekY - 1.5f, seekRight, seekY + 1.5f), 2f, 2f, spectrumPaint)
+        spectrumPaint.color = Color.rgb(193, 153, 91)
+        canvas.drawRoundRect(RectF(seekLeft, seekY - 1.5f, seekLeft + (seekRight - seekLeft) * fraction, seekY + 1.5f), 2f, 2f, spectrumPaint)
+        spectrumPaint.color = Color.rgb(238, 213, 164)
+        canvas.drawCircle(seekLeft + (seekRight - seekLeft) * fraction, seekY, 4.2f, spectrumPaint)
+
         // Original 341x32 VU mode background, followed by its animated level sprites.
         val vuTexture = when (vuMode) {
             1 -> R.drawable.onix_vu_mode2_texture
@@ -316,7 +341,19 @@ class BlackOnixDeckView(
         sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
         sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
 
-        // Top bar: original AIMP window controls in BaseTop.
+        // Replace the old skin branding with AURA.
+        val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(205, 4, 7, 11) }
+        canvas.drawRoundRect(RectF(414f, 5f, 485f, 25f), 4f, 4f, brandBg)
+        val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(224, 190, 128)
+            textSize = 14f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            setShadowLayer(2f, 0f, 1f, Color.BLACK)
+        }
+        canvas.drawText("AURA", 449.5f, 20f, brandPaint)
+
+        // Top bar: original ONIX controls.
         sprite(R.drawable.onix_button_top_main_menu_skin, canvas, 10f, 27f, 23f, 23f, 0, 4)
         sprite(R.drawable.onix_button_top_options_skin, canvas, 40f, 27f, 23f, 23f, 0, 4)
         sprite(R.drawable.onix_button_top_utilities_skin, canvas, 70f, 27f, 23f, 23f, 0, 4)
@@ -335,7 +372,6 @@ class BlackOnixDeckView(
         // Live phone/system information in the original right-hand display field.
         smallPaint.color = Color.rgb(222, 190, 137)
         smallPaint.textSize = 10f
-        canvas.drawText(systemClock, 684f, 145f, smallPaint)
         canvas.drawText("$systemVolume%", 163f, 171f, smallPaint)
         canvas.drawText(sampleRateText, 149f, 222f, smallPaint)
         canvas.drawText(bitrateText, 140f, 242f, smallPaint)
@@ -404,17 +440,37 @@ class BlackOnixDeckView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
-            touchDownTime = event.eventTime
-            return true
-        }
-        if (event.action == MotionEvent.ACTION_CANCEL) return true
-        if (event.action != MotionEvent.ACTION_UP) return true
         val scale = min(width / 899f, height / 401f)
         val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         val x = (event.x - ox) / scale
         val y = (event.y - oy) / scale
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            touchDownTime = event.eventTime
+            if (RectF(278f, 240f, 623f, 258f).contains(x, y) && trackDurationMs > 0L) {
+                seekDragging = true
+                updateSeekPreview(x)
+            }
+            return true
+        }
+        if (event.action == MotionEvent.ACTION_MOVE && seekDragging) {
+            updateSeekPreview(x)
+            return true
+        }
+        if (event.action == MotionEvent.ACTION_CANCEL) {
+            seekDragging = false
+            seekPreviewMs = trackPositionMs
+            invalidate()
+            return true
+        }
+        if (event.action != MotionEvent.ACTION_UP) return true
+        if (seekDragging) {
+            updateSeekPreview(x)
+            seekDragging = false
+            onSeekTo(seekPreviewMs)
+            performClick()
+            return true
+        }
         val held = event.eventTime - touchDownTime
         if (RectF(659f, 339f, 696f, 366f).contains(x, y) && held >= 500L) {
             onRepeatLong()
@@ -423,6 +479,12 @@ class BlackOnixDeckView(
         }
         performClick()
         return true
+    }
+
+    private fun updateSeekPreview(x: Float) {
+        val fraction = ((x - 286f) / (615f - 286f)).coerceIn(0f, 1f)
+        seekPreviewMs = (trackDurationMs * fraction).toLong()
+        invalidate()
     }
 
     override fun performClick(): Boolean {
