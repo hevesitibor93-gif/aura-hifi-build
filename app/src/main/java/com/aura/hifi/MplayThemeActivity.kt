@@ -306,6 +306,7 @@ class MplayThemeActivity : Activity() {
     }
 
     private fun refreshPlaybackUi() {
+        refreshVuMeters()
         val active = player
         val item = active?.currentMediaItem
         titleView?.text = item?.mediaMetadata?.title?.toString()?.takeIf { it.isNotBlank() } ?: "Nincs betöltött zene"
@@ -323,6 +324,24 @@ class MplayThemeActivity : Activity() {
         volumeBar?.let { bar ->
             val value = ((active?.volume ?: 1f) * 100f).toInt().coerceIn(0, 100)
             if (!bar.isPressed && bar.progress != value) bar.progress = value
+        }
+    }
+
+    private fun refreshVuMeters() {
+        val active = player
+        val left = if (active?.isPlaying == true) AuraVuBridge.left else 0f
+        val right = if (active?.isPlaying == true) AuraVuBridge.right else 0f
+        updateMeterBars(leftBars, left)
+        updateMeterBars(rightBars, right)
+    }
+
+    private fun updateMeterBars(bars: List<View>, level: Float) {
+        val lit = (level.coerceIn(0f, 1f) * bars.size).toInt()
+        bars.forEachIndexed { index, bar ->
+            bar.pivotY = bar.height.toFloat()
+            val active = index < lit
+            bar.alpha = if (active) 1f else 0.20f
+            bar.scaleY = if (active) 1f else 0.30f
         }
     }
 
