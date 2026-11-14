@@ -1142,9 +1142,14 @@ class MainActivity : Activity() {
                 onSettings = { openSettingsPage?.invoke() },
                 onMainMenu = { openLibraryPage?.invoke() },
                 onMinimize = { moveTaskToBack(true) },
-                onExit = { finish() }
+                onExit = { finish() },
+                onVuModeChanged = { mode ->
+                    onixVuMode = mode
+                    getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_vu_mode", mode).apply()
+                }
             )
             blackOnixDeck = deck
+            onixVuMode = getSharedPreferences("aurix_settings", MODE_PRIVATE).getInt("onix_vu_mode", onixVuMode).coerceIn(0, 2)
             deck.setVuMode(onixVuMode)
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
             deck.setTrack(
