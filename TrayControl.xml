@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+	<items>
+		<item class="LayoutContainer" name="TCCTRL">
+			<properties>
+				<property name="AllowResizeByHeight" value="False"/>
+				<property name="AllowResizeByWidth" value="False"/>
+				<property name="Texture" value="TCCTRL.Texture"/>
+			</properties>
+			<controls>
+				<control class="Button" name="TrayRoll">
+					<properties>
+						<property name="Bindings">
+							<link Source="TrayControl" SourcePin="RestoreFromTray" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="704,14,76,66" Size="21,21"/>
+						<property name="Skin" value="TrayRoll.Skin"/>
+					</properties>
+				</control>
+				<control class="TimeDisplay" name="TrayTime">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayerState" SourcePin="TrackPosition" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Digits" value="6"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="231,44,516,44" Size="54,13"/>
+						<property name="Skin" value="TrayTime.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="TrayStop">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerStop" SourcePin="Action" TargetPin="Action"/>
+							<link Source="acPlayerStop" SourcePin="Flashing" TargetPin="Flashing"/>
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State" Expression="IF(Value=0,0,1)"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="562,49,188,11" Size="51,41"/>
+						<property name="Skin" value="TrayStop.Skin"/>
+					</properties>
+				</control>
+				<control class="Switch" name="TrayRnd">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerShuffle" SourcePin="Action" TargetPin="Action"/>
+							<link Source="acPlayerShuffle" SourcePin="State" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="36,42,698,34" Size="67,25"/>
+						<property name="Skin" value="TrayRnd.Skin"/>
+					</properties>
+				</control>
+				<control class="Switch" name="TrayRep">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerRepeat" SourcePin="Action" TargetPin="Action"/>
+							<link Source="acPlayerRepeat" SourcePin="State" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="36,66,698,10" Size="67,25"/>
+						<property name="Skin" value="TrayRep.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="TrayPrev">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerPrevTrack" SourcePin="Action" TargetPin="Action"/>
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State" Expression="IF(Value&lt;&gt;0,1,0)"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="512,49,238,11" Size="51,41"/>
+						<property name="Skin" value="TrayPrev.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="TrayOpen">
+					<properties>
+						<property name="Bindings">
+							<link Source="acMainOpenFiles" SourcePin="Action" TargetPin="Action"/>
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State" Expression="IF(Value&lt;&gt;0,1,0)"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="462,49,288,11" Size="51,41"/>
+						<property name="Skin" value="TrayOpen.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="TrayNext">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerNextTrack" SourcePin="Action" TargetPin="Action"/>
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State" Expression="IF(Value&lt;&gt;0,1,0)"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="712,49,38,11" Size="51,41"/>
+						<property name="Skin" value="TrayNext.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="PlayPauseBtnClone1">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerPlay" SourcePin="Action" TargetPin="Action"/>
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="612,49,138,11" Size="51,41"/>
+						<property name="Skin" value="PlayPauseBtnClone1.Skin"/>
+					</properties>
+				</control>
+				<control class="Switch" name="TraySot">
+					<properties>
+						<property name="Bindings">
+							<link Source="TrayControl" SourcePin="StayOnTop" TargetPin="Action"/>
+							<link Source="TrayControl" SourcePin="StayOnTop" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="724,14,56,66" Size="21,21"/>
+						<property name="Skin" value="TraySot.Skin"/>
+					</properties>
+				</control>
+				<control class="RunningLine" name="TrayRS">
+					<properties>
+						<property name="Font" value="Verdana,16769475,12,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="114,23,390,66" Size="297,12"/>
+						<property name="Skin" value="TrayRS.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="TrayKHZ">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="SampleRate" TargetPin="DisplayValue"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="125,40,649,52" Size="27,9"/>
+						<property name="Skin" value="TrayKHZ.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="TrayKBPS">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="BitRate" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Digits" value="4"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="116,52,649,40" Size="36,9"/>
+						<property name="Skin" value="TrayKBPS.Skin"/>
+					</properties>
+				</control>
+				<control class="SliderHorizontal" name="TraySeek">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayerState" SourcePin="Action" TargetPin="Action"/>
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="Visibility"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="125,69,401,26" Size="275,6"/>
+						<property name="PopupMenu" value="pmJump"/>
+						<property name="Segmentation" value="11"/>
+						<property name="Skin" value="TraySeek.Skin"/>
+						<property name="SkinThumb" value="TraySeek.SkinThumb"/>
+					</properties>
+				</control>
+				<control class="Button" name="CloseBtnClone1">
+					<properties>
+						<property name="Bindings">
+							<link Source="acMainExit" SourcePin="Action" TargetPin="Action"/>
+							<link Source="acMainExit" SourcePin="State" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="744,14,36,66" Size="21,21"/>
+						<property name="Skin" value="CloseBtnClone1.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="DigitsDisplay1">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVolume" SourcePin="Progress" TargetPin="DisplayValue"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="371,45,403,45" Size="27,11"/>
+						<property name="Skin" value="DigitsDisplay1.Skin"/>
+					</properties>
+				</control>
+				<control class="SpectrumDisplay" name="SpectrumDisplay1">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="ContextMenu" TargetPin="ContextMenu"/>
+							<link Source="prvVisual" SourcePin="DisplayValue" TargetPin="DisplayValue"/>
+						</property>
+						<property name="ColumnsCount" value="53"/>
+						<property name="DisablePeaks" value="True"/>
+						<property name="Orientation" value="asoBottom"/>
+						<property name="PeakColumns" value="SpectrumDisplay1.PeakColumns"/>
+						<property name="PeakLimits" value="SpectrumDisplay1.PeakLimits"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="466,29,229,69" Size="106,5"/>
+						<property name="PopupMenu" value="pmDisplay"/>
+						<property name="Skin" value="SpectrumDisplay1.Skin"/>
+						<property name="Source" value="ssLeft"/>
+					</properties>
+				</control>
+				<control class="SpectrumDisplay" name="SpectrumDisplay2">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="ContextMenu" TargetPin="ContextMenu"/>
+							<link Source="prvVisual" SourcePin="DisplayValue" TargetPin="DisplayValue"/>
+						</property>
+						<property name="ColumnsCount" value="53"/>
+						<property name="DisablePeaks" value="True"/>
+						<property name="PeakColumns" value="SpectrumDisplay2.PeakColumns"/>
+						<property name="PeakLimits" value="SpectrumDisplay2.PeakLimits"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="466,24,229,72" Size="106,5"/>
+						<property name="PopupMenu" value="pmDisplay"/>
+						<property name="Skin" value="SpectrumDisplay2.Skin"/>
+						<property name="Source" value="ssLeft"/>
+					</properties>
+				</control>
+				<control class="SpectrumDisplay" name="SpectrumDisplay3">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="ContextMenu" TargetPin="ContextMenu"/>
+							<link Source="prvVisual" SourcePin="DisplayValue" TargetPin="DisplayValue"/>
+						</property>
+						<property name="ColumnsCount" value="53"/>
+						<property name="DisablePeaks" value="True"/>
+						<property name="Orientation" value="asoBottom"/>
+						<property name="PeakColumns" value="SpectrumDisplay3.PeakColumns"/>
+						<property name="PeakLimits" value="SpectrumDisplay3.PeakLimits"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="582,29,113,69" Size="106,5"/>
+						<property name="PopupMenu" value="pmDisplay"/>
+						<property name="Skin" value="SpectrumDisplay3.Skin"/>
+						<property name="Source" value="ssRight"/>
+					</properties>
+				</control>
+				<control class="SpectrumDisplay" name="SpectrumDisplay4">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="ContextMenu" TargetPin="ContextMenu"/>
+							<link Source="prvVisual" SourcePin="DisplayValue" TargetPin="DisplayValue"/>
+						</property>
+						<property name="ColumnsCount" value="53"/>
+						<property name="DisablePeaks" value="True"/>
+						<property name="PeakColumns" value="SpectrumDisplay4.PeakColumns"/>
+						<property name="PeakLimits" value="SpectrumDisplay4.PeakLimits"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="582,24,113,72" Size="106,5"/>
+						<property name="PopupMenu" value="pmDisplay"/>
+						<property name="Skin" value="SpectrumDisplay4.Skin"/>
+						<property name="Source" value="ssRight"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="36,14,744,66" Size="21,21"/>
+						<property name="PopupMenu" value="pmMainMenu"/>
+						<property name="Skin" value="Button.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="DigitsDisplay2">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerRepeat" SourcePin="State" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Digits" value="1"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="205,43,581,43" Size="15,15"/>
+						<property name="Skin" value="DigitsDisplay2.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="DigitsDisplay3">
+					<properties>
+						<property name="Bindings">
+							<link Source="acPlayerShuffle" SourcePin="State" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Digits" value="1"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="305,43,481,43" Size="15,15"/>
+						<property name="Skin" value="DigitsDisplay3.Skin"/>
+					</properties>
+				</control>
+				<control class="SliderHorizontal" name="SliderHorizontal1">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayerState" SourcePin="Action" TargetPin="Action"/>
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="Visibility" Expression="NOT Value"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="125,69,401,26" Size="275,6"/>
+						<property name="PopupMenu" value="pmJump"/>
+						<property name="Segmentation" value="11"/>
+						<property name="Skin" value="SliderHorizontal1.Skin"/>
+						<property name="SkinThumb" value="SliderHorizontal1.SkinThumb"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button1">
+					<properties>
+						<property name="Bindings">
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="Action" Expression="1"/>
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="State"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="429,14,351,62" Size="21,25"/>
+						<property name="Skin" value="Button1.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button2">
+					<properties>
+						<property name="Bindings">
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="Action" Expression="0"/>
+							<link Source="TrayProgCounter" SourcePin="Position" TargetPin="State" Expression="NOT Value"/>
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="Hint" TextFormat="Blue Progressbar"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="429,39,351,37" Size="21,25"/>
+						<property name="Skin" value="Button2.Skin"/>
+					</properties>
+				</control>
+				<control class="DigitsDisplay" name="DigitsDisplay4">
+					<properties>
+						<property name="Digits" value="1"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="399,46,395,46" Size="7,9"/>
+						<property name="Skin" value="DigitsDisplay4.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button3">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayerState" SourcePin="State" TargetPin="State"/>
+							<link Source="acPlayerPause" SourcePin="Action" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="662,49,88,11" Size="51,41"/>
+						<property name="Skin" value="Button3.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button4">
+					<properties>
+						<property name="Bindings">
+							<link Source="acOptions" SourcePin="Action" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="56,14,724,66" Size="21,21"/>
+						<property name="PopupMenu" value="pmMainMenu"/>
+						<property name="Skin" value="Button4.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button5">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="76,14,704,66" Size="21,21"/>
+						<property name="PopupMenu" value="pmUtilities"/>
+						<property name="Skin" value="Button5.Skin"/>
+					</properties>
+				</control>
+				<control class="Gauge" name="Gauge">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="LevelL" TargetPin="DisplayValue" Expression="100-Value"/>
+							<link Source="TCVUCounter" SourcePin="Position" TargetPin="Visibility"/>
+						</property>
+						<property name="Kind" value="gkHorizontalI"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="466,24,229,67" Size="106,10"/>
+						<property name="ReactionSpeedLevelDown" value="10"/>
+						<property name="ReactionSpeedLevelUp" value="10"/>
+						<property name="Skin" value="Gauge.Skin"/>
+					</properties>
+				</control>
+				<control class="Gauge" name="Gauge1">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="LevelR" TargetPin="DisplayValue" Expression="100-Value"/>
+							<link Source="TCVUCounter" SourcePin="Position" TargetPin="Visibility"/>
+						</property>
+						<property name="Kind" value="gkHorizontalI"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="582,24,113,67" Size="106,10"/>
+						<property name="ReactionSpeedLevelDown" value="10"/>
+						<property name="ReactionSpeedLevelUp" value="15"/>
+						<property name="Skin" value="Gauge1.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="Button6">
+					<properties>
+						<property name="Bindings">
+							<link Source="TCVUCounter" SourcePin="Position" TargetPin="Action" Expression="Value+ScrollDelta"/>
+							<link Source="TCVUCounter" SourcePin="Position" TargetPin="State"/>
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="Hint" TextFormat="VU on Spectrums"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="429,64,351,12" Size="21,25"/>
+						<property name="Skin" value="Button6.Skin"/>
+					</properties>
+				</control>
+				<control class="SliderHorizontal" name="SliderHorizontal2">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVolume" SourcePin="Action" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="462,20,108,63" Size="231,18"/>
+						<property name="Skin" value="SliderHorizontal2.Skin"/>
+						<property name="SkinThumb" value="SliderHorizontal2.SkinThumb"/>
+					</properties>
+				</control>
+			</controls>
+		</item>
+	</items>
+</layout>

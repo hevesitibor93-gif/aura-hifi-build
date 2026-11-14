@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+	<items>
+		<item class="LayoutContainer" name="QFI">
+			<properties>
+				<property name="AllowResizeByHeight" value="False"/>
+				<property name="AllowResizeByWidth" value="False"/>
+				<property name="AutoSize" value="False"/>
+				<property name="Texture" value="QFI.Texture"/>
+			</properties>
+			<controls>
+				<control class="Button" name="QFIEditTags">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvQFI" SourcePin="ActionEditInfo" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="409,215,48,42" Size="43,23"/>
+						<property name="Skin" value="QFIEditTags.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="QFIClose">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvQFI" SourcePin="ActionClose" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="360,215,90,42" Size="50,23"/>
+						<property name="Skin" value="QFIClose.Skin"/>
+					</properties>
+				</control>
+				<control class="Button" name="QFICopyFile">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvQFI" SourcePin="ActionCopyFile" TargetPin="Action"/>
+						</property>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="318,215,139,42" Size="43,23"/>
+						<property name="Skin" value="QFICopyFile.Skin"/>
+					</properties>
+				</control>
+				<control class="CoverArtDisplay" name="QFICover">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvQFI" SourcePin="CoverArt" TargetPin="DisplayValue"/>
+						</property>
+						<property name="BorderColor" value="5592405"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="317,73,46,70" Size="137,137"/>
+						<property name="Skin" value="QFICover.Skin"/>
+					</properties>
+				</control>
+				<control class="Rating" name="QFIRating">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvQFI" SourcePin="Mark" TargetPin="DisplayValue"/>
+							<link Source="prvQFI" SourcePin="MarkAvailable" TargetPin="Visibility"/>
+						</property>
+						<property name="PlaceInfo" anchors="0,1,1,0" margins="328,48,57,208" Size="115,24"/>
+						<property name="Skin" value="QFIRating.Skin"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay21">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,81,224,179" Size="196,20"/>
+						<property name="Skin" value="TextDisplay21.Skin"/>
+						<property name="Template" value="%T"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay22">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,81,424,179" Size="51,20"/>
+						<property name="Skin" value="TextDisplay22.Skin"/>
+						<property name="Template" value="Title :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay23">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,98,424,162" Size="51,20"/>
+						<property name="Skin" value="TextDisplay23.Skin"/>
+						<property name="Template" value="Artist :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay24">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,115,424,145" Size="51,20"/>
+						<property name="Skin" value="TextDisplay24.Skin"/>
+						<property name="Template" value="Album :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay25">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,132,424,128" Size="51,20"/>
+						<property name="Skin" value="TextDisplay25.Skin"/>
+						<property name="Template" value="Year :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay26">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,149,424,111" Size="51,20"/>
+						<property name="Skin" value="TextDisplay26.Skin"/>
+						<property name="Template" value="Genre :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay27">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,6316128,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="25,166,424,94" Size="51,20"/>
+						<property name="Skin" value="TextDisplay27.Skin"/>
+						<property name="Template" value="Rating :"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay28">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,98,224,162" Size="196,20"/>
+						<property name="Skin" value="TextDisplay28.Skin"/>
+						<property name="Template" value="%R"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay29">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,115,279,145" Size="141,20"/>
+						<property name="Skin" value="TextDisplay29.Skin"/>
+						<property name="Template" value="%A"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay30">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,132,289,128" Size="131,20"/>
+						<property name="Skin" value="TextDisplay30.Skin"/>
+						<property name="Template" value="%Y"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay31">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,149,304,111" Size="116,20"/>
+						<property name="Skin" value="TextDisplay31.Skin"/>
+						<property name="Template" value="%G"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay32">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="80,170,304,90" Size="116,20"/>
+						<property name="Skin" value="TextDisplay32.Skin"/>
+						<property name="Template" value="%M"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay33">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="210,131,224,129" Size="66,20"/>
+						<property name="Skin" value="TextDisplay33.Skin"/>
+						<property name="Template" value="%H"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay34">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="195,146,224,114" Size="81,20"/>
+						<property name="Skin" value="TextDisplay34.Skin"/>
+						<property name="Template" value="%B"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay35">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="195,161,224,99" Size="81,20"/>
+						<property name="Skin" value="TextDisplay35.Skin"/>
+						<property name="Template" value="%C"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay36">
+					<properties>
+						<property name="Alignment" value="taRightJustify"/>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="220,116,224,144" Size="56,20"/>
+						<property name="Skin" value="TextDisplay36.Skin"/>
+						<property name="Template" value="%E"/>
+					</properties>
+				</control>
+				<control class="TextDisplay" name="TextDisplay37">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvPlayingFileInfo" SourcePin="FileInfo" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Font" value="Verdana,16769985,15,0"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="30,183,224,77" Size="246,20"/>
+						<property name="Skin" value="TextDisplay37.Skin"/>
+						<property name="Template" value="%D"/>
+					</properties>
+				</control>
+				<control class="Gauge" name="Gauge2">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="LevelL" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Kind" value="gkVertical"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="300,80,195,78" Size="5,122"/>
+						<property name="ReactionSpeedLevelDown" value="10"/>
+						<property name="ReactionSpeedLevelUp" value="15"/>
+						<property name="Skin" value="Gauge2.Skin"/>
+					</properties>
+				</control>
+				<control class="Gauge" name="Gauge3">
+					<properties>
+						<property name="Bindings">
+							<link Source="prvVisual" SourcePin="LevelR" TargetPin="DisplayValue"/>
+						</property>
+						<property name="Kind" value="gkVertical"/>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="466,80,29,78" Size="5,122"/>
+						<property name="ReactionSpeedLevelDown" value="10"/>
+						<property name="ReactionSpeedLevelUp" value="15"/>
+						<property name="Skin" value="Gauge3.Skin"/>
+					</properties>
+				</control>
+			</controls>
+		</item>
+	</items>
+</layout>

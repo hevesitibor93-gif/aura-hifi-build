@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<skin target="350" edition="1">
+	<properties>
+		<Menu>
+			<property name="Borders">
+				<property name="AssignedValues" value="mavLeft,mavTop,mavRight,mavBottom"/>
+				<property name="Bottom" value="2"/>
+				<property name="Left" value="2"/>
+				<property name="Right" value="2"/>
+				<property name="Top" value="2"/>
+			</property>
+			<property name="ColorBorder1" value="0"/>
+			<property name="ColorBorder2" value="3158064"/>
+			<property name="ColorListBorder" value="3158064"/>
+			<property name="ColorListRow1" value="2500134"/>
+			<property name="ColorListRow2" value="2500134"/>
+			<property name="ColorListSelection" value="3158064"/>
+			<property name="ColorListSelectionHot" value="3158064"/>
+			<property name="ColorListText" value="16769475"/>
+			<property name="Font" value="Verdana,16769475,13,0"/>
+			<property name="FontDisabled" value="Verdana,16769475,13,0"/>
+			<property name="FontSelected" value="Verdana,16769475,13,0"/>
+			<property name="Texture" value="ContextMenuSkin0"/>
+			<property name="TextureGutter" value="ContextMenuSkin1"/>
+			<property name="TextureSeparator" value="ContextMenuSkin2"/>
+		</Menu>
+		<Hint>
+			<property name="ColorBorder" value="16769475"/>
+			<property name="ColorContent1" value="0"/>
+			<property name="ColorContent2" value="0"/>
+			<property name="ColorText" value="16769475"/>
+		</Hint>
+		<blur/>
+	</properties>
+	<forms>
+		<form name="AIMPMainForm">
+			<properties>
+				<property name="MagnetRectOffsets" value="20,20,20,9"/>
+				<property name="SizingHitTestAreaWidth" value="5"/>
+			</properties>
+		</form>
+		<form name="DropWheel">
+			<properties>
+				<property name="SizingHitTestAreaWidth" value="5"/>
+			</properties>
+		</form>
+		<form name="TrayControl">
+			<properties>
+				<property name="MagnetRectOffsets" value="7,7,7,7"/>
+				<property name="SizingHitTestAreaWidth" value="5"/>
+			</properties>
+		</form>
+		<form name="QFI">
+			<properties>
+				<property name="MagnetRectOffsets" value="12,41,14,38"/>
+				<property name="SizingHitTestAreaWidth" value="0"/>
+			</properties>
+		</form>
+		<form name="TrayControlFlow" master="TrayControl">
+			<properties>
+				<property name="Placement" margins="0,1,0,1" value="1"/>
+				<property name="SizingHitTestAreaWidth" value="5"/>
+			</properties>
+		</form>
+	</forms>
+	<providers>
+		<provider name="VUPPMProvider" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="3"/>
+			</properties>
+		</provider>
+		<provider name="TabsProvider" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="3"/>
+			</properties>
+		</provider>
+		<provider name="TrayProgCounter" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="2"/>
+			</properties>
+		</provider>
+		<provider name="TCVUCounter" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="2"/>
+			</properties>
+		</provider>
+		<provider name="QFIController" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="2"/>
+			</properties>
+		</provider>
+		<provider name="ScrollTabs" class="LogicalOperatorCommutator">
+			<properties>
+				<property name="Bindings">
+					<link Source="TabsMNCont" SourcePin="Visibility" TargetPin="Value2" Expression="NOT Value"/>
+				</property>
+				<property name="Expression" value="Value1 AND Value2"/>
+			</properties>
+		</provider>
+		<provider name="ScrCounter" class="LogicalOperatorCounter">
+			<properties>
+				<property name="Module" value="3"/>
+			</properties>
+		</provider>
+	</providers>
+</skin>

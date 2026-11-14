@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<image>
+	<properties>
+		<property name="HitTestMaskMode" value="htmMask"/>
+		<property name="Margins" value="28,0,4,0"/>
+	</properties>
+</image>

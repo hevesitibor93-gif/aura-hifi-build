@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+	<items>
+		<item class="LayoutContainer" name="DropWheel">
+			<properties>
+				<property name="AllowResizeByHeight" value="False"/>
+				<property name="AllowResizeByWidth" value="False"/>
+				<property name="Texture" value="DropWheel.Texture"/>
+			</properties>
+			<controls>
+				<control link="DropWheel_OK">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="89,89,90,90" Size="71,71"/>
+						<property name="Skin" value="DropWheel_OK.Skin"/>
+					</properties>
+				</control>
+				<control link="DropWheel_CUR">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="146,79,59,80" Size="45,91"/>
+						<property name="Skin" value="DropWheel_CUR.Skin"/>
+					</properties>
+				</control>
+				<control link="DropWheel_RND">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="54,79,147,80" Size="49,91"/>
+						<property name="Skin" value="DropWheel_RND.Skin"/>
+					</properties>
+				</control>
+				<control link="DropWheel_BTM">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="79,147,80,58" Size="91,45"/>
+						<property name="Skin" value="DropWheel_BTM.Skin"/>
+					</properties>
+				</control>
+				<control link="DropWheel_TOP">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="79,59,80,146" Size="91,45"/>
+						<property name="Skin" value="DropWheel_TOP.Skin"/>
+					</properties>
+				</control>
+				<control link="DropWheel_Cancel">
+					<properties>
+						<property name="PlaceInfo" anchors="1,1,0,0" margins="100,134,101,85" Size="49,31"/>
+						<property name="Skin" value="DropWheel_Cancel.Skin"/>
+					</properties>
+				</control>
+			</controls>
+		</item>
+	</items>
+</layout>
