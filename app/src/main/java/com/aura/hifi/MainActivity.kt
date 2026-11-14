@@ -60,6 +60,9 @@ class MainActivity : Activity() {
     private var pendingTrackStartAttempts = 0
     private var pendingTrackStartRunnable: Runnable? = null
     private var pendingRadioStation: Pair<String, String>? = null
+    private var pendingRadioNavigationStations: List<Pair<String, String>>? = null
+    private var radioNavigationStations: List<Pair<String, String>> = emptyList()
+    private var radioNavigationIndex = -1
     private var pendingRadioStartAttempts = 0
     private var pendingRadioStartRunnable: Runnable? = null
     private var clippingStatusLabel: TextView? = null
@@ -1178,8 +1181,9 @@ class MainActivity : Activity() {
         favoriteRadioButtons.clear()
         for (slot in 0..4) {
             val favoriteButton = radioManagerKey("FAV ${slot + 1}") {
-                val station = loadFavoriteRadioStations().getOrNull(slot)
-                if (station != null && station.second.isNotBlank()) startRadioStation(station.first, station.second)
+                val favorites = loadFavoriteRadioStations().filter { it.second.isNotBlank() }
+                val station = favorites.getOrNull(slot)
+                if (station != null) startRadioStation(station.first, station.second, favorites)
                 else toast("Ez a memóriahely még üres.")
             }
             favoriteButton.textSize = 8f
@@ -3858,6 +3862,25 @@ class MainActivity : Activity() {
         }
         if (visibleEnd < queue.size) queueContainer.addView(label("… ${queue.size - visibleEnd} további szám", 10f, Color.GRAY))
     }
+    private fun navigateRadioStation(direction: Int) {
+        if (activeRadioStationName == null) {
+            if (direction < 0) playPrevious() else playNext()
+            return
+        }
+        val stations = radioNavigationStations.filter { it.second.isNotBlank() }
+        if (stations.isEmpty()) {
+            toast("Ehhez az adóhoz nincs léptethető lista.")
+            return
+        }
+        val currentUri = player?.currentMediaItem?.localConfiguration?.uri?.toString()
+        val current = stations.indexOfFirst { it.second == currentUri }
+            .takeIf { it >= 0 } ?: radioNavigationIndex.coerceIn(0, stations.lastIndex)
+        val next = (current + direction + stations.size) % stations.size
+        radioNavigationIndex = next
+        val station = stations[next]
+        startRadioStation(station.first, station.second, stations)
+    }
+
     private fun playPrevious() {
         if (queue.isEmpty()) return
         currentIndex = if (currentIndex > 0) currentIndex - 1 else 0
@@ -4078,7 +4101,8 @@ class MainActivity : Activity() {
         val list = ListView(this).apply { adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, rows); dividerHeight = dp(1) }
         val dialog = AlertDialog.Builder(this).setTitle("KEDVENC MEMÓRIAHELYEK").setView(list).setNegativeButton("BEZÁR", null).create()
         list.setOnItemClickListener { _, _, which, _ ->
-            loadFavoriteRadioStations().getOrNull(which)?.takeIf { it.second.isNotBlank() }?.let { startRadioStation(it.first, it.second); dialog.dismiss() }
+            val favorites = loadFavoriteRadioStations().filter { it.second.isNotBlank() }
+            favorites.getOrNull(which)?.let { startRadioStation(it.first, it.second, favorites); dialog.dismiss() }
         }
         list.setOnItemLongClickListener { _, _, which, _ ->
             if (which < 2) toast("Az első két memóriahely fix, nem törölhető.")
@@ -4260,7 +4284,8 @@ class MainActivity : Activity() {
                                 c.inputStream.close(); c.disconnect()
                             } catch (_: Exception) {}
                         }.start()
-                        startRadioStation(station.name, station.streamUrl)
+                        val searchStations = resultStations.map { it.name to it.streamUrl }
+                        startRadioStation(station.name, station.streamUrl, searchStations)
                         dialog.dismiss()
                     } else {
                         showFavoriteSlotPicker(station.name, station.streamUrl)
@@ -4305,7 +4330,7 @@ class MainActivity : Activity() {
         listView.setOnItemClickListener { _, _, which, _ ->
             if (which < stations.size) {
                 val station = stations[which]
-                startRadioStation(station.first, station.second)
+                startRadioStation(station.first, station.second, stations)
                 dialog.dismiss()
             } else {
                 dialog.dismiss()
@@ -4381,7 +4406,7 @@ class MainActivity : Activity() {
                 stations.add(name to url)
                 saveCustomRadioStations(stations)
                 toast("$name elmentve a saját adók közé.")
-                startRadioStation(name, url)
+                startRadioStation(name, url, loadCustomRadioStations())
             }
             .show()
     }
@@ -4417,25 +4442,37 @@ class MainActivity : Activity() {
         tunerPowered = true; tunerPowerButton?.text = "TUNER BE"; showRadioStationManager()
     }
 
-    private fun startRadioStation(stationName: String, streamUrl: String) {
+    private fun startRadioStation(
+        stationName: String,
+        streamUrl: String,
+        navigationStations: List<Pair<String, String>> = emptyList()
+    ) {
+        val navigation = navigationStations.filter { it.second.isNotBlank() }
+            .ifEmpty { radioNavigationStations.filter { it.second.isNotBlank() } }
+            .ifEmpty { listOf(stationName to streamUrl) }
+        radioNavigationStations = navigation
+        radioNavigationIndex = navigation.indexOfFirst { it.second == streamUrl }.takeIf { it >= 0 } ?: 0
         // Hide the upcoming local MP3 immediately on the first radio switch,
         // including while the playback service/player is still starting.
         tunerNextTrackLabel?.visibility = View.GONE
         val exo = player
         if (exo == null) {
             pendingRadioStation = stationName to streamUrl
+            pendingRadioNavigationStations = navigation
             pendingRadioStartAttempts = 0
             pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
             try { startService(Intent(this, AuraPlaybackService::class.java)) } catch (_: Exception) {}
             val retry = object : Runnable {
                 override fun run() {
                     val requestedStation = pendingRadioStation ?: return
+                    val requestedNavigation = pendingRadioNavigationStations ?: listOf(requestedStation)
                     val readyPlayer = player
                     if (readyPlayer != null) {
                         pendingRadioStation = null
+                        pendingRadioNavigationStations = null
                         pendingRadioStartRunnable = null
                         pendingRadioStartAttempts = 0
-                        startRadioStation(requestedStation.first, requestedStation.second)
+                        startRadioStation(requestedStation.first, requestedStation.second, requestedNavigation)
                         return
                     }
                     pendingRadioStartAttempts++
@@ -4446,6 +4483,7 @@ class MainActivity : Activity() {
                         handler.postDelayed(this, 100L)
                     } else {
                         pendingRadioStation = null
+                        pendingRadioNavigationStations = null
                         pendingRadioStartRunnable = null
                         pendingRadioStartAttempts = 0
                         toast("A háttérlejátszó nem indult el. Próbáld újra.")
@@ -4458,6 +4496,7 @@ class MainActivity : Activity() {
             return
         }
         pendingRadioStation = null
+        pendingRadioNavigationStations = null
         pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
         pendingRadioStartRunnable = null
         pendingRadioStartAttempts = 0
@@ -4479,8 +4518,8 @@ class MainActivity : Activity() {
                 text = "CONNECTING  •  $stationName"
                 setTextColor(Color.rgb(230, 190, 112))
             }
-            AuraPlaybackService.onPreviousRequested = { toast("Az internetes rádió élő adás.") }
-            AuraPlaybackService.onNextRequested = { toast("Az internetes rádió élő adás.") }
+            AuraPlaybackService.onPreviousRequested = { navigateRadioStation(-1) }
+            AuraPlaybackService.onNextRequested = { navigateRadioStation(1) }
             val metadata = MediaMetadata.Builder()
                 .setTitle(stationName)
                 .setArtist("MAGYAR INTERNET RÁDIÓ")
@@ -5189,7 +5228,10 @@ class MainActivity : Activity() {
         pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
         pendingRadioStartRunnable = null
         pendingRadioStation = null
+        pendingRadioNavigationStations = null
         pendingRadioStartAttempts = 0
+        radioNavigationStations = emptyList()
+        radioNavigationIndex = -1
         audioDeviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = null
         AuraPlaybackService.onPreviousRequested = null
