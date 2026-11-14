@@ -1169,7 +1169,8 @@ class MainActivity : Activity() {
                 onSpectrumModeChanged = { mode ->
                     onixSpectrumMode = mode
                     getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_spectrum_mode", mode).apply()
-                }
+                },
+                onSeekTo = { position -> player?.seekTo(position) }
             )
             blackOnixDeck = deck
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
@@ -5318,6 +5319,7 @@ class MainActivity : Activity() {
                 formatTime(position),
                 "-${formatTime(duration - position)}"
             )
+            blackOnixDeck?.setTrackProgress(position, duration)
             blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
             blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
             updateOnixSystemInfo()
@@ -5354,7 +5356,7 @@ class MainActivity : Activity() {
                 ?.substringBefore(" ")?.takeIf { it.toIntOrNull() != null }
             val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
                 ?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
-            val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
                 .format(java.util.Date())
             deck.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
         } catch (_: Exception) {}
