@@ -2593,6 +2593,7 @@ class MainActivity : Activity() {
             inputs.add(input)
             panel.addView(input, LinearLayout.LayoutParams(-1, dp(48)))
         }
+        if (pendingId3SourceUri != uri) pendingId3CoverUri = null
         pendingId3SourceUri = uri
         val coverLabel = label(if (pendingId3CoverUri != null) "Borítókép kiválasztva" else "Nincs külön borítókép kiválasztva", 11f, Color.rgb(170, 180, 190))
         pendingId3CoverLabel = coverLabel
@@ -2624,6 +2625,9 @@ class MainActivity : Activity() {
                 }
                 dialog.dismiss()
                 createTaggedMp3Copy(uri, displayName, values, pendingId3CoverUri)
+                pendingId3CoverUri = null
+                pendingId3SourceUri = null
+                pendingId3CoverLabel = null
             }
         }
         dialog.show()
