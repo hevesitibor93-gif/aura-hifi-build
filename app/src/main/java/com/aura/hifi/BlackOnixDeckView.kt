@@ -349,9 +349,10 @@ class BlackOnixDeckView(
             sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
         }
 
-        // Replace the old skin branding with AURA.
-        val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(255, 4, 7, 11) }
-        canvas.drawRoundRect(RectF(0f, 0f, 899f, 26f), 4f, 4f, brandBg)
+        // Cover the baked AIMP3 branding in the top control row and place AURA
+        // in the clear center gap between the left and right button groups.
+        val brandBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(4, 7, 11) }
+        canvas.drawRect(96f, 27f, 800f, 50f, brandBg)
         val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(224, 190, 128)
             textSize = 14f
@@ -359,7 +360,7 @@ class BlackOnixDeckView(
             textAlign = Paint.Align.CENTER
             setShadowLayer(2f, 0f, 1f, Color.BLACK)
         }
-        canvas.drawText("AURA", 449.5f, 20f, brandPaint)
+        canvas.drawText("AURA", 448f, 44f, brandPaint)
         sprite(R.drawable.onix_button_mute_volume_skin, canvas, 799f, 184f, 41f, 25f, if (muted) 3 else 0, 6)
 
         // Top bar: original ONIX controls.
