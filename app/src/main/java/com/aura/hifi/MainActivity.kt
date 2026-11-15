@@ -2877,10 +2877,16 @@ class MainActivity : Activity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+        val waveformPreview = AuraWaveformView(this)
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(6), dp(18), dp(2))
             addView(label("A szerkesztő jelenleg 16 bites, tömörítetlen PCM WAV-fájlokat kezel. Az eredeti fájl érintetlen marad.", 11f, Color.rgb(165, 175, 190)))
+            addView(label("HULLÁMFORMA • ELŐNÉZET", 10f, Color.rgb(238, 202, 137)))
+            addView(waveformPreview, LinearLayout.LayoutParams(-1, dp(112)).apply {
+                topMargin = dp(5)
+                bottomMargin = dp(8)
+            })
             addView(label("Kezdés (mp)", 11f, Color.rgb(238, 202, 137)))
             addView(startInput, LinearLayout.LayoutParams(-1, dp(48)))
             addView(label("Befejezés (mp)", 11f, Color.rgb(238, 202, 137)))
@@ -2893,6 +2899,18 @@ class MainActivity : Activity() {
             addView(label("Fade-out (mp)", 11f, Color.rgb(238, 202, 137)))
             addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(44)))
         }
+        Thread {
+            try {
+                val peaks = contentResolver.openInputStream(uri)?.use { AuraWavEditor.waveform(it, 240) }
+                    ?: throw IllegalStateException("A WAV-fájl nem olvasható.")
+                waveformPreview.post { waveformPreview.setWaveform(peaks) }
+            } catch (e: Exception) {
+                waveformPreview.post {
+                    waveformPreview.setWaveform(FloatArray(0))
+                    gateLabel.text = "Hullámforma nem tölthető be: ${e.localizedMessage ?: "ismeretlen hiba"}"
+                }
+            }
+        }.start()
         AlertDialog.Builder(this)
             .setTitle("AURA Audio Lab • WAV Editor")
             .setView(panel)
