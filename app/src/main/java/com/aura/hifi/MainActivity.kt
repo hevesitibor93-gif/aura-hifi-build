@@ -208,16 +208,12 @@ class MainActivity : Activity() {
         loadAuraSoundEngineSettings(prefs)
         applyEqualizerSettings(prefs)
         loadVuProfile(vuProfile)
-        val allowRotation = prefs.getBoolean("screen_rotation", true)
-        val savedTheme = prefs.getString("aura_theme", "classic")
-        // A korábbi külön álló BLACK-ONIX opciót az egységes témába vezetjük át.
-        if (savedTheme == "black_onix_portrait") {
+        // BLACK-ONIX is the only supported theme. Migrate older Classic/portrait selections.
+        val savedTheme = prefs.getString("aura_theme", "black_onix")
+        if (savedTheme != "black_onix") {
             prefs.edit().putString("aura_theme", "black_onix").apply()
         }
-        requestedOrientation = when (savedTheme) {
-            "black_onix", "black_onix_portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
-            else -> if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
         buildUi()
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -978,13 +974,10 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-        val themeId = when (themePrefs.getString("aura_theme", "classic")) {
-            "black_onix", "black_onix_portrait" -> "black_onix"
-            else -> "classic"
-        }
+        // A single BLACK-ONIX theme uses the ONIX deck in landscape and the retained AURA layout in portrait.
+        val themeId = "black_onix"
         themePrefs.edit().putString("aura_theme", themeId).apply()
-        // BLACK-ONIX uses its dedicated deck only in landscape; portrait deliberately reuses the untouched Classic AURA interface.
-        val isOnix = themeId != "classic" && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val isOnix = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = if (isOnix)
@@ -2100,21 +2093,8 @@ class MainActivity : Activity() {
         keepScreenOnRow.addView(keepScreenOnSwitch)
         displaySettingsPage.addView(keepScreenOnRow)
         appearanceSettingsPage.addView(sectionTitle("TÉMA"))
-        val activeThemeName = if (themeId == "black_onix")
-            "BLACK-ONIX  •  AUTOMATIKUS ÁLLÓ / FEKVŐ"
-        else "CLASSIC  •  EREDETI AURA FELÜLET"
-        appearanceSettingsPage.addView(label("AKTÍV TÉMA: " + activeThemeName, 11f, if (isOnix) Color.rgb(220, 184, 119) else Color.rgb(190, 198, 214)).apply { setPadding(dp(3), 0, dp(3), dp(8)) })
-        fun selectAuraTheme(id: String) {
-            themePrefs.edit().putString("aura_theme", id).apply()
-            requestedOrientation = when (id) {
-                "black_onix" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                else -> if (themePrefs.getBoolean("screen_rotation", true)) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            }
-            recreate()
-        }
-        appearanceSettingsPage.addView(button("CLASSIC  •  EREDETI AURA", if (themeId == "classic") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("classic") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(button("BLACK-ONIX  •  ÁLLÓ / FEKVŐ AUTOMATIKUS", if (themeId == "black_onix") Color.rgb(91, 65, 27) else Color.rgb(35, 41, 53), Color.WHITE) { selectAuraTheme("black_onix") }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
-        appearanceSettingsPage.addView(label("Egyetlen BLACK-ONIX téma, külön kialakított álló és fekvő nézettel. A telefon elforgatásakor automatikusan vált.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
+        appearanceSettingsPage.addView(label("AKTÍV TÉMA: BLACK-ONIX  •  AUTOMATIKUS ÁLLÓ / FEKVŐ", 11f, Color.rgb(220, 184, 119)).apply { setPadding(dp(3), 0, dp(3), dp(8)) })
+        appearanceSettingsPage.addView(label("A BLACK-ONIX az egyetlen téma. Fekvő nézetben az ONIX deck, álló nézetben a megtartott AURA felület jelenik meg.", 10f, Color.rgb(155, 163, 177)).apply { setPadding(dp(3), 0, dp(3), dp(12)) })
         appearanceSettingsPage.addView(sectionTitle("LEJÁTSZÓ MEGJELENÉSE"))
         appearanceSettingsPage.addView(button("◈  BORÍTÓ / KAZETTA", Color.rgb(35, 41, 53), Color.WHITE) { showCover = !showCover; getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean("show_cover", showCover).apply(); applyArtworkMode() }, LinearLayout.LayoutParams(-1, dp(38)))
         vuAppearanceSettingsPage.addView(sectionTitle("VU-MÉRŐ MEGJELENÉSE"))
@@ -4080,7 +4060,7 @@ class MainActivity : Activity() {
         startTrack(queue[currentIndex])
     }
     private fun attachVuMeter() {
-        if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("aura_theme", "classic") != "classic") startOnixVisualizer()
+        if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && getSharedPreferences("aurix_settings", MODE_PRIVATE).getString("aura_theme", "black_onix") != "classic") startOnixVisualizer()
         eqProcessor.onLevel = { left, right ->
             val threshold = vuThreshold
             val gain = vuGain
@@ -5610,7 +5590,7 @@ class MainActivity : Activity() {
     private inner class VuView(private val verticalSingle: Boolean = false, private val channelOnly: Int = -1) : View(this@MainActivity) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
         private val blackOnixSkinEnabled = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-            .getString("aura_theme", "classic") != "classic"
+            .getString("aura_theme", "black_onix") != "classic"
         private val blackOnixGaugeFrames by lazy {
             listOf(
                 R.drawable.black_onix_vu_left_l,
