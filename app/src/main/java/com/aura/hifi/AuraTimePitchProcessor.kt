@@ -1,6 +1,5 @@
 package com.aura.hifi
 
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -19,7 +18,7 @@ object AuraTimePitchProcessor {
         require(pcm.size <= 16 * 1024 * 1024) { "A tempó/hangmagasság feldolgozás jelenleg legfeljebb 16 MB WAV-hangadaton használható." }
         val frameSize = channels * 2
         val inputFrames = pcm.size / frameSize
-        require(inputFrames > 0)
+        require(inputFrames >= 64) { "A tempó/hangmagasság feldolgozáshoz legalább 64 hangminta szükséges." }
         val pitchFactor = 2.0.pow(semitones / 12.0)
         val pitchedFrames = max(1, (inputFrames / pitchFactor).roundToInt())
         val pitched = FloatArray(pitchedFrames * channels)
@@ -39,10 +38,13 @@ object AuraTimePitchProcessor {
 
         val targetFrames = max(1, (inputFrames / tempo).roundToInt())
         val stretch = targetFrames.toDouble() / pitchedFrames
-        val window = (sampleRate * 40 / 1000).coerceAtLeast(256)
+        // Adapt the analysis window for short clips so the overlap-add loop
+        // never leaves silent gaps when the source is shorter than 40 ms.
+        val desiredWindow = (sampleRate * 40 / 1000).coerceAtLeast(256)
+        val window = min(desiredWindow, (pitchedFrames / 2).coerceAtLeast(64))
         val hop = (sampleRate * 10 / 1000).coerceAtLeast(64).coerceAtMost(window / 2)
         val overlap = window - hop
-        val search = (sampleRate * 5 / 1000).coerceAtLeast(16)
+        val search = (sampleRate * 5 / 1000).coerceAtLeast(16).coerceAtMost((window / 4).coerceAtLeast(1))
         val output = FloatArray(targetFrames * channels)
         val firstCount = min(window, min(pitchedFrames, targetFrames))
         pitched.copyInto(output, 0, 0, firstCount * channels)
