@@ -2704,8 +2704,8 @@ class MainActivity : Activity() {
     private fun showTrackInformation(uri: Uri) {
         val details = StringBuilder()
         details.append("Cím: ").append(trackLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
-        details.append("\\nElőadó: ").append(metadataLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
-        details.append("\\nAlbum: ").append(albumLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
+        details.append("\nElőadó: ").append(metadataLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
+        details.append("\nAlbum: ").append(albumLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
         var retriever: MediaMetadataRetriever? = null
         try {
             retriever = MediaMetadataRetriever()
@@ -2714,12 +2714,12 @@ class MainActivity : Activity() {
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull()?.div(1000)
             val sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-            details.append("\\nFormátum: ").append(mime ?: "Nem elérhető")
-            if (bitrate != null) details.append("\\nBitráta: ").append(bitrate).append(" kbps")
-            if (sampleRate != null) details.append("\\nMintavételezés: ").append(sampleRate).append(" Hz")
-            if (duration != null) details.append("\\nHossz: ").append(formatDuration(duration))
+            details.append("\nFormátum: ").append(mime ?: "Nem elérhető")
+            if (bitrate != null) details.append("\nBitráta: ").append(bitrate).append(" kbps")
+            if (sampleRate != null) details.append("\nMintavételezés: ").append(sampleRate).append(" Hz")
+            if (duration != null) details.append("\nHossz: ").append(formatDuration(duration))
         } catch (_: Exception) {
-            details.append("\\nTechnikai adatok: nem olvashatók ki ebből a fájlból.")
+            details.append("\nTechnikai adatok: nem olvashatók ki ebből a fájlból.")
         } finally {
             try { retriever?.release() } catch (_: Exception) {}
         }
@@ -2728,8 +2728,8 @@ class MainActivity : Activity() {
                 if (cursor.moveToFirst()) {
                     val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
-                    if (nameIndex >= 0) details.append("\\nFájlnév: ").append(cursor.getString(nameIndex) ?: "Ismeretlen")
-                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) details.append("\\nMéret: ").append(android.text.format.Formatter.formatShortFileSize(this, cursor.getLong(sizeIndex)))
+                    if (nameIndex >= 0) details.append("\nFájlnév: ").append(cursor.getString(nameIndex) ?: "Ismeretlen")
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) details.append("\nMéret: ").append(android.text.format.Formatter.formatShortFileSize(this, cursor.getLong(sizeIndex)))
                 }
             }
         } catch (_: Exception) {}
