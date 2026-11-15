@@ -59,7 +59,9 @@ object AuraWavEditor {
         noiseGateDb: Int,
         fadeInMs: Long = 0L,
         fadeOutMs: Long = 0L,
-        gainDb: Int = 0
+        gainDb: Int = 0,
+        echoDelayMs: Long = 250L,
+        echoMixPercent: Int = 0
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -84,9 +86,13 @@ object AuraWavEditor {
             peak = max(peak, abs(sample))
             i += 2
         }
-        val normalizationGain = if (normalize && peak > 0) minOf(32767.0 / peak, 8.0) else 1.0
+        val echoMix = echoMixPercent.coerceIn(0, 50) / 100.0
+        val normalizationGain = if (normalize && peak > 0) minOf(32767.0 / (peak * (1.0 + echoMix)), 8.0) else 1.0
         val manualGain = Math.pow(10.0, gainDb.coerceIn(-12, 12) / 20.0)
         val gain = normalizationGain * manualGain
+        val original = if (echoMix > 0.0) selected.copyOf() else selected
+        val echoDelayFrames = (echoDelayMs.coerceIn(50L, 1000L) * wav.sampleRate / 1000L).toInt()
+        val echoDelayBytes = echoDelayFrames * frameSize
         val selectedFrames = selected.size / frameSize
         val fadeInFrames = (fadeInMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
         val fadeOutFrames = (fadeOutMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
@@ -94,12 +100,17 @@ object AuraWavEditor {
         while (i + 1 < selected.size) {
             val sample = ((selected[i + 1].toInt() shl 8) or (selected[i].toInt() and 0xff)).toShort().toInt()
             val gated = if (noiseGateDb > -90 && abs(sample).toDouble() < threshold) 0 else sample
+            val delayedIndex = i - echoDelayBytes
+            val delayed = if (echoMix > 0.0 && delayedIndex >= 0) {
+                ((original[delayedIndex + 1].toInt() shl 8) or (original[delayedIndex].toInt() and 0xff)).toShort().toInt()
+            } else 0
+            val withEcho = gated + delayed * echoMix
             val frame = i / frameSize
             val fadeIn = if (fadeInFrames > 0 && frame < fadeInFrames) frame.toDouble() / fadeInFrames else 1.0
             val framesFromEnd = selectedFrames - 1 - frame
             val fadeOut = if (fadeOutFrames > 0 && framesFromEnd < fadeOutFrames) framesFromEnd.toDouble() / fadeOutFrames else 1.0
             val envelope = minOf(fadeIn, fadeOut).coerceIn(0.0, 1.0)
-            val adjusted = (gated * gain * envelope).roundToInt().coerceIn(-32768, 32767)
+            val adjusted = (withEcho * gain * envelope).roundToInt().coerceIn(-32768, 32767)
             selected[i] = adjusted.toByte()
             selected[i + 1] = (adjusted shr 8).toByte()
             i += 2
