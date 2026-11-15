@@ -181,10 +181,11 @@ class BlackOnixDeckView(
         val r = right.coerceIn(0f, 1f)
         leftLevel = if (l >= leftLevel) leftLevel * .28f + l * .72f else leftLevel * .78f + l * .22f
         rightLevel = if (r >= rightLevel) rightLevel * .28f + r * .72f else rightLevel * .78f + r * .22f
-        // Quicker attack and release make the upper ONIX VU feel more alive,
-        // without changing the side meters or the spectrum animation.
-        onixVuLeftLevel = if (l >= onixVuLeftLevel) onixVuLeftLevel * .12f + l * .88f else onixVuLeftLevel * .58f + l * .42f
-        onixVuRightLevel = if (r >= onixVuRightLevel) onixVuRightLevel * .12f + r * .88f else onixVuRightLevel * .58f + r * .42f
+        // Dedicated 1.22x gain and quicker response for the upper ONIX VU only.
+        val onixL = (l * 1.22f).coerceIn(0f, 1f)
+        val onixR = (r * 1.22f).coerceIn(0f, 1f)
+        onixVuLeftLevel = if (onixL >= onixVuLeftLevel) onixVuLeftLevel * .12f + onixL * .88f else onixVuLeftLevel * .58f + onixL * .42f
+        onixVuRightLevel = if (onixR >= onixVuRightLevel) onixVuRightLevel * .12f + onixR * .88f else onixVuRightLevel * .58f + onixR * .42f
         if (!fftActive) {
             val signal = max(l, r)
             for (i in spectrumLevels.indices) {
