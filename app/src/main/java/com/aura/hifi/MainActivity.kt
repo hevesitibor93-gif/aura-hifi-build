@@ -2543,11 +2543,21 @@ class MainActivity : Activity() {
 
     private fun showId3Editor(uri: Uri) {
         val current = librarySongByUri[uri.toString()]
+        var existingYear = ""
+        var existingGenre = ""
+        try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(this, uri)
+            existingYear = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR) ?: ""
+            existingGenre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE) ?: ""
+            retriever.release()
+        } catch (_: Exception) {}
         val fields = listOf(
             "Cím" to (trackLabel.text?.toString() ?: ""),
             "Előadó" to (metadataLabel.text?.toString() ?: ""),
             "Album" to (albumLabel.text?.toString() ?: ""),
-            "Év" to ""
+            "Év" to existingYear,
+            "Műfaj" to existingGenre
         )
         val inputs = mutableListOf<EditText>()
         val panel = LinearLayout(this).apply {
@@ -2578,6 +2588,24 @@ class MainActivity : Activity() {
                 }
                 try {
                     val changed = contentResolver.update(uri, values, null, null)
+                    val genreName = inputs[4].text.toString().trim()
+                    val audioId = android.content.ContentUris.parseId(uri)
+                    if (genreName.isNotBlank()) {
+                        val genresUri = MediaStore.Audio.Genres.getContentUri("external")
+                        var genreId: Long? = null
+                        contentResolver.query(genresUri, arrayOf(MediaStore.Audio.Genres._ID), MediaStore.Audio.Genres.NAME + "=?", arrayOf(genreName), null)?.use { cursor ->
+                            if (cursor.moveToFirst()) genreId = cursor.getLong(0)
+                        }
+                        if (genreId == null) {
+                            val created = contentResolver.insert(genresUri, ContentValues().apply { put(MediaStore.Audio.Genres.NAME, genreName) })
+                            genreId = created?.let { android.content.ContentUris.parseId(it) }
+                        }
+                        genreId?.let { id ->
+                            val members = MediaStore.Audio.Genres.Members.getContentUri("external", id)
+                            val memberValues = ContentValues().apply { put(MediaStore.Audio.Genres.Members.AUDIO_ID, audioId) }
+                            try { contentResolver.insert(members, memberValues) } catch (_: Exception) {}
+                        }
+                    }
                     if (changed > 0) {
                         trackLabel.text = inputs[0].text.toString().ifBlank { "Ismeretlen cím" }
                         metadataLabel.text = inputs[1].text.toString().ifBlank { "Ismeretlen előadó" }
