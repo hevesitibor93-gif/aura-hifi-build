@@ -13,11 +13,13 @@ import android.os.Looper
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.random.Random
+import java.util.concurrent.Executors
 
 /** Standalone AURA Remixer. Its sound engine is independent of AURA Hi-Fi. */
 class RemixerActivity : Activity() {
@@ -25,7 +27,33 @@ class RemixerActivity : Activity() {
     private val gold = Color.rgb(255, 190, 82)
     private val handler = Handler(Looper.getMainLooper())
     private val tracks = mutableSetOf<AudioTrack>()
+    private val audioExecutor = Executors.newSingleThreadExecutor()
     private var kit = 0
+    private var playing = false
+    private var currentStep = -1
+    private val pattern = Array(8) { BooleanArray(16) }
+    private val stepCells = Array(8) { arrayOfNulls<TextView>(16) }
+    private lateinit var sequenceButton: TextView
+    private val sequenceTick = object : Runnable {
+        override fun run() {
+            if (!playing) return
+            currentStep = (currentStep + 1) % 16
+            updateSequencer()
+            for (trackIndex in 0..7) {
+                if (pattern[trackIndex][currentStep]) {
+                    audioExecutor.execute { sound(trackIndex) }
+                }
+            }
+            handler.postDelayed(this, (60000L / (bpm * 4)).coerceAtLeast(20L))
+        }
+    }
+    init {
+        pattern[0][0] = true; pattern[0][8] = true
+        pattern[1][4] = true; pattern[1][12] = true
+        for (i in 0 until 16 step 2) pattern[2][i] = true
+        pattern[4][12] = true
+        pattern[5][10] = true
+    }
     private var bpm = 120
     private lateinit var bpmText: TextView
     private lateinit var kitText: TextView
@@ -126,6 +154,114 @@ class RemixerActivity : Activity() {
         parent.addView(panel)
     }
 
+    private fun buildSequencer(parent: LinearLayout) {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            background = surface(0xff202d40.toInt(), gold)
+        }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        top.addView(text("16-STEP SEQUENCER", 13f, gold, true), LinearLayout.LayoutParams(0, -2, 1f))
+        sequenceButton = text("▶ PLAY", 11f, Color.BLACK, true).apply {
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply { setColor(gold); cornerRadius = dp(9).toFloat() }
+            setPadding(dp(15), dp(10), dp(15), dp(10))
+            setOnClickListener { if (playing) stopSequencer() else startSequencer() }
+        }
+        top.addView(sequenceButton)
+        panel.addView(top)
+        panel.addView(text("Építs ritmust a 16 lépés ki- és bekapcsolásával.", 9f, 0xffb5c2d4.toInt()).apply {
+            setPadding(0, dp(6), 0, dp(10))
+        })
+
+        val horizontal = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = true
+            overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        val grid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        header.addView(text("SÁV", 8f, 0xff9eacc0.toInt(), true).apply {
+            gravity = Gravity.CENTER_VERTICAL
+        }, LinearLayout.LayoutParams(dp(76), dp(24)))
+        for (step in 0 until 16) {
+            header.addView(text(if (step % 4 == 0) "${step + 1}" else "·", 8f,
+                if (step % 4 == 0) gold else 0xff8290a5.toInt(), true).apply {
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(25), dp(24)))
+        }
+        grid.addView(header)
+        val labels = listOf("KICK", "SNARE", "C.HAT", "O.HAT", "CLAP", "L.TOM", "H.TOM", "RIM")
+        for (trackIndex in 0..7) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(text(labels[trackIndex], 8f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(dp(76), dp(34)))
+            for (step in 0 until 16) {
+                val cell = text(if (pattern[trackIndex][step]) "●" else "", 9f, Color.WHITE, true).apply {
+                    gravity = Gravity.CENTER
+                    setOnClickListener {
+                        pattern[trackIndex][step] = !pattern[trackIndex][step]
+                        updateSequencer()
+                    }
+                }
+                stepCells[trackIndex][step] = cell
+                row.addView(cell, LinearLayout.LayoutParams(dp(25), dp(34)).apply {
+                    setMargins(dp(1), dp(1), dp(1), dp(1))
+                })
+            }
+            grid.addView(row)
+        }
+        horizontal.addView(grid)
+        panel.addView(horizontal)
+        panel.addView(text("A lejátszás a beállított BPM szerint körbe-körbe fut.", 9f, 0xff9eacc0.toInt()).apply {
+            setPadding(dp(2), dp(9), dp(2), 0)
+        })
+        parent.addView(panel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        updateSequencer()
+    }
+
+    private fun updateSequencer() {
+        for (trackIndex in 0..7) {
+            for (step in 0 until 16) {
+                val cell = stepCells[trackIndex][step] ?: continue
+                val active = pattern[trackIndex][step]
+                val isPlayhead = playing && step == currentStep
+                val fill = when {
+                    isPlayhead && active -> gold
+                    isPlayhead -> 0xff52647c.toInt()
+                    active -> colors[trackIndex]
+                    else -> 0xff182334.toInt()
+                }
+                cell.setTextColor(if (isPlayhead && active) Color.BLACK else Color.WHITE)
+                cell.text = if (active) "●" else if (isPlayhead) "▏" else ""
+                cell.background = GradientDrawable().apply {
+                    setColor(fill)
+                    cornerRadius = dp(5).toFloat()
+                    setStroke(dp(1), if (isPlayhead) gold else 0xff40516a.toInt())
+                }
+            }
+        }
+    }
+
+    private fun startSequencer() {
+        playing = true
+        currentStep = -1
+        sequenceButton.text = "■ STOP"
+        handler.removeCallbacks(sequenceTick)
+        sequenceTick.run()
+    }
+
+    private fun stopSequencer() {
+        playing = false
+        handler.removeCallbacks(sequenceTick)
+        currentStep = -1
+        sequenceButton.text = "▶ PLAY"
+        updateSequencer()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = 0xff070a10.toInt()
@@ -140,6 +276,7 @@ class RemixerActivity : Activity() {
         val scroll = ScrollView(this)
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         buildPads(content)
+        buildSequencer(content)
         content.addView(text("KÖVETKEZŐ MODULOK", 11f, gold, true).apply { setPadding(dp(3), dp(20), 0, dp(8)) })
         for ((title, desc) in listOf(
             "AI STEM SEPARATOR" to "Ének, dob, basszus és hangszer sávok szétválasztása.",
@@ -159,7 +296,9 @@ class RemixerActivity : Activity() {
     }
 
     override fun onDestroy() {
+        playing = false
         handler.removeCallbacksAndMessages(null)
+        audioExecutor.shutdownNow()
         synchronized(tracks) {
             tracks.forEach { try { it.stop(); it.release() } catch (_: Exception) {} }
             tracks.clear()
