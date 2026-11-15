@@ -61,7 +61,8 @@ object AuraWavEditor {
         fadeOutMs: Long = 0L,
         gainDb: Int = 0,
         echoDelayMs: Long = 250L,
-        echoMixPercent: Int = 0
+        echoMixPercent: Int = 0,
+        reverbPercent: Int = 0
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -87,10 +88,11 @@ object AuraWavEditor {
             i += 2
         }
         val echoMix = echoMixPercent.coerceIn(0, 50) / 100.0
-        val normalizationGain = if (normalize && peak > 0) minOf(32767.0 / (peak * (1.0 + echoMix)), 8.0) else 1.0
+        val reverbMix = reverbPercent.coerceIn(0, 50) / 100.0
+        val normalizationGain = if (normalize && peak > 0) minOf(32767.0 / (peak * (1.0 + echoMix + reverbMix * 0.65)), 8.0) else 1.0
         val manualGain = Math.pow(10.0, gainDb.coerceIn(-12, 12) / 20.0)
         val gain = normalizationGain * manualGain
-        val original = if (echoMix > 0.0) selected.copyOf() else selected
+        val original = if (echoMix > 0.0 || reverbMix > 0.0) selected.copyOf() else selected
         val echoDelayFrames = (echoDelayMs.coerceIn(50L, 1000L) * wav.sampleRate / 1000L).toInt()
         val echoDelayBytes = echoDelayFrames * frameSize
         val selectedFrames = selected.size / frameSize
@@ -104,7 +106,18 @@ object AuraWavEditor {
             val delayed = if (echoMix > 0.0 && delayedIndex >= 0) {
                 ((original[delayedIndex + 1].toInt() shl 8) or (original[delayedIndex].toInt() and 0xff)).toShort().toInt()
             } else 0
-            val withEcho = gated + delayed * echoMix
+            val reverb = if (reverbMix > 0.0) {
+                val taps = intArrayOf(37, 53, 71, 89)
+                var reflected = 0.0
+                for (tapMs in taps) {
+                    val tapIndex = i - (tapMs * wav.sampleRate / 1000) * frameSize
+                    if (tapIndex >= 0) {
+                        reflected += ((original[tapIndex + 1].toInt() shl 8) or (original[tapIndex].toInt() and 0xff)).toShort().toInt()
+                    }
+                }
+                reflected / taps.size * reverbMix
+            } else 0.0
+            val withEcho = gated + delayed * echoMix + reverb
             val frame = i / frameSize
             val fadeIn = if (fadeInFrames > 0 && frame < fadeInFrames) frame.toDouble() / fadeInFrames else 1.0
             val framesFromEnd = selectedFrames - 1 - frame
