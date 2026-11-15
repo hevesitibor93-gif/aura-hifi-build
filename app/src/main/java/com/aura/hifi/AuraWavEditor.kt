@@ -67,7 +67,9 @@ object AuraWavEditor {
         bassDb: Int = 0,
         trebleDb: Int = 0,
         stereoWidthPercent: Int = 100,
-        noiseReductionPercent: Int = 0
+        noiseReductionPercent: Int = 0,
+        tempoPercent: Int = 100,
+        pitchSemitones: Int = 0
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -83,7 +85,10 @@ object AuraWavEditor {
         require(endFrame > startFrame) { "A kivágott rész túl rövid." }
         val from = startFrame * frameSize
         val to = endFrame * frameSize
-        val selected = wav.pcm.copyOfRange(from, to)
+        var selected = wav.pcm.copyOfRange(from, to)
+        if (tempoPercent != 100 || pitchSemitones != 0) {
+            selected = AuraTimePitchProcessor.process(selected, wav.sampleRate, wav.channels, tempoPercent, pitchSemitones)
+        }
         // Gentle low/high shelving and mid-side stereo width, applied before time effects.
         val bassGain = Math.pow(10.0, bassDb.coerceIn(-12, 12) / 20.0)
         val trebleGain = Math.pow(10.0, trebleDb.coerceIn(-12, 12) / 20.0)
