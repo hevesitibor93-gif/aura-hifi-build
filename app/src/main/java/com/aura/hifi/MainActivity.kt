@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private val backupExportRequest = 7102
     private val backupImportRequest = 7103
     private val wavEditRequest = 7104
+    private val mp3EditRequest = 7106
     private val id3CoverRequest = 7105
     private var pendingId3CoverUri: Uri? = null
     private var pendingId3SourceUri: Uri? = null
@@ -2828,6 +2829,20 @@ class MainActivity : Activity() {
         }
         panel.addView(wavEditorButton, LinearLayout.LayoutParams(-1, dp(46)))
         panel.addView(label("Fájlvágás • normalizálás • egyszerű zajkapu • export új WAV-fájlba", 10f, Color.rgb(150, 158, 170)))
+        val mp3EditorButton = Button(this).apply {
+            text = "♫  MP3 HANGFÁJL SZERKESZTÉSE"
+            setTextColor(Color.rgb(255, 210, 130))
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "audio/mpeg"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/mpeg", "audio/mp3", "audio/x-mpeg"))
+                }
+                startActivityForResult(intent, mp3EditRequest)
+            }
+        }
+        panel.addView(mp3EditorButton, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(label("MP3 • Bass • Treble • Preamp • normalizálás • új MP3 export", 10f, Color.rgb(150, 158, 170)))
         addControl(panel, "BASS BOOST", bassValue, bass)
         addControl(panel, "TREBLE / CLARITY", trebleValue, treble)
         addControl(panel, "PREAMP / HEADROOM", preampValue, preamp)
@@ -2849,6 +2864,98 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("BEZÁR", null)
             .show()
+    }
+
+    private fun showMp3Editor(uri: Uri) {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(4))
+        }
+        panel.addView(label("MP3 • Az eredeti fájl változatlan marad. Az export új MP3-at készít.", 11f, Color.rgb(238, 202, 137)))
+        val normalize = CheckBox(this).apply {
+            text = "Automatikus csúcsnormalizálás (kb. -1 dBFS)"
+            isChecked = true
+        }
+        panel.addView(normalize)
+        fun addAudioControl(title: String): SeekBar {
+            val value = label(title + ": 0 dB", 12f, Color.WHITE)
+            panel.addView(value)
+            val seek = SeekBar(this).apply { max = 24; progress = 12 }
+            seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val db = progress - 12
+                    value.text = title + ": " + (if (db > 0) "+" else "") + db + " dB"
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+            panel.addView(seek, LinearLayout.LayoutParams(-1, dp(40)))
+            return seek
+        }
+        val preamp = addAudioControl("PREAMP / JELSZINT")
+        val bass = addAudioControl("BASS / MÉLYHANG")
+        val treble = addAudioControl("TREBLE / MAGASHANG")
+        val bitrates = intArrayOf(128, 160, 192, 256, 320)
+        val bitrateLabel = label("MP3 minőség: 320 kbps", 12f, Color.WHITE)
+        panel.addView(bitrateLabel)
+        val bitrate = SeekBar(this).apply { max = 4; progress = 4 }
+        bitrate.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                bitrateLabel.text = "MP3 minőség: " + bitrates[progress] + " kbps"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        panel.addView(bitrate, LinearLayout.LayoutParams(-1, dp(40)))
+        panel.addView(label("A feldolgozás a dal hosszától függően eltarthat. A meglévő ID3-adatok megmaradnak.", 10f, Color.rgb(150, 158, 170)))
+        AlertDialog.Builder(this)
+            .setTitle("AURA Audio Lab • MP3 Editor")
+            .setView(panel)
+            .setPositiveButton("EXPORT ÚJ MP3-KÉNT") { _, _ ->
+                exportEditedMp3(uri, normalize.isChecked, preamp.progress - 12,
+                    bass.progress - 12, treble.progress - 12, bitrates[bitrate.progress])
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
+    private fun exportEditedMp3(uri: Uri, normalize: Boolean, preampDb: Int, bassDb: Int, trebleDb: Int, bitrateKbps: Int) {
+        toast("AURA MP3-feldolgozás indul…")
+        Thread {
+            var destination: Uri? = null
+            try {
+                val name = runCatching {
+                    contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                        if (it.moveToFirst()) it.getString(0) else null
+                    }
+                }.getOrNull() ?: "AURA-audio.mp3"
+                val safeBase = name.substringBeforeLast('.', name).replace(Regex("""[\\/:*?"<>|]"""), "_")
+                val outputName = safeBase + " - AURA.mp3"
+                val values = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, outputName)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
+                    put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Audio.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MUSIC + "/AURA Audio Lab")
+                        put(MediaStore.Audio.Media.IS_PENDING, 1)
+                    }
+                }
+                destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Nem hozható létre az MP3-exportfájl.")
+                contentResolver.openInputStream(uri)?.use { input ->
+                    contentResolver.openOutputStream(destination!!, "w")?.use { output ->
+                        AuraMp3Processor.process(input, output, cacheDir, normalize, preampDb, bassDb, trebleDb, bitrateKbps)
+                    } ?: throw IllegalStateException("Az exportfájl nem írható.")
+                } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentResolver.update(destination!!, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+                }
+                runOnUiThread { toast("Kész! Az új MP3 a Music/AURA Audio Lab mappába került.") }
+            } catch (e: Exception) {
+                destination?.let { runCatching { contentResolver.delete(it, null, null) } }
+                runOnUiThread { toast("MP3-export hiba: " + (e.localizedMessage ?: "ismeretlen hiba")) }
+            }
+        }.start()
     }
 
     private fun showWavEditor(uri: Uri) {
@@ -4359,6 +4466,12 @@ class MainActivity : Activity() {
             val uri = data.data ?: return
             try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
             showWavEditor(uri)
+            return
+        }
+        if (requestCode == mp3EditRequest) {
+            val uri = data.data ?: return
+            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
+            showMp3Editor(uri)
             return
         }
         if (requestCode == 2) {
