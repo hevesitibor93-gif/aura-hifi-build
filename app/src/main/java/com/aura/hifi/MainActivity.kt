@@ -2693,11 +2693,21 @@ class MainActivity : Activity() {
                         }
 
                         val coverBytes = coverUri?.let { cover ->
+                            val mime = contentResolver.getType(cover)
+                            require(mime?.startsWith("image/") == true) { "A kiválasztott fájl nem támogatott képfájl." }
                             contentResolver.openInputStream(cover)?.use { stream ->
-                                val data = stream.readBytes()
-                                if (data.size > 10 * 1024 * 1024) throw IllegalArgumentException("A borítókép legfeljebb 10 MB lehet.")
-                                data
-                            }
+                                val data = java.io.ByteArrayOutputStream()
+                                val imageBuffer = ByteArray(16 * 1024)
+                                var total = 0
+                                while (true) {
+                                    val count = stream.read(imageBuffer)
+                                    if (count < 0) break
+                                    total += count
+                                    require(total <= 10 * 1024 * 1024) { "A borítókép legfeljebb 10 MB lehet." }
+                                    data.write(imageBuffer, 0, count)
+                                }
+                                data.toByteArray()
+                            } ?: throw IllegalStateException("A borítókép nem olvasható.")
                         }
                         val coverMime = coverUri?.let { contentResolver.getType(it) } ?: "image/jpeg"
                         output.write(buildId3v23Tag(title, artist, album, year, genre, albumArtist, composer, trackNumber, coverBytes, coverMime))
