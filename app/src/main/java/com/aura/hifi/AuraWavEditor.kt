@@ -110,10 +110,14 @@ object AuraWavEditor {
     )
 
     private fun parse(input: InputStream): Parsed {
-        val bytes = input.readBytes()
+        val bytes = readBounded(input)
         require(bytes.size >= 44 && ascii(bytes, 0, 4) == "RIFF" && ascii(bytes, 8, 4) == "WAVE") {
             "A fájl nem érvényes WAV."
         }
+        val riffLength = leInt(bytes, 4).toLong() and 0xffffffffL
+        val riffEndLong = 8L + riffLength
+        require(riffEndLong in 44L..bytes.size.toLong()) { "A WAV RIFF mérete hibás vagy a fájl csonka." }
+        val riffEnd = riffEndLong.toInt()
         var offset = 12
         var fmt: ByteArray? = null
         var pcm: ByteArray? = null
@@ -122,12 +126,14 @@ object AuraWavEditor {
         var sampleRate = 0
         var byteRate = 0
         var bits = 0
-        while (offset + 8 <= bytes.size) {
+        while (offset + 8 <= riffEnd) {
             val id = ascii(bytes, offset, 4)
-            val size = leInt(bytes, offset + 4).coerceAtLeast(0)
+            val size = leInt(bytes, offset + 4)
+            require(size >= 0) { "Hibás WAV chunk-méret." }
             val dataStart = offset + 8
-            val dataEnd = (dataStart.toLong() + size).coerceAtMost(bytes.size.toLong()).toInt()
-            if (dataEnd < dataStart) break
+            val dataEndLong = dataStart.toLong() + size.toLong()
+            require(dataEndLong <= riffEnd.toLong()) { "A WAV egyik adatblokkja csonka." }
+            val dataEnd = dataEndLong.toInt()
             when (id) {
                 "fmt " -> {
                     require(size >= 16 && dataEnd - dataStart >= 16) { "Hibás WAV formátumfejléc." }
@@ -144,7 +150,11 @@ object AuraWavEditor {
         }
         val format = fmt ?: throw IllegalArgumentException("Hiányzó WAV formátumadat.")
         val audio = pcm ?: throw IllegalArgumentException("Hiányzó WAV hangadat.")
-        require(channels in 1..2 && sampleRate > 0 && byteRate > 0) { "Nem támogatott WAV paraméterek." }
+        require(audioFormat == 1 && bits == 16) { "Csak 16 bites, tömörítetlen PCM WAV támogatott." }
+        require(channels in 1..2 && sampleRate in 8000..192000 && byteRate > 0) { "Nem támogatott WAV paraméterek." }
+        val frameSize = channels * 2
+        require(leShort(format, 12) == frameSize && byteRate == sampleRate * frameSize) { "A WAV fejlécének hangformátum-adatai ellentmondásosak." }
+        require(audio.isNotEmpty() && audio.size % frameSize == 0) { "A WAV hangadata hiányos vagy üres." }
         require(audio.size <= 128 * 1024 * 1024) { "A WAV túl nagy a beépített szerkesztőhöz (128 MB limit)." }
         return Parsed(format, audio, audioFormat, channels, sampleRate, byteRate, bits)
     }
@@ -164,6 +174,21 @@ object AuraWavEditor {
         if (pcm.size and 1 == 1) out.write(0)
         out.writeTo(output)
         output.flush()
+    }
+
+    private fun readBounded(input: InputStream): ByteArray {
+        val limit = 129L * 1024L * 1024L
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        var total = 0L
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            total += count
+            require(total <= limit) { "A WAV-fájl túl nagy (max. 129 MB)." }
+            out.write(buffer, 0, count)
+        }
+        return out.toByteArray()
     }
 
     private fun ascii(bytes: ByteArray, offset: Int, count: Int) =
