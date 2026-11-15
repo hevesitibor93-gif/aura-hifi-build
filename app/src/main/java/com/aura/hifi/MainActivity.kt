@@ -2658,11 +2658,10 @@ class MainActivity : Activity() {
                                 ((first[8].toInt() and 0x7f) shl 7) or
                                 (first[9].toInt() and 0x7f)
                             skipFully(input, tagSize.toLong() + if ((first[5].toInt() and 0x10) != 0) 10L else 0L)
-                        } else if (firstCount > 0) {
-                            output.write(first, 0, firstCount)
                         }
 
                         output.write(buildId3v23Tag(title, artist, album, year, genre))
+                        if (!hasId3 && firstCount > 0) output.write(first, 0, firstCount)
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
                             val count = input.read(buffer)
