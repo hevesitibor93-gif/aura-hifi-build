@@ -58,7 +58,8 @@ object AuraWavEditor {
         normalize: Boolean,
         noiseGateDb: Int,
         fadeInMs: Long = 0L,
-        fadeOutMs: Long = 0L
+        fadeOutMs: Long = 0L,
+        gainDb: Int = 0
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -83,7 +84,9 @@ object AuraWavEditor {
             peak = max(peak, abs(sample))
             i += 2
         }
-        val gain = if (normalize && peak > 0) minOf(32767.0 / peak, 8.0) else 1.0
+        val normalizationGain = if (normalize && peak > 0) minOf(32767.0 / peak, 8.0) else 1.0
+        val manualGain = Math.pow(10.0, gainDb.coerceIn(-12, 12) / 20.0)
+        val gain = normalizationGain * manualGain
         val selectedFrames = selected.size / frameSize
         val fadeInFrames = (fadeInMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
         val fadeOutFrames = (fadeOutMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
