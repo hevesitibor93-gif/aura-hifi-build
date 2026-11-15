@@ -2531,13 +2531,137 @@ class MainActivity : Activity() {
             .setTitle(trackLabel.text?.toString()?.ifBlank { "Aktuális zeneszám" } ?: "Aktuális zeneszám")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> showFeatureNotice("ID3 Editor", "Itt szerkeszthető majd a cím, előadó, album, év, műfaj és az albumborító. A fájlba író szerkesztőt külön, biztonságos mentéssel építjük be.")
-                    1 -> showFeatureNotice("AURA Audio Lab", "Itt kap helyet a hangjavítás: zajcsökkentés, normalizálás, finomhangolás és vágás. Az eredeti felvétel megmarad, a javított változat külön menthető lesz.")
+                    0 -> showId3Editor(uri)
+                    1 -> showAudioLab()
                     2 -> showTrackInformation(uri)
                 }
             }
             .setNegativeButton("MÉGSE", null)
             .show()
+    }
+
+    private fun showId3Editor(uri: Uri) {
+        val current = librarySongByUri[uri.toString()]
+        val fields = listOf(
+            "Cím" to (trackLabel.text?.toString() ?: ""),
+            "Előadó" to (metadataLabel.text?.toString() ?: ""),
+            "Album" to (albumLabel.text?.toString() ?: ""),
+            "Év" to ""
+        )
+        val inputs = mutableListOf<EditText>()
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        fields.forEachIndexed { index, pair ->
+            val input = EditText(this).apply {
+                hint = pair.first
+                setSingleLine(true)
+                setText(pair.second)
+                textSize = 14f
+                if (index == 3) inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            }
+            inputs.add(input)
+            panel.addView(input, LinearLayout.LayoutParams(-1, dp(48)))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("ID3 Editor")
+            .setMessage("A módosításokat az AURA médiatárában mentjük. Az eredeti hangadatot nem módosítjuk.")
+            .setView(panel)
+            .setPositiveButton("MENTÉS") { _, _ ->
+                val values = ContentValues().apply {
+                    put(MediaStore.Audio.Media.TITLE, inputs[0].text.toString().trim())
+                    put(MediaStore.Audio.Media.ARTIST, inputs[1].text.toString().trim())
+                    put(MediaStore.Audio.Media.ALBUM, inputs[2].text.toString().trim())
+                    inputs[3].text.toString().trim().toIntOrNull()?.let { put(MediaStore.Audio.Media.YEAR, it) }
+                }
+                try {
+                    val changed = contentResolver.update(uri, values, null, null)
+                    if (changed > 0) {
+                        trackLabel.text = inputs[0].text.toString().ifBlank { "Ismeretlen cím" }
+                        metadataLabel.text = inputs[1].text.toString().ifBlank { "Ismeretlen előadó" }
+                        albumLabel.text = inputs[2].text.toString().ifBlank { "Ismeretlen album" }
+                        current?.let { old ->
+                            val updated = old.copy(title = trackLabel.text.toString(), artist = metadataLabel.text.toString(), album = albumLabel.text.toString())
+                            librarySongByUri[uri.toString()] = updated
+                            val index = librarySongs.indexOfFirst { it.uri == uri }
+                            if (index >= 0) librarySongs[index] = updated
+                        }
+                        toast("A dal adatai elmentve.")
+                    } else {
+                        toast("A tárhely nem engedte az adatok módosítását.")
+                    }
+                } catch (_: SecurityException) {
+                    toast("A fájl módosításához Android-hozzáférés szükséges. A fájlkezelőben engedélyezd a hozzáférést.")
+                } catch (e: Exception) {
+                    toast("Mentési hiba: ${e.localizedMessage ?: "ismeretlen hiba"}")
+                }
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
+    private fun showAudioLab() {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val bass = SeekBar(this).apply { max = 120; progress = prefs.getInt("eq_bass", 0).coerceIn(0, 120) }
+        val treble = SeekBar(this).apply { max = 120; progress = prefs.getInt("eq_treble", 0).coerceIn(0, 120) }
+        val preamp = SeekBar(this).apply { max = 120; progress = (prefs.getInt("eq_preamp", 0) + 60).coerceIn(0, 120) }
+        val bassValue = label("", 11f, Color.WHITE)
+        val trebleValue = label("", 11f, Color.WHITE)
+        val preampValue = label("", 11f, Color.WHITE)
+        fun updateLabels() {
+            bassValue.text = "Mélyhang: +${bass.progress / 10f} dB"
+            trebleValue.text = "Magashang: +${treble.progress / 10f} dB"
+            preampValue.text = "Előerősítés: ${(preamp.progress - 60) / 10f} dB"
+        }
+        fun addControl(parent: LinearLayout, title: String, value: TextView, seek: SeekBar) {
+            parent.addView(label(title, 12f, Color.rgb(238, 202, 137)))
+            parent.addView(value)
+            parent.addView(seek, LinearLayout.LayoutParams(-1, dp(38)))
+        }
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        addControl(panel, "BASS BOOST", bassValue, bass)
+        addControl(panel, "TREBLE / CLARITY", trebleValue, treble)
+        addControl(panel, "PREAMP / HEADROOM", preampValue, preamp)
+        updateLabels()
+        bass.setOnSeekBarChangeListener(simpleSeekListener { updateLabels() })
+        treble.setOnSeekBarChangeListener(simpleSeekListener { updateLabels() })
+        preamp.setOnSeekBarChangeListener(simpleSeekListener { updateLabels() })
+        AlertDialog.Builder(this)
+            .setTitle("AURA Audio Lab")
+            .setMessage("Valós idejű hangfinomítás. A beállítások lejátszás közben azonnal hallhatók; az eredeti zenefájl változatlan marad.")
+            .setView(panel)
+            .setNeutralButton("ALAPHELYZET") { _, _ ->
+                bass.progress = 0; treble.progress = 0; preamp.progress = 60
+                updateLabels()
+                applyAudioLabSettings(0, 0, 0)
+            }
+            .setPositiveButton("ALKALMAZÁS") { _, _ ->
+                applyAudioLabSettings(bass.progress, treble.progress, preamp.progress - 60)
+            }
+            .setNegativeButton("BEZÁR", null)
+            .show()
+    }
+
+    private fun simpleSeekListener(onChange: () -> Unit) = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) { onChange() }
+        override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+        override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+    }
+
+    private fun applyAudioLabSettings(bass: Int, treble: Int, preamp: Int) {
+        val safeBass = bass.coerceIn(0, 120)
+        val safeTreble = treble.coerceIn(0, 120)
+        val safePreamp = preamp.coerceIn(-60, 60)
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        prefs.edit().putInt("eq_bass", safeBass).putInt("eq_treble", safeTreble).putInt("eq_preamp", safePreamp).apply()
+        eqProcessor.setBassBoostDb(safeBass / 10f)
+        eqProcessor.setTrebleBoostDb(safeTreble / 10f)
+        eqProcessor.setPreampDb(safePreamp / 10f)
+        toast("AURA Audio Lab beállítások alkalmazva.")
     }
 
     private fun showFeatureNotice(title: String, message: String) {
