@@ -2881,10 +2881,39 @@ class MainActivity : Activity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
         val reverbControl = SeekBar(this).apply { max = 50; progress = 0 }
+        val bassToneControl = SeekBar(this).apply { max = 24; progress = 12 }
+        val bassToneLabel = label("Mélyhang (Bass): 0 dB", 11f, Color.WHITE)
+        val trebleToneControl = SeekBar(this).apply { max = 24; progress = 12 }
+        val trebleToneLabel = label("Magashang (Treble): 0 dB", 11f, Color.WHITE)
+        val stereoWidthControl = SeekBar(this).apply { max = 200; progress = 100 }
+        val stereoWidthLabel = label("Sztereó szélesség: 100%", 11f, Color.WHITE)
         val reverbLabel = label("Térhatás (Reverb): kikapcsolva", 11f, Color.WHITE)
         reverbControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 reverbLabel.text = if (progress == 0) "Térhatás (Reverb): kikapcsolva" else "Térhatás (Reverb): $progress%"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        bassToneControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val db = progress - 12
+                bassToneLabel.text = "Mélyhang (Bass): ${if (db > 0) "+" else ""}$db dB"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        trebleToneControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val db = progress - 12
+                trebleToneLabel.text = "Magashang (Treble): ${if (db > 0) "+" else ""}$db dB"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        stereoWidthControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                stereoWidthLabel.text = "Sztereó szélesség: $progress%"
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -2989,6 +3018,9 @@ class MainActivity : Activity() {
             addView(gateLabel); addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
             addView(echoLabel); addView(echoControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(reverbLabel); addView(reverbControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(bassToneLabel); addView(bassToneControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(trebleToneLabel); addView(trebleToneControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(stereoWidthLabel); addView(stereoWidthControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(label("Fade-in (mp)", 11f, Color.rgb(238,202,137))); addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(42)))
             addView(label("Fade-out (mp)", 11f, Color.rgb(238,202,137))); addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(42)))
         }
@@ -3005,14 +3037,14 @@ class MainActivity : Activity() {
                     val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
-                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress)
+                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress, bassToneControl.progress - 12, trebleToneControl.progress - 12, stereoWidthControl.progress)
                 }
             }.setNegativeButton("MÉGSE", null).create()
         editorDialog.setOnDismissListener { stopWavPreview() }
         editorDialog.show()
     }
 
-    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int) {
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int, bassDb: Int, trebleDb: Int, stereoWidthPercent: Int) {
         toast("AURA WAV-feldolgozás indul…")
         Thread {
             var destination: Uri? = null
@@ -3036,7 +3068,7 @@ class MainActivity : Activity() {
                     ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
                 contentResolver.openInputStream(uri)?.use { input ->
                     contentResolver.openOutputStream(destination!!, "w")?.use { output ->
-                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent)
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent, bassDb, trebleDb, stereoWidthPercent)
                     } ?: throw IllegalStateException("Az exportfájl nem írható.")
                 } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
