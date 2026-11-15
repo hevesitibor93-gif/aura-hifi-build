@@ -2860,6 +2860,16 @@ class MainActivity : Activity() {
         val normalize = CheckBox(this).apply { text = "Csúcsnormalizálás (max. 0 dBFS)"; isChecked = true }
         val gate = SeekBar(this).apply { max = 80; progress = 0 }
         val gateLabel = label("Zajkapu: kikapcsolva", 11f, Color.WHITE)
+        val fadeInInput = EditText(this).apply {
+            hint = "Fade-in (másodperc)"; setSingleLine(true)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("0")
+        }
+        val fadeOutInput = EditText(this).apply {
+            hint = "Fade-out (másodperc)"; setSingleLine(true)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("0")
+        }
         gate.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 gateLabel.text = if (progress == 0) "Zajkapu: kikapcsolva" else "Zajkapu küszöb: ${-90 + progress} dB"
@@ -2878,6 +2888,10 @@ class MainActivity : Activity() {
             addView(normalize)
             addView(gateLabel)
             addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(label("Fade-in (mp)", 11f, Color.rgb(238, 202, 137)))
+            addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(44)))
+            addView(label("Fade-out (mp)", 11f, Color.rgb(238, 202, 137)))
+            addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(44)))
         }
         AlertDialog.Builder(this)
             .setTitle("AURA Audio Lab • WAV Editor")
@@ -2888,14 +2902,20 @@ class MainActivity : Activity() {
                 if (start < 0 || end < 0 || (end > 0 && end <= start)) {
                     toast("Ellenőrizd a vágási időket.")
                 } else {
-                    exportEditedWav(uri, (start * 1000).toLong(), (end * 1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90 + gate.progress)
+                    val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+                    val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+                    if (fadeIn < 0 || fadeOut < 0) {
+                        toast("A fade értéke nem lehet negatív.")
+                    } else {
+                        exportEditedWav(uri, (start * 1000).toLong(), (end * 1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90 + gate.progress, (fadeIn * 1000).toLong(), (fadeOut * 1000).toLong())
+                    }
                 }
             }
             .setNegativeButton("MÉGSE", null)
             .show()
     }
 
-    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int) {
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long) {
         toast("AURA WAV-feldolgozás indul…")
         Thread {
             var destination: Uri? = null
@@ -2919,7 +2939,7 @@ class MainActivity : Activity() {
                     ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
                 contentResolver.openInputStream(uri)?.use { input ->
                     contentResolver.openOutputStream(destination!!, "w")?.use { output ->
-                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb)
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs)
                     } ?: throw IllegalStateException("Az exportfájl nem írható.")
                 } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -2968,26 +2988,49 @@ class MainActivity : Activity() {
         try {
             retriever = MediaMetadataRetriever()
             retriever.setDataSource(this, uri)
-            val mime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
-            val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull()?.div(1000)
-            val sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-            details.append("\nFormátum: ").append(mime ?: "Nem elérhető")
-            if (bitrate != null) details.append("\nBitráta: ").append(bitrate).append(" kbps")
-            if (sampleRate != null) details.append("\nMintavételezés: ").append(sampleRate).append(" Hz")
-            if (duration != null) details.append("\nHossz: ").append(formatDuration(duration))
+            fun metadata(key: Int) = retriever?.extractMetadata(key)?.takeIf { it.isNotBlank() }
+            metadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)?.let { details.append("\nAlbum előadója: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)?.let { details.append("\nZeneszerző: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_YEAR)?.let { details.append("\nÉv: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_GENRE)?.let { details.append("\nMűfaj: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.let { details.append("\nSorszám: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)?.let { details.append("\nFormátum: ").append(it) }
+            metadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull()?.div(1000)?.let {
+                details.append("\nBitráta: ").append(it).append(" kbps")
+            }
+            metadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.let {
+                details.append("\nMintavételezés: ").append(it).append(" Hz")
+            }
+            metadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.let {
+                details.append("\nHossz: ").append(formatDuration(it))
+            }
+            metadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO)?.let {
+                details.append("\nHangsáv: ").append(if (it.equals("yes", true)) "van" else it)
+            }
         } catch (_: Exception) {
             details.append("\nTechnikai adatok: nem olvashatók ki ebből a fájlból.")
         } finally {
             try { retriever?.release() } catch (_: Exception) {}
         }
         try {
-            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            val columns = arrayOf(
+                android.provider.OpenableColumns.DISPLAY_NAME,
+                android.provider.OpenableColumns.SIZE,
+                MediaStore.MediaColumns.DATE_MODIFIED
+            )
+            contentResolver.query(uri, columns, null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    val modifiedIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
                     if (nameIndex >= 0) details.append("\nFájlnév: ").append(cursor.getString(nameIndex) ?: "Ismeretlen")
-                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) details.append("\nMéret: ").append(android.text.format.Formatter.formatShortFileSize(this, cursor.getLong(sizeIndex)))
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                        details.append("\nMéret: ").append(android.text.format.Formatter.formatShortFileSize(this, cursor.getLong(sizeIndex)))
+                    }
+                    if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) {
+                        val modified = cursor.getLong(modifiedIndex)
+                        if (modified > 0) details.append("\nMódosítva: ").append(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(modified * 1000L)))
+                    }
                 }
             }
         } catch (_: Exception) {}
