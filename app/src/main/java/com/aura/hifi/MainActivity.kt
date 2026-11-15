@@ -2896,6 +2896,23 @@ class MainActivity : Activity() {
         val trebleToneLabel = label("Magashang (Treble): 0 dB", 11f, Color.WHITE)
         val stereoWidthControl = SeekBar(this).apply { max = 200; progress = 100 }
         val stereoWidthLabel = label("Sztereó szélesség: 100%", 11f, Color.WHITE)
+        val tempoControl = SeekBar(this).apply { max = 150; progress = 50 }
+        val tempoLabel = label("Tempó: 100%", 11f, Color.WHITE)
+        tempoControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) { tempoLabel.text = "Tempó: ${50 + progress}%" }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        val pitchControl = SeekBar(this).apply { max = 24; progress = 12 }
+        val pitchLabel = label("Hangmagasság: 0 félhang", 11f, Color.WHITE)
+        pitchControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val semitones = progress - 12
+                pitchLabel.text = "Hangmagasság: ${if (semitones > 0) "+" else ""}$semitones félhang"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
         val reverbLabel = label("Térhatás (Reverb): kikapcsolva", 11f, Color.WHITE)
         reverbControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -3031,6 +3048,8 @@ class MainActivity : Activity() {
             addView(bassToneLabel); addView(bassToneControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(trebleToneLabel); addView(trebleToneControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(stereoWidthLabel); addView(stereoWidthControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(tempoLabel); addView(tempoControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(pitchLabel); addView(pitchControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(label("Fade-in (mp)", 11f, Color.rgb(238,202,137))); addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(42)))
             addView(label("Fade-out (mp)", 11f, Color.rgb(238,202,137))); addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(42)))
         }
@@ -3047,14 +3066,14 @@ class MainActivity : Activity() {
                     val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
-                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress, bassToneControl.progress - 12, trebleToneControl.progress - 12, stereoWidthControl.progress, noiseReductionControl.progress)
+                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress, bassToneControl.progress - 12, trebleToneControl.progress - 12, stereoWidthControl.progress, noiseReductionControl.progress, 50 + tempoControl.progress, pitchControl.progress - 12)
                 }
             }.setNegativeButton("MÉGSE", null).create()
         editorDialog.setOnDismissListener { stopWavPreview() }
         editorDialog.show()
     }
 
-    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int, bassDb: Int, trebleDb: Int, stereoWidthPercent: Int, noiseReductionPercent: Int) {
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int, bassDb: Int, trebleDb: Int, stereoWidthPercent: Int, noiseReductionPercent: Int, tempoPercent: Int, pitchSemitones: Int) {
         toast("AURA WAV-feldolgozás indul…")
         Thread {
             var destination: Uri? = null
@@ -3078,7 +3097,7 @@ class MainActivity : Activity() {
                     ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
                 contentResolver.openInputStream(uri)?.use { input ->
                     contentResolver.openOutputStream(destination!!, "w")?.use { output ->
-                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent, bassDb, trebleDb, stereoWidthPercent, noiseReductionPercent)
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent, bassDb, trebleDb, stereoWidthPercent, noiseReductionPercent, tempoPercent, pitchSemitones)
                     } ?: throw IllegalStateException("Az exportfájl nem írható.")
                 } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
