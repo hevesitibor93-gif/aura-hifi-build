@@ -3179,8 +3179,8 @@ class MainActivity : Activity() {
         if (viewMode == "grid") {
             val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             val columns = if (landscape) ordered.size.coerceAtLeast(1) else 2
-            val coverSize = if (landscape) 68 else 104
-            val tileHeight = if (landscape) 126 else 176
+            val coverSize = if (landscape) 82 else 124
+            val tileHeight = if (landscape) 148 else 206
             var index = 0
             while (index < ordered.size) {
                 val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
@@ -3195,8 +3195,8 @@ class MainActivity : Activity() {
                             background = tileBackground
                             setPadding(dp(6), dp(if (landscape) 6 else 10), dp(6), dp(6))
                             addView(libraryArtworkView(song, coverSize), LinearLayout.LayoutParams(-1, dp(coverSize)).apply { bottomMargin = dp(6) })
-                            addView(label(song.title, if (landscape) 10f else 11f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
-                            addView(label(song.artist, 9f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                            addView(label(song.title, if (landscape) 12f else 13f, Color.WHITE).apply { gravity = Gravity.CENTER; maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; typeface = Typeface.DEFAULT_BOLD })
+                            addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                             setOnClickListener { playFrom(itemIndex, song) }
                         }
                         markLibrarySongRow(tile, song.uri)
@@ -3223,31 +3223,31 @@ class MainActivity : Activity() {
                     LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
-                        addView(libraryArtworkView(song, 34), LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(9) })
-                        addView(label("${song.title} — ${song.artist}", 12f, Color.WHITE).apply {
+                        addView(libraryArtworkView(song, 42), LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(9) })
+                        addView(label("${song.title} — ${song.artist}", 14f, Color.WHITE).apply {
                             maxLines = 1
                             ellipsize = android.text.TextUtils.TruncateAt.END
                         }, LinearLayout.LayoutParams(0, -2, 1f))
-                        setPadding(dp(9), dp(5), dp(8), dp(5))
+                        setPadding(dp(10), dp(8), dp(9), dp(8))
                         setOnClickListener { playFrom(index, song) }
                     }
                 } else {
                     LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                         background = tileBackground
-                        setPadding(dp(8), dp(8), dp(8), dp(8))
-                        addView(libraryArtworkView(song, 48), LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(10) })
+                        setPadding(dp(10), dp(10), dp(10), dp(10))
+                        addView(libraryArtworkView(song, 64), LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(10) })
                         val details = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
-                        details.addView(label(song.title, 12f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.artist, 10f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                        details.addView(label(song.album, 9f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.title, 15f, Color.WHITE).apply { typeface = Typeface.DEFAULT_BOLD; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.artist, 12f, Color.rgb(190, 195, 220)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                        details.addView(label(song.album, 11f, Color.rgb(145, 153, 175)).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                         addView(details, LinearLayout.LayoutParams(0, -2, 1f))
                         setOnClickListener { playFrom(index, song) }
                     }
                 }
                 markLibrarySongRow(row, song.uri)
                 if (landscape) {
-                    landscapeStrip?.addView(row, LinearLayout.LayoutParams(dp(if (viewMode == "compact") 205 else 235), dp(if (viewMode == "compact") 58 else 76)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                    landscapeStrip?.addView(row, LinearLayout.LayoutParams(dp(if (viewMode == "compact") 230 else 280), dp(if (viewMode == "compact") 72 else 94)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
                 } else {
                     libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
                 }
@@ -3258,7 +3258,7 @@ class MainActivity : Activity() {
                     overScrollMode = View.OVER_SCROLL_NEVER
                     addView(landscapeStrip, ViewGroup.LayoutParams(-2, -1))
                 }
-                libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(if (viewMode == "compact") 64 else 82)))
+                libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(if (viewMode == "compact") 78 else 100)))
             }
         }
         if (ordered.isEmpty()) libraryContainer.addView(label("Nincs megjeleníthető dal.", 12f, Color.LTGRAY))
@@ -3481,22 +3481,22 @@ class MainActivity : Activity() {
                         setPadding(dp(8), dp(3), dp(4), dp(3))
                     }
                     if (playlistViewMode == "detailed") {
-                        row.addView(label("♫", 19f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
+                        row.addView(label("♫", 23f, Color.rgb(230, 190, 105)).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
                     }
                     val text = if (playlistViewMode == "compact") "${song.title}  •  ${song.artist}" else "${song.title}\n${song.artist}\n${song.album}"
-                    row.addView(label(text, if (playlistViewMode == "compact") 10f else 11f, Color.WHITE).apply {
+                    row.addView(label(text, if (playlistViewMode == "compact") 12f else 13f, Color.WHITE).apply {
                         setPadding(dp(3), dp(8), dp(3), dp(8))
                         maxLines = if (playlistViewMode == "compact") 1 else 3
                         ellipsize = android.text.TextUtils.TruncateAt.END
                         setOnClickListener { playlistSongClick(index, song) }
                     }, LinearLayout.LayoutParams(0, -2, 1f))
                     addPlaylistSongActions(row, song)
-                    if (landscapePlaylist) playlistSongStrip?.addView(row, LinearLayout.LayoutParams(dp(250), dp(72)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                    if (landscapePlaylist) playlistSongStrip?.addView(row, LinearLayout.LayoutParams(dp(285), dp(92)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
                     else libraryContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
                 }
                 if (landscapePlaylist && playlistSongStrip != null && playlistSongStrip.childCount > 0) {
                     val scroller = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER; addView(playlistSongStrip, ViewGroup.LayoutParams(-2, -1)) }
-                    libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(78)))
+                    libraryContainer.addView(scroller, LinearLayout.LayoutParams(-1, dp(98)))
                 }
             }
             val actions = LinearLayout(this).apply {
