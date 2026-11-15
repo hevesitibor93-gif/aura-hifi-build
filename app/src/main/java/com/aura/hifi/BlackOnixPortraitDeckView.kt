@@ -247,8 +247,8 @@ class BlackOnixPortraitDeckView(
         target(RectF(sx, sy - 18f, ex, sy + 18f)) { }
         label(canvas, "MUTE", 31f, 458f, 9f)
         label(canvas, "$systemVolume%   $sampleRate   $bitrate", 110f, 458f, 9f)
-        sprite(canvas, R.drawable.onix_button_mute_volume_skin, 355f, 588f, 30f, 20f, if (muted) 3 else 0, 6)
-        target(RectF(348f, 580f, 394f, 468f), onMute)
+        sprite(canvas, R.drawable.onix_button_mute_volume_skin, 355f, 444f, 30f, 20f, if (muted) 3 else 0, 6)
+        target(RectF(348f, 436f, 394f, 468f), onMute)
 
         // Large transport controls, thumb-friendly spacing.
         panel(canvas, RectF(20f, 482f, 400f, 580f))
