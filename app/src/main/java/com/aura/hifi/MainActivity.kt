@@ -4807,14 +4807,11 @@ class MainActivity : Activity() {
                             setVuActive(true); updatePlayButtonVisual(true); vinylView.invalidate()
                             handler.removeCallbacks(progressTask); handler.post(progressTask)
                         }
+                        // Queue advancement is handled centrally by AuraPlaybackService.
                         Player.STATE_ENDED -> {
                             setVuActive(false)
-                            when {
-                                repeatMode == 1 -> { exo.seekTo(0); exo.play() }
-                                currentIndex + 1 < queue.size -> { currentIndex++; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
-                                repeatMode == 2 || shuffleMode != 0 -> { currentIndex = 0; selectedUri = queue[currentIndex]; updateNextTrack(); startTrack(queue[currentIndex]) }
-                                else -> { updatePlayButtonVisual(false); updateNextTrack() }
-                            }
+                            updatePlayButtonVisual(false)
+                            updateNextTrack()
                         }
                     }
                 }
