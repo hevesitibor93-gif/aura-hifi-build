@@ -1475,6 +1475,12 @@ class MainActivity : Activity() {
         }
         libraryContainer.visibility = View.GONE
         // A kategóriakártyák mindig a lista előtt legyenek a nézetfa sorrendjében.
+        val remixerEntry = categoryCard("♫", "REMIXER", "AURA MUSIC STUDIO") {
+            startActivity(Intent(this, AuraRemixerActivity::class.java))
+        }
+        categoryGroup.addView(remixerEntry, LinearLayout.LayoutParams(-1, dp(if (landscapeLibrary) 58 else 82)).apply {
+            topMargin = dp(8)
+        })
         songsPage.addView(categoryGroup)
         songsPage.addView(libraryContainer)
         librarySearch.addTextChangedListener(object : android.text.TextWatcher {
