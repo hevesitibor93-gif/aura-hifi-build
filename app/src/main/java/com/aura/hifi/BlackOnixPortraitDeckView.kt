@@ -164,10 +164,10 @@ class BlackOnixPortraitDeckView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val s = min(width / 420f, height / 860f).coerceAtLeast(.1f)
+        val s = min(width / 420f, height / 740f).coerceAtLeast(.1f)
         scaleNow = s
         offsetX = (width - 420f * s) / 2f
-        offsetY = (height - 860f * s) / 2f
+        offsetY = (height - 740f * s) / 2f
         canvas.save()
         canvas.translate(offsetX, offsetY)
         canvas.scale(s, s)
@@ -175,7 +175,7 @@ class BlackOnixPortraitDeckView(
         hitTargets.clear()
 
         // Outer BLACK-ONIX frame and branding.
-        panel(canvas, RectF(8f, 8f, 412f, 852f), Color.rgb(5, 8, 12))
+        panel(canvas, RectF(8f, 8f, 412f, 732f), Color.rgb(5, 8, 12))
         panel(canvas, RectF(16f, 16f, 404f, 68f), Color.rgb(13, 17, 23))
         label(canvas, "AURA", 164f, 49f, 23f, Color.rgb(232, 195, 132))
         label(canvas, clock, 25f, 47f, 10f)
@@ -212,8 +212,6 @@ class BlackOnixPortraitDeckView(
         // Two-row stereo VU section.
         panel(canvas, RectF(20f, 232f, 400f, 326f))
         label(canvas, "STEREO VU / PPM", 31f, 252f, 11f)
-        label(canvas, "L", 31f, 278f, 12f)
-        label(canvas, "R", 31f, 307f, 12f)
         val meterLeft = 56f
         val meterWidth = 320f
         if (vuMode != 3) {
@@ -226,43 +224,19 @@ class BlackOnixPortraitDeckView(
             }
             val fl = (leftLevel * 35f).toInt().coerceIn(0, 35)
             val fr = (rightLevel * 35f).toInt().coerceIn(0, 35)
-            sprite(canvas, frames[0], meterLeft + 8f, 266f, meterWidth - 16f, 12f, fl, 36)
-            sprite(canvas, frames[2], meterLeft + 8f, 266f, meterWidth - 16f, 12f, fl, 36)
-            sprite(canvas, frames[1], meterLeft + 8f, 293f, meterWidth - 16f, 12f, fr, 36)
-            sprite(canvas, frames[3], meterLeft + 8f, 293f, meterWidth - 16f, 12f, fr, 36)
+            sprite(canvas, frames[0], meterLeft + 25f, 266f, meterWidth - 50f, 12f, fl, 36)
+            sprite(canvas, frames[2], meterLeft + 25f, 266f, meterWidth - 50f, 12f, fl, 36)
+            sprite(canvas, frames[1], meterLeft + 25f, 293f, meterWidth - 50f, 12f, fr, 36)
+            sprite(canvas, frames[3], meterLeft + 25f, 293f, meterWidth - 50f, 12f, fr, 36)
         } else {
             label(canvas, "VU / PPM OFF", 153f, 291f, 18f, Color.rgb(115, 120, 128))
         }
-        label(canvas, "MÓD", 337f, 250f, 9f)
         target(RectF(20f, 232f, 400f, 326f)) { setVuMode((vuMode + 1) % 4) }
 
-        // Spectrum with three selectable visual modes.
-        panel(canvas, RectF(20f, 340f, 400f, 520f))
-        label(canvas, "SPECTRUM", 31f, 362f, 11f)
-        val specBg = when (spectrumMode) { 1 -> R.drawable.onix_spec_mode_b1_texture; 2 -> R.drawable.onix_spec_mode_c1_texture; else -> R.drawable.onix_spec_mode_a1_texture }
-        image(canvas, specBg, 30f, 372f, 360f, 126f)
-        for (i in spectrum.indices) {
-            val value = spectrum[i].coerceIn(0f, 1f)
-            val x = 38f + i * 11.5f
-            val t = i / 29f
-            val red = if (t < .62f) (45 + t / .62f * 190).toInt() else 235
-            val green = if (t < .62f) 205 else (205 - (t - .62f) / .38f * 150).toInt()
-            meterPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), if (t < .62f) 95 else 45)
-            when (spectrumMode) {
-                1 -> { val h = max(2f, value * 48f); canvas.drawRoundRect(RectF(x, 436f - h, x + 7f, 436f + h), 2f, 2f, meterPaint) }
-                2 -> { for (seg in 0 until (value * 8).toInt().coerceIn(0, 8)) canvas.drawRoundRect(RectF(x, 492f - (seg + 1) * 13f, x + 7f, 503f - seg * 13f), 1f, 1f, meterPaint) }
-                else -> { val h = max(2f, value * 100f); canvas.drawRoundRect(RectF(x, 503f - h, x + 7f, 503f), 2f, 2f, meterPaint) }
-            }
-        }
-        label(canvas, "A", 326f, 362f, 10f)
-        label(canvas, "B", 349f, 362f, 10f)
-        label(canvas, "C", 372f, 362f, 10f)
-        target(RectF(318f, 345f, 397f, 372f)) { setSpectrumMode((spectrumMode + 1) % 3) }
-
         // Seek slider and playback timing.
-        panel(canvas, RectF(20f, 534f, 400f, 612f))
-        label(canvas, "LEJÁTSZÁS", 31f, 555f, 10f)
-        val sx = 34f; val ex = 386f; val sy = 583f
+        panel(canvas, RectF(20f, 390f, 400f, 468f))
+        label(canvas, "LEJÁTSZÁS", 31f, 411f, 10f)
+        val sx = 34f; val ex = 386f; val sy = 439f
         val fraction = if (durationMs > 0L) (previewMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
         meterPaint.color = Color.rgb(31, 36, 44)
         canvas.drawRoundRect(RectF(sx, sy - 4f, ex, sy + 4f), 4f, 4f, meterPaint)
@@ -271,38 +245,38 @@ class BlackOnixPortraitDeckView(
         meterPaint.color = Color.rgb(244, 218, 166)
         canvas.drawCircle(sx + (ex - sx) * fraction, sy, 7f, meterPaint)
         target(RectF(sx, sy - 18f, ex, sy + 18f)) { }
-        label(canvas, "MUTE", 31f, 602f, 9f)
-        label(canvas, "$systemVolume%   $sampleRate   $bitrate", 110f, 602f, 9f)
+        label(canvas, "MUTE", 31f, 458f, 9f)
+        label(canvas, "$systemVolume%   $sampleRate   $bitrate", 110f, 458f, 9f)
         sprite(canvas, R.drawable.onix_button_mute_volume_skin, 355f, 588f, 30f, 20f, if (muted) 3 else 0, 6)
-        target(RectF(348f, 580f, 394f, 612f), onMute)
+        target(RectF(348f, 580f, 394f, 468f), onMute)
 
         // Large transport controls, thumb-friendly spacing.
-        panel(canvas, RectF(20f, 626f, 400f, 724f))
-        sprite(canvas, R.drawable.black_onix_prev_normal, 34f, 648f, 70f, 52f, 0, 1)
-        sprite(canvas, R.drawable.onix_button_stop_skin, 112f, 648f, 56f, 52f, 0, 8)
-        if (playing) sprite(canvas, R.drawable.black_onix_pause_normal, 180f, 640f, 74f, 66f, 0, 1)
-        else sprite(canvas, R.drawable.black_onix_play_normal, 180f, 640f, 74f, 66f, 0, 1)
-        sprite(canvas, R.drawable.black_onix_next_normal, 266f, 648f, 70f, 52f, 0, 1)
-        sprite(canvas, R.drawable.onix_button_repeat_skin, 350f, 648f, 36f, 28f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
-        sprite(canvas, R.drawable.onix_button_shuffle_skin, 350f, 682f, 36f, 28f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
-        target(RectF(25f, 635f, 108f, 718f), onPrevious)
-        target(RectF(108f, 635f, 176f, 718f), onStop)
-        target(RectF(176f, 635f, 260f, 718f), onPlayPause)
-        target(RectF(260f, 635f, 344f, 718f), onNext)
-        target(RectF(345f, 640f, 398f, 678f), onRepeat)
-        target(RectF(345f, 678f, 398f, 720f), onShuffle)
+        panel(canvas, RectF(20f, 482f, 400f, 580f))
+        sprite(canvas, R.drawable.black_onix_prev_normal, 34f, 504f, 70f, 52f, 0, 1)
+        sprite(canvas, R.drawable.onix_button_stop_skin, 112f, 504f, 56f, 52f, 0, 8)
+        if (playing) sprite(canvas, R.drawable.black_onix_pause_normal, 180f, 496f, 74f, 66f, 0, 1)
+        else sprite(canvas, R.drawable.black_onix_play_normal, 180f, 496f, 74f, 66f, 0, 1)
+        sprite(canvas, R.drawable.black_onix_next_normal, 266f, 504f, 70f, 52f, 0, 1)
+        sprite(canvas, R.drawable.onix_button_repeat_skin, 350f, 504f, 36f, 28f, when (repeatMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        sprite(canvas, R.drawable.onix_button_shuffle_skin, 350f, 538f, 36f, 28f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
+        target(RectF(25f, 491f, 108f, 574f), onPrevious)
+        target(RectF(108f, 491f, 176f, 574f), onStop)
+        target(RectF(176f, 491f, 260f, 574f), onPlayPause)
+        target(RectF(260f, 491f, 344f, 574f), onNext)
+        target(RectF(345f, 496f, 398f, 534f), onRepeat)
+        target(RectF(345f, 534f, 398f, 576f), onShuffle)
 
         // Utility shortcuts.
-        panel(canvas, RectF(20f, 738f, 400f, 832f))
+        panel(canvas, RectF(20f, 594f, 400f, 688f))
         val shortcuts = listOf(
             Triple("OPEN", 28f, onOpen), Triple("SLEEP", 103f, onSleep),
             Triple("LISTA", 178f, onPlaylist), Triple("EQ", 253f, onEqualizer),
             Triple("RADIO", 328f, onRadio)
         )
         shortcuts.forEach { (name, x, action) ->
-            panel(canvas, RectF(x, 758f, x + 64f, 811f), Color.rgb(19, 23, 30))
-            label(canvas, name, x + 10f, 790f, 10f)
-            target(RectF(x, 752f, x + 68f, 818f), action)
+            panel(canvas, RectF(x, 614f, x + 64f, 667f), Color.rgb(19, 23, 30))
+            label(canvas, name, x + 10f, 646f, 10f)
+            target(RectF(x, 608f, x + 68f, 674f), action)
         }
         canvas.restore()
     }
@@ -310,7 +284,7 @@ class BlackOnixPortraitDeckView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = (event.x - offsetX) / scaleNow
         val y = (event.y - offsetY) / scaleNow
-        val seek = RectF(34f, 565f, 386f, 601f)
+        val seek = RectF(34f, 421f, 386f, 457f)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (seek.contains(x, y)) {
