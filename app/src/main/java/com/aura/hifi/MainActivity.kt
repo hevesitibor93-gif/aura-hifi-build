@@ -2877,7 +2877,7 @@ class MainActivity : Activity() {
         fun stopWavPreview() {
             previewRunnable?.let { handler.removeCallbacks(it) }
             previewRunnable = null
-            previewPlayer?.runCatching { stop(); release() }
+            previewPlayer?.let { player -> runCatching { player.stop(); player.release() } }
             previewPlayer = null
             previewButton.isEnabled = true
             stopPreviewButton.isEnabled = false
