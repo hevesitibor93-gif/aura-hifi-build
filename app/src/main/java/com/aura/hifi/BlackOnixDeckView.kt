@@ -59,6 +59,9 @@ class BlackOnixDeckView(
     private var spectrumMode = 0
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
+    // Dedicated faster response for the upper BLACK-ONIX VU only.
+    private var onixVuLeftLevel = 0.08f
+    private var onixVuRightLevel = 0.08f
     private var fft = ByteArray(0)
     private var fftActive = false
     private val spectrumLevels = FloatArray(30)
@@ -178,6 +181,10 @@ class BlackOnixDeckView(
         val r = right.coerceIn(0f, 1f)
         leftLevel = if (l >= leftLevel) leftLevel * .28f + l * .72f else leftLevel * .78f + l * .22f
         rightLevel = if (r >= rightLevel) rightLevel * .28f + r * .72f else rightLevel * .78f + r * .22f
+        // Quicker attack and release make the upper ONIX VU feel more alive,
+        // without changing the side meters or the spectrum animation.
+        onixVuLeftLevel = if (l >= onixVuLeftLevel) onixVuLeftLevel * .12f + l * .88f else onixVuLeftLevel * .58f + l * .42f
+        onixVuRightLevel = if (r >= onixVuRightLevel) onixVuRightLevel * .12f + r * .88f else onixVuRightLevel * .58f + r * .42f
         if (!fftActive) {
             val signal = max(l, r)
             for (i in spectrumLevels.indices) {
@@ -341,8 +348,8 @@ class BlackOnixDeckView(
             else -> arrayOf(R.drawable.onix_vu_mode1_top_skin, R.drawable.onix_vu_mode1_bottom_skin, R.drawable.onix_vu_mode1_add_top_skin, R.drawable.onix_vu_mode1_add_bottom_skin)
         }
         if (vuMode != 3) {
-            val frameL = (leftLevel * 35f).toInt().coerceIn(0, 35)
-            val frameR = (rightLevel * 35f).toInt().coerceIn(0, 35)
+            val frameL = (onixVuLeftLevel * 35f).toInt().coerceIn(0, 35)
+            val frameR = (onixVuRightLevel * 35f).toInt().coerceIn(0, 35)
             sprite(prefixVu[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
             sprite(prefixVu[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
             sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
