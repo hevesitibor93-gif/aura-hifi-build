@@ -43,6 +43,7 @@ import kotlin.math.min
 class MainActivity : Activity() {
     private val backupExportRequest = 7102
     private val backupImportRequest = 7103
+    private val wavEditRequest = 7104
     private val player: ExoPlayer? get() = AuraPlaybackService.player
     private val eqProcessor get() = AuraPlaybackService.eqProcessor
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
@@ -2752,6 +2753,20 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
         }
+        val wavEditorButton = Button(this).apply {
+            text = "♫  WAV HANGFÁJL SZERKESZTÉSE"
+            setTextColor(Color.rgb(255, 210, 130))
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "audio/wav"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/wav", "audio/x-wav", "audio/wave"))
+                }
+                startActivityForResult(intent, wavEditRequest)
+            }
+        }
+        panel.addView(wavEditorButton, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(label("Fájlvágás • normalizálás • egyszerű zajkapu • export új WAV-fájlba", 10f, Color.rgb(150, 158, 170)))
         addControl(panel, "BASS BOOST", bassValue, bass)
         addControl(panel, "TREBLE / CLARITY", trebleValue, treble)
         addControl(panel, "PREAMP / HEADROOM", preampValue, preamp)
@@ -2773,6 +2788,98 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("BEZÁR", null)
             .show()
+    }
+
+    private fun showWavEditor(uri: Uri) {
+        var durationMs = 0L
+        try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(this, uri)
+            durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            retriever.release()
+        } catch (_: Exception) {}
+        val startInput = EditText(this).apply {
+            hint = "Kezdés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("0")
+        }
+        val endInput = EditText(this).apply {
+            hint = "Befejezés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(if (durationMs > 0) "%.2f".format(java.util.Locale.US, durationMs / 1000.0) else "0")
+        }
+        val normalize = CheckBox(this).apply { text = "Csúcsnormalizálás (max. 0 dBFS)"; isChecked = true }
+        val gate = SeekBar(this).apply { max = 80; progress = 0 }
+        val gateLabel = label("Zajkapu: kikapcsolva", 11f, Color.WHITE)
+        gate.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                gateLabel.text = if (progress == 0) "Zajkapu: kikapcsolva" else "Zajkapu küszöb: ${-90 + progress} dB"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(6), dp(18), dp(2))
+            addView(label("A szerkesztő jelenleg 16 bites, tömörítetlen PCM WAV-fájlokat kezel. Az eredeti fájl érintetlen marad.", 11f, Color.rgb(165, 175, 190)))
+            addView(label("Kezdés (mp)", 11f, Color.rgb(238, 202, 137)))
+            addView(startInput, LinearLayout.LayoutParams(-1, dp(48)))
+            addView(label("Befejezés (mp)", 11f, Color.rgb(238, 202, 137)))
+            addView(endInput, LinearLayout.LayoutParams(-1, dp(48)))
+            addView(normalize)
+            addView(gateLabel)
+            addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("AURA Audio Lab • WAV Editor")
+            .setView(panel)
+            .setPositiveButton("EXPORT ÚJ FÁJLKÉNT") { _, _ ->
+                val start = (startInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0)
+                val end = (endInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0)
+                if (start < 0 || end < 0 || (end > 0 && end <= start)) {
+                    toast("Ellenőrizd a vágási időket.")
+                } else {
+                    exportEditedWav(uri, (start * 1000).toLong(), (end * 1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90 + gate.progress)
+                }
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int) {
+        toast("AURA WAV-feldolgozás indul…")
+        Thread {
+            var destination: Uri? = null
+            try {
+                val name = runCatching {
+                    contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                        if (it.moveToFirst()) it.getString(0) else null
+                    }
+                }.getOrNull() ?: "AURA-audio.wav"
+                val outputName = name.substringBeforeLast('.', name).replace(Regex("""[\\/:*?"<>|]"""), "_") + " - AURA.wav"
+                val values = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, outputName)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/wav")
+                    put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Audio.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MUSIC + "/AURA Audio Lab")
+                        put(MediaStore.Audio.Media.IS_PENDING, 1)
+                    }
+                }
+                destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
+                contentResolver.openInputStream(uri)?.use { input ->
+                    contentResolver.openOutputStream(destination!!, "w")?.use { output ->
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb)
+                    } ?: throw IllegalStateException("Az exportfájl nem írható.")
+                } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentResolver.update(destination!!, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+                }
+                runOnUiThread { toast("Kész! Az új WAV a Music/AURA Audio Lab mappába került.") }
+            } catch (e: Exception) {
+                destination?.let { runCatching { contentResolver.delete(it, null, null) } }
+                runOnUiThread { toast("WAV-export hiba: " + (e.localizedMessage ?: "ismeretlen hiba")) }
+            }
+        }.start()
     }
 
     private fun simpleSeekListener(onChange: () -> Unit) = object : SeekBar.OnSeekBarChangeListener {
@@ -3987,6 +4094,12 @@ class MainActivity : Activity() {
                         }.show()
                 }
                 .onFailure { toast("A mentés nem olvasható: ${it.message ?: "hiba"}") }
+            return
+        }
+        if (requestCode == wavEditRequest) {
+            val uri = data.data ?: return
+            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
+            showWavEditor(uri)
             return
         }
         if (requestCode == 2) {
