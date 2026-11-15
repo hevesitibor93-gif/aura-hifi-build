@@ -206,8 +206,10 @@ class BlackOnixDeckView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val scale = width / 899f
-        val ox = 0f
+        // Fit the complete ONIX frame with a very small safety margin.
+        // This keeps the lower feet visible on displays with slightly different aspect ratios.
+        val scale = min(width / 899f, height / 401f) * 0.985f
+        val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         canvas.save()
         canvas.translate(ox, oy)
@@ -315,7 +317,7 @@ class BlackOnixDeckView(
         // AURA playback seek control in the gap directly below the spectrum.
         val seekLeft = 286f
         val seekRight = 615f
-        val seekY = 257f
+        val seekY = 306f
         val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
         spectrumPaint.color = Color.rgb(27, 31, 38)
         canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, seekRight, seekY + 2f), 2f, 2f, spectrumPaint)
@@ -448,14 +450,16 @@ class BlackOnixDeckView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val scale = width / 899f
-        val ox = 0f
+        // Fit the complete ONIX frame with a very small safety margin.
+        // This keeps the lower feet visible on displays with slightly different aspect ratios.
+        val scale = min(width / 899f, height / 401f) * 0.985f
+        val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         val x = (event.x - ox) / scale
         val y = (event.y - oy) / scale
         if (event.action == MotionEvent.ACTION_DOWN) {
             touchDownTime = event.eventTime
-            if (RectF(278f, 248f, 623f, 264f).contains(x, y) && trackDurationMs > 0L) {
+            if (RectF(278f, 296f, 623f, 316f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
                 updateSeekPreview(x)
             }
