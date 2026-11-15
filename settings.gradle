@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'AURA Hi-Fi'
-include ':app', ':remixer'
+rootProject.name = 'AURA Remixer'
+include ':remixer'
