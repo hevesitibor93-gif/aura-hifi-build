@@ -2680,7 +2680,7 @@ class MainActivity : Activity() {
                 runOnUiThread { toast("Kész! Az új ID3-címkés másolat a Music/AURA ID3 mappába került. Az eredeti megmaradt.") }
             } catch (e: Exception) {
                 destination?.let { runCatching { contentResolver.delete(it, null, null) } }
-                runOnUiThread { toast("ID3-mentési hiba: \${e.localizedMessage ?: "ismeretlen hiba"}") }
+                runOnUiThread { toast("ID3-mentési hiba: " + (e.localizedMessage ?: "ismeretlen hiba")) }
             }
         }.start()
     }
