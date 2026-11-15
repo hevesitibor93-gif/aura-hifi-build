@@ -156,6 +156,18 @@ class AuraPlaybackService : MediaSessionService() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 savePlaybackState()
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
+
+                // Keep automatic queue advancement in the playback service,
+                // so it still works if the Activity is recreated or backgrounded.
+                if (playbackState == Player.STATE_ENDED) {
+                    if (queueRepeatMode == 1) {
+                        exoPlayer.seekTo(0L)
+                        exoPlayer.play()
+                    } else {
+                        val callback = onNextRequested
+                        if (callback != null) callback() else skipToNextFromService()
+                    }
+                }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
