@@ -886,7 +886,7 @@ class MainActivity : Activity() {
         body.addView(artFrame, LinearLayout.LayoutParams(-1, dp(178)).apply { setMargins(dp(2), dp(3), dp(2), dp(3)) })
         applyArtworkMode()
         vu = VuView().apply { isClickable = true; setOnClickListener { openVuSettingsPage?.invoke() } }; body.addView(vu, LinearLayout.LayoutParams(-1, dp(44)).apply { setMargins(dp(4), 0, dp(4), 0); gravity = Gravity.CENTER })
-        trackLabel = label("", 20f, Color.rgb(242, 211, 157)).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.015f; setPadding(dp(4), dp(5), dp(4), dp(3)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() } }
+        trackLabel = label("", 20f, Color.rgb(242, 211, 157)).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD); letterSpacing = 0.015f; setPadding(dp(4), dp(5), dp(4), dp(3)); maxLines = 1; isClickable = true; setOnClickListener { openLibraryPage?.invoke() }; setOnLongClickListener { showTrackToolsMenu(); true } }
         body.addView(trackLabel)
         metadataLabel = label("", 12f, Color.rgb(184, 177, 160)).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, 0); maxLines = 1 }
         body.addView(metadataLabel)
@@ -2518,6 +2518,78 @@ class MainActivity : Activity() {
         showPage(0)
         setContentView(root)
         
+    }
+
+    private fun showTrackToolsMenu() {
+        val uri = selectedUri
+        if (uri == null) {
+            toast("Most nincs kiválasztott zeneszám.")
+            return
+        }
+        val options = arrayOf("ID3 Editor", "AURA Audio Lab", "Dal információi")
+        AlertDialog.Builder(this)
+            .setTitle(trackLabel.text?.toString()?.ifBlank { "Aktuális zeneszám" } ?: "Aktuális zeneszám")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showFeatureNotice("ID3 Editor", "Itt szerkeszthető majd a cím, előadó, album, év, műfaj és az albumborító. A fájlba író szerkesztőt külön, biztonságos mentéssel építjük be.")
+                    1 -> showFeatureNotice("AURA Audio Lab", "Itt kap helyet a hangjavítás: zajcsökkentés, normalizálás, finomhangolás és vágás. Az eredeti felvétel megmarad, a javított változat külön menthető lesz.")
+                    2 -> showTrackInformation(uri)
+                }
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
+    private fun showFeatureNotice(title: String, message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun showTrackInformation(uri: Uri) {
+        val details = StringBuilder()
+        details.append("Cím: ").append(trackLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
+        details.append("\\nElőadó: ").append(metadataLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
+        details.append("\\nAlbum: ").append(albumLabel.text?.toString().orEmpty().ifBlank { "Ismeretlen" })
+        var retriever: MediaMetadataRetriever? = null
+        try {
+            retriever = MediaMetadataRetriever()
+            retriever.setDataSource(this, uri)
+            val mime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+            val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull()?.div(1000)
+            val sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            details.append("\\nFormátum: ").append(mime ?: "Nem elérhető")
+            if (bitrate != null) details.append("\\nBitráta: ").append(bitrate).append(" kbps")
+            if (sampleRate != null) details.append("\\nMintavételezés: ").append(sampleRate).append(" Hz")
+            if (duration != null) details.append("\\nHossz: ").append(formatDuration(duration))
+        } catch (_: Exception) {
+            details.append("\\nTechnikai adatok: nem olvashatók ki ebből a fájlból.")
+        } finally {
+            try { retriever?.release() } catch (_: Exception) {}
+        }
+        try {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (nameIndex >= 0) details.append("\\nFájlnév: ").append(cursor.getString(nameIndex) ?: "Ismeretlen")
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) details.append("\\nMéret: ").append(android.text.format.Formatter.formatShortFileSize(this, cursor.getLong(sizeIndex)))
+                }
+            }
+        } catch (_: Exception) {}
+        AlertDialog.Builder(this)
+            .setTitle("Dal információi")
+            .setMessage(details.toString())
+            .setPositiveButton("BEZÁR", null)
+            .show()
+    }
+
+    private fun formatDuration(durationMs: Long): String {
+        val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+        return "%02d:%02d".format(totalSeconds / 60L, totalSeconds % 60L)
     }
 
     private fun applyArtworkMode() {
