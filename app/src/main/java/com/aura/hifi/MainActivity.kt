@@ -2868,9 +2868,77 @@ class MainActivity : Activity() {
                 rangeStatus.text = "Kijelölés: %.3f – %.3f mp (%.3f mp)".format(java.util.Locale.US, first, last, (last-first).coerceAtLeast(0.0))
             }
         }
+        var previewPlayer: ExoPlayer? = null
+        var previewEndMs = 0L
+        var previewRunnable: Runnable? = null
+        val previewStatus = label("Előnézet: készen áll", 11f, Color.rgb(238,202,137))
+        val previewButton = Button(this).apply { text = "▶ KIJELÖLT RÉSZ MEGHALLGATÁSA" }
+        val stopPreviewButton = Button(this).apply { text = "■ ELŐNÉZET LEÁLLÍTÁSA"; isEnabled = false }
+        fun stopWavPreview() {
+            previewRunnable?.let { handler.removeCallbacks(it) }
+            previewRunnable = null
+            previewPlayer?.runCatching { stop(); release() }
+            previewPlayer = null
+            previewButton.isEnabled = true
+            stopPreviewButton.isEnabled = false
+            previewStatus.text = "Előnézet: leállítva"
+        }
+        previewButton.setOnClickListener {
+            val start = startInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+            val end = endInput.text.toString().replace(',', '.').toDoubleOrNull() ?: durationSeconds
+            if (start < 0 || end <= start || (durationSeconds > 0 && end > durationSeconds + 0.01)) {
+                toast("Ellenőrizd a meghallgatás kezdő- és végpontját.")
+            } else {
+                stopWavPreview()
+                try {
+                    val p = ExoPlayer.Builder(this).build()
+                    previewPlayer = p
+                    p.setMediaItem(MediaItem.fromUri(uri), (start * 1000).toLong())
+                    previewEndMs = (end * 1000).toLong()
+                    p.addListener(object : Player.Listener {
+                        override fun onPlaybackStateChanged(state: Int) {
+                            if (state == Player.STATE_READY && previewPlayer === p) {
+                                p.play()
+                                previewButton.isEnabled = false
+                                stopPreviewButton.isEnabled = true
+                                previewStatus.text = "Előnézet: lejátszás"
+                                val watcher = object : Runnable {
+                                    override fun run() {
+                                        if (previewPlayer !== p) return
+                                        if (p.currentPosition >= previewEndMs) {
+                                            stopWavPreview()
+                                        } else {
+                                            handler.postDelayed(this, 80)
+                                        }
+                                    }
+                                }
+                                previewRunnable = watcher
+                                handler.post(watcher)
+                            }
+                        }
+                        override fun onPlayerError(error: PlaybackException) {
+                            if (previewPlayer === p) {
+                                stopWavPreview()
+                                previewStatus.text = "Az előnézet nem indítható el."
+                                toast("Előnézeti lejátszási hiba.")
+                            }
+                        }
+                    })
+                    p.prepare()
+                } catch (e: Exception) {
+                    stopWavPreview()
+                    previewStatus.text = "Az előnézet nem indítható el."
+                    toast("Előnézeti hiba: ${e.localizedMessage ?: "ismeretlen"}")
+                }
+            }
+        }
+        stopPreviewButton.setOnClickListener { stopWavPreview() }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(6), dp(18), dp(2))
             addView(label("16 bites PCM WAV • Az eredeti fájl érintetlen marad.", 11f, Color.rgb(165,175,190)))
+            addView(previewStatus)
+            addView(previewButton, LinearLayout.LayoutParams(-1, dp(46)))
+            addView(stopPreviewButton, LinearLayout.LayoutParams(-1, dp(42)))
             addView(label("HULLÁMFORMA • ELŐNÉZET", 10f, Color.rgb(238,202,137)))
             addView(waveformPreview, LinearLayout.LayoutParams(-1, dp(100)).apply { topMargin = dp(5) })
             addView(label("HÚZD A KÉT JELÖLŐT A VÁGÁSI PONTOKHOZ", 10f, Color.rgb(238,202,137)))
@@ -2886,7 +2954,7 @@ class MainActivity : Activity() {
             try { val peaks = contentResolver.openInputStream(uri)?.use { AuraWavEditor.waveform(it, 240) } ?: throw IllegalStateException("A WAV-fájl nem olvasható."); waveformPreview.post { waveformPreview.setWaveform(peaks) } }
             catch (e: Exception) { waveformPreview.post { gateLabel.text = "Hullámforma nem tölthető be: ${e.localizedMessage ?: "ismeretlen hiba"}" } }
         }.start()
-        AlertDialog.Builder(this).setTitle("AURA Audio Lab • WAV Editor").setView(panel)
+        val editorDialog = AlertDialog.Builder(this).setTitle("AURA Audio Lab • WAV Editor").setView(panel)
             .setPositiveButton("EXPORT ÚJ FÁJLKÉNT") { _, _ ->
                 val start = startInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                 val end = endInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
@@ -2897,7 +2965,9 @@ class MainActivity : Activity() {
                     if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
                     else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong())
                 }
-            }.setNegativeButton("MÉGSE", null).show()
+            }.setNegativeButton("MÉGSE", null).create()
+        editorDialog.setOnDismissListener { stopWavPreview() }
+        editorDialog.show()
     }
 
     private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long) {
