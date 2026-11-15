@@ -22,6 +22,34 @@ object AuraWavEditor {
             (parsed.pcm.size.toLong() * 1000L) / parsed.byteRate)
     }
 
+    /** Returns a compact peak envelope suitable for an on-screen waveform preview. */
+    fun waveform(input: InputStream, bucketCount: Int = 220): FloatArray {
+        val wav = parse(input)
+        require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
+            "Csak 16 bites, tömörítetlen PCM WAV támogatott."
+        }
+        val frameSize = wav.channels * 2
+        val totalFrames = wav.pcm.size / frameSize
+        require(totalFrames > 0) { "A WAV nem tartalmaz hangadatot." }
+        val count = bucketCount.coerceIn(32, 600)
+        val peaks = FloatArray(count)
+        for (bucket in 0 until count) {
+            val first = (bucket.toLong() * totalFrames / count).toInt()
+            val last = (((bucket + 1L) * totalFrames / count).toInt()).coerceAtLeast(first + 1).coerceAtMost(totalFrames)
+            var peak = 0
+            for (frame in first until last) {
+                val base = frame * frameSize
+                for (channel in 0 until wav.channels) {
+                    val index = base + channel * 2
+                    val sample = ((wav.pcm[index + 1].toInt() shl 8) or (wav.pcm[index].toInt() and 0xff)).toShort().toInt()
+                    peak = max(peak, abs(sample))
+                }
+            }
+            peaks[bucket] = peak / 32768f
+        }
+        return peaks
+    }
+
     fun process(
         input: InputStream,
         output: OutputStream,
