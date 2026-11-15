@@ -208,7 +208,7 @@ class BlackOnixDeckView(
         super.onDraw(canvas)
         // Fit the complete ONIX frame with a very small safety margin.
         // This keeps the lower feet visible on displays with slightly different aspect ratios.
-        val scale = min(width / 899f, height / 401f) * 0.985f
+        val scale = (width / 899f + min(width / 899f, height / 401f) * 0.985f) / 2f
         val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         canvas.save()
@@ -452,7 +452,7 @@ class BlackOnixDeckView(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         // Fit the complete ONIX frame with a very small safety margin.
         // This keeps the lower feet visible on displays with slightly different aspect ratios.
-        val scale = min(width / 899f, height / 401f) * 0.985f
+        val scale = (width / 899f + min(width / 899f, height / 401f) * 0.985f) / 2f
         val ox = (width - 899f * scale) / 2f
         val oy = (height - 401f * scale) / 2f
         val x = (event.x - ox) / scale
