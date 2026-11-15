@@ -983,7 +983,8 @@ class MainActivity : Activity() {
             else -> "classic"
         }
         themePrefs.edit().putString("aura_theme", themeId).apply()
-        val isOnix = themeId != "classic"
+        // BLACK-ONIX uses its dedicated deck only in landscape; portrait deliberately reuses the untouched Classic AURA interface.
+        val isOnix = themeId != "classic" && resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = if (isOnix)
