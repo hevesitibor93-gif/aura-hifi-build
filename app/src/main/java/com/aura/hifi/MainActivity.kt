@@ -2861,6 +2861,16 @@ class MainActivity : Activity() {
         val normalize = CheckBox(this).apply { text = "Csúcsnormalizálás (max. 0 dBFS)"; isChecked = true }
         val gate = SeekBar(this).apply { max = 80; progress = 0 }
         val gateLabel = label("Zajkapu: kikapcsolva", 11f, Color.WHITE)
+        val gainControl = SeekBar(this).apply { max = 24; progress = 12 }
+        val gainLabel = label("Kézi erősítés: 0 dB", 11f, Color.WHITE)
+        gainControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val db = progress - 12
+                gainLabel.text = "Kézi erősítés: ${if (db > 0) "+" else ""}$db dB"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
         val fadeInInput = EditText(this).apply { hint = "Fade-in (másodperc)"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText("0") }
         val fadeOutInput = EditText(this).apply { hint = "Fade-out (másodperc)"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText("0") }
         gate.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -2956,7 +2966,9 @@ class MainActivity : Activity() {
             addView(rangeStatus)
             addView(label("Kezdés (mp)", 11f, Color.rgb(238,202,137))); addView(startInput, LinearLayout.LayoutParams(-1, dp(44)))
             addView(label("Befejezés (mp)", 11f, Color.rgb(238,202,137))); addView(endInput, LinearLayout.LayoutParams(-1, dp(44)))
-            addView(normalize); addView(gateLabel); addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(normalize)
+            addView(gainLabel); addView(gainControl, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(gateLabel); addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
             addView(label("Fade-in (mp)", 11f, Color.rgb(238,202,137))); addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(42)))
             addView(label("Fade-out (mp)", 11f, Color.rgb(238,202,137))); addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(42)))
         }
@@ -2973,14 +2985,14 @@ class MainActivity : Activity() {
                     val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
-                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong())
+                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12)
                 }
             }.setNegativeButton("MÉGSE", null).create()
         editorDialog.setOnDismissListener { stopWavPreview() }
         editorDialog.show()
     }
 
-    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long) {
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int) {
         toast("AURA WAV-feldolgozás indul…")
         Thread {
             var destination: Uri? = null
@@ -3004,7 +3016,7 @@ class MainActivity : Activity() {
                     ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
                 contentResolver.openInputStream(uri)?.use { input ->
                     contentResolver.openOutputStream(destination!!, "w")?.use { output ->
-                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs)
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb)
                     } ?: throw IllegalStateException("Az exportfájl nem írható.")
                 } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
