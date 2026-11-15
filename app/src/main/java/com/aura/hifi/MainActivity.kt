@@ -172,6 +172,7 @@ class MainActivity : Activity() {
     private var onixRepeatButton: ImageView? = null
     private var onixSpectrumView: OnixSpectrumView? = null
     private var blackOnixDeck: BlackOnixDeckView? = null
+    private var blackOnixPortraitDeck: BlackOnixPortraitDeckView? = null
     private var onixVisualizer: Visualizer? = null
     private var onixVisualizerSessionId = 0
     private var onixSpectrumMode = 0
@@ -846,6 +847,7 @@ class MainActivity : Activity() {
             onixMuted = true
         }
         blackOnixDeck?.setMuted(onixMuted)
+        blackOnixPortraitDeck?.setMuted(onixMuted)
     }
 
     private fun setVuActive(value: Boolean) {
@@ -853,6 +855,7 @@ class MainActivity : Activity() {
     }
     private fun setVuLevels(left: Float, right: Float) {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
+        blackOnixPortraitDeck?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); portraitLeftVu?.setStyle(value); portraitRightVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
@@ -1146,8 +1149,8 @@ class MainActivity : Activity() {
         val original = (0 until body.childCount).map { body.getChildAt(it) }
         body.removeAllViews()
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        if (landscape && isOnix) header.visibility = View.GONE
-        if (landscape && isOnix) {
+        if (isOnix) header.visibility = View.GONE
+        if (isOnix) {
             eqPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_eq_texture))
             songsPage.background = android.graphics.drawable.BitmapDrawable(resources, BitmapFactory.decodeResource(resources, R.drawable.black_onix_playlist_texture))
         }
@@ -1189,6 +1192,7 @@ class MainActivity : Activity() {
                 onMute = { toggleOnixMute() }
             )
             blackOnixDeck = deck
+            blackOnixPortraitDeck = null
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             onixVuMode = onixPrefs.getInt("onix_vu_mode", onixVuMode).coerceIn(0, 3)
             onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", onixSpectrumMode).coerceIn(0, 2)
@@ -1224,6 +1228,67 @@ class MainActivity : Activity() {
             landscapeVuRightPanel = null
             original.forEachIndexed { i, child ->
                 when (i) { in 0..10 -> playerPage.addView(child); in 11..15 -> eqPage.addView(child); else -> settingsPage.addView(child) }
+            }
+            if (isOnix) {
+                playerPage.removeAllViews()
+                playerPage.orientation = LinearLayout.VERTICAL
+                playerPage.setPadding(0, 0, 0, 0)
+                playerPage.background = android.graphics.drawable.ColorDrawable(Color.BLACK)
+                val deck = BlackOnixPortraitDeckView(
+                    this,
+                    onPrevious = { playPrevious() },
+                    onPlayPause = { togglePlayback() },
+                    onNext = { playNext() },
+                    onStop = { player?.let { it.pause(); it.seekTo(0L) } },
+                    onShuffle = { cycleShuffleMode() },
+                    onRepeat = { cycleRepeatMode() },
+                    onRepeatLong = { showRepeatOptions() },
+                    onOpen = { openAudio() },
+                    onSleep = { toast("Hátralévő zeneszámok: ${(queue.size - currentIndex).coerceAtLeast(0)}") },
+                    onPlaylist = { openLibraryPage?.invoke(); showPlaylists() },
+                    onEqualizer = { openEqualizerPage?.invoke() },
+                    onUtilities = { openSoundEnginePage?.invoke() },
+                    onRadio = { showFavoriteRadioStations() },
+                    onSettings = { openSettingsPage?.invoke() },
+                    onMainMenu = { openLibraryPage?.invoke() },
+                    onMinimize = { moveTaskToBack(true) },
+                    onExit = { finish() },
+                    onVuModeChanged = { mode ->
+                        onixVuMode = mode
+                        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_vu_mode", mode).apply()
+                    },
+                    onSpectrumModeChanged = { mode ->
+                        onixSpectrumMode = mode
+                        getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putInt("onix_spectrum_mode", mode).apply()
+                    },
+                    onSeekTo = { position -> player?.seekTo(position) },
+                    onMute = { toggleOnixMute() }
+                )
+                blackOnixDeck = null
+                blackOnixPortraitDeck = deck
+                val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+                onixVuMode = onixPrefs.getInt("onix_vu_mode", onixVuMode).coerceIn(0, 3)
+                onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", onixSpectrumMode).coerceIn(0, 2)
+                deck.setVuMode(onixVuMode)
+                deck.setMuted(onixMuted)
+                deck.setSpectrumMode(onixSpectrumMode)
+                deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
+                val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
+                    .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+                    .distinct().joinToString("   •   ").ifBlank { "AURA Hi-Fi" }
+                val initialPosition = player?.currentPosition ?: 0L
+                val initialDuration = player?.duration ?: 0L
+                deck.setTrack(initialTrackInfo, formatTime(initialPosition), "-${formatTime(initialDuration - initialPosition)}")
+                deck.setTrackProgress(initialPosition, initialDuration)
+                playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
+                artFrame.visibility = View.GONE
+                vu.visibility = View.GONE
+                centerAurixVu = null
+                landscapeVuLeftPanel = null
+                landscapeVuRightPanel = null
+                technicalLabel.visibility = View.GONE
+                nextTrackLabel.visibility = View.GONE
+                transportExtras.visibility = View.GONE
             }
         }
 
@@ -4033,6 +4098,7 @@ class MainActivity : Activity() {
                 if (player?.isPlaying == true) {
                     setVuLevels(displayLeft, displayRight)
                     blackOnixDeck?.setLevels(displayLeft, displayRight)
+                    blackOnixPortraitDeck?.setLevels(displayLeft, displayRight)
                 }
             }, delay)
         }
@@ -5336,6 +5402,10 @@ class MainActivity : Activity() {
             blackOnixDeck?.setTrackProgress(position, duration)
             blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
             blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
+            blackOnixPortraitDeck?.setTrack(onixTrackInfo, formatTime(position), "-${formatTime(duration - position)}")
+            blackOnixPortraitDeck?.setTrackProgress(position, duration)
+            blackOnixPortraitDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
+            blackOnixPortraitDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
             updateOnixSystemInfo()
             val counter = window.decorView.findViewWithTag<TextView>("onix_track_counter")
         val elapsed = window.decorView.findViewWithTag<TextView>("onix_elapsed_time")
@@ -5351,7 +5421,7 @@ class MainActivity : Activity() {
 
     private fun updateOnixSystemInfo() {
         val p = player ?: return
-        val deck = blackOnixDeck ?: return
+        if (blackOnixDeck == null && blackOnixPortraitDeck == null) return
         try {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
             val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
@@ -5372,7 +5442,8 @@ class MainActivity : Activity() {
                 ?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
             val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
                 .format(java.util.Date())
-            deck.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
+            blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
+            blackOnixPortraitDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
         } catch (_: Exception) {}
     }
 
@@ -5416,6 +5487,7 @@ class MainActivity : Activity() {
                     if (fft != null) {
                         val frame = fft.copyOf()
                         blackOnixDeck?.post { blackOnixDeck?.setFft(frame) }
+                        blackOnixPortraitDeck?.post { blackOnixPortraitDeck?.setFft(frame) }
                     }
                 }
             }, Visualizer.getMaxCaptureRate(), false, true)
