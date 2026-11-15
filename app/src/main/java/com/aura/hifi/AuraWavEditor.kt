@@ -7,6 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.exp
 import kotlin.math.roundToInt
 
 /**
@@ -62,7 +63,10 @@ object AuraWavEditor {
         gainDb: Int = 0,
         echoDelayMs: Long = 250L,
         echoMixPercent: Int = 0,
-        reverbPercent: Int = 0
+        reverbPercent: Int = 0,
+        bassDb: Int = 0,
+        trebleDb: Int = 0,
+        stereoWidthPercent: Int = 100
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -79,6 +83,39 @@ object AuraWavEditor {
         val from = startFrame * frameSize
         val to = endFrame * frameSize
         val selected = wav.pcm.copyOfRange(from, to)
+        // Gentle low/high shelving and mid-side stereo width, applied before time effects.
+        val bassGain = Math.pow(10.0, bassDb.coerceIn(-12, 12) / 20.0)
+        val trebleGain = Math.pow(10.0, trebleDb.coerceIn(-12, 12) / 20.0)
+        val width = stereoWidthPercent.coerceIn(0, 200) / 100.0
+        val lowAlpha = 1.0 - exp(-2.0 * Math.PI * 180.0 / wav.sampleRate)
+        val highAlpha = 1.0 - exp(-2.0 * Math.PI * 4000.0 / wav.sampleRate)
+        val lowState = DoubleArray(wav.channels)
+        val highState = DoubleArray(wav.channels)
+        var frameOffset = 0
+        while (frameOffset + frameSize <= selected.size) {
+            val samples = IntArray(wav.channels)
+            for (channel in 0 until wav.channels) {
+                val index = frameOffset + channel * 2
+                samples[channel] = ((selected[index + 1].toInt() shl 8) or (selected[index].toInt() and 0xff)).toShort().toInt()
+            }
+            if (wav.channels == 2 && width != 1.0) {
+                val mid = (samples[0] + samples[1]) * 0.5
+                val side = (samples[0] - samples[1]) * 0.5 * width
+                samples[0] = (mid + side).roundToInt().coerceIn(-32768, 32767)
+                samples[1] = (mid - side).roundToInt().coerceIn(-32768, 32767)
+            }
+            for (channel in 0 until wav.channels) {
+                val sample = samples[channel].toDouble()
+                lowState[channel] += lowAlpha * (sample - lowState[channel])
+                highState[channel] += highAlpha * (sample - highState[channel])
+                val adjusted = (sample + lowState[channel] * (bassGain - 1.0) +
+                    (sample - highState[channel]) * (trebleGain - 1.0)).roundToInt().coerceIn(-32768, 32767)
+                val index = frameOffset + channel * 2
+                selected[index] = adjusted.toByte()
+                selected[index + 1] = (adjusted shr 8).toByte()
+            }
+            frameOffset += frameSize
+        }
         val threshold = Math.pow(10.0, noiseGateDb.coerceIn(-90, -10) / 20.0).toDouble() * 32767.0
         var peak = 0
         var i = 0
