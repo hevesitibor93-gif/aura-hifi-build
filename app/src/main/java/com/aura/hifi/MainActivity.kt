@@ -2621,7 +2621,7 @@ class MainActivity : Activity() {
                 val year = fields[3]
                 val genre = fields[4]
                 val baseName = originalName.substringBeforeLast('.', originalName)
-                    .replace(Regex("[\\\\/:*?\""<>|]"), "_")
+                    .replace(Regex("""[\\/:*?"<>|]"""), "_")
                 val outputName = "$baseName - AURA.mp3"
                 val metadata = ContentValues().apply {
                     put(MediaStore.Audio.Media.DISPLAY_NAME, outputName)
