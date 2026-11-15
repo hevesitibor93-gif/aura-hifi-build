@@ -2563,6 +2563,9 @@ class MainActivity : Activity() {
         var album = albumLabel.text?.toString().orEmpty()
         var year = ""
         var genre = ""
+        var albumArtist = ""
+        var composer = ""
+        var trackNumber = ""
         try {
             MediaMetadataRetriever().also { retriever ->
                 retriever.setDataSource(this, uri)
@@ -2571,12 +2574,15 @@ class MainActivity : Activity() {
                 album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: album
                 year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR) ?: ""
                 genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE) ?: ""
+                albumArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: ""
+                composer = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER) ?: ""
+                trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER) ?: ""
                 retriever.release()
             }
         } catch (_: Exception) {}
 
-        val names = listOf("Cím", "Előadó", "Album", "Év", "Műfaj")
-        val initial = listOf(title, artist, album, year, genre)
+        val names = listOf("Cím", "Előadó", "Album", "Év", "Műfaj", "Album előadója", "Zeneszerző", "Sorszám")
+        val initial = listOf(title, artist, album, year, genre, albumArtist, composer, trackNumber)
         val inputs = mutableListOf<EditText>()
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -2643,6 +2649,9 @@ class MainActivity : Activity() {
                 val album = fields[2]
                 val year = fields[3]
                 val genre = fields[4]
+                val albumArtist = fields[5]
+                val composer = fields[6]
+                val trackNumber = fields[7]
                 val baseName = originalName.substringBeforeLast('.', originalName)
                     .replace(Regex("""[\\/:*?"<>|]"""), "_")
                 val outputName = "$baseName - AURA.mp3"
@@ -2691,7 +2700,7 @@ class MainActivity : Activity() {
                             }
                         }
                         val coverMime = coverUri?.let { contentResolver.getType(it) } ?: "image/jpeg"
-                        output.write(buildId3v23Tag(title, artist, album, year, genre, coverBytes, coverMime))
+                        output.write(buildId3v23Tag(title, artist, album, year, genre, albumArtist, composer, trackNumber, coverBytes, coverMime))
                         if (!hasId3 && firstCount > 0) output.write(first, 0, firstCount)
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
@@ -2716,13 +2725,16 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun buildId3v23Tag(title: String, artist: String, album: String, year: String, genre: String, cover: ByteArray? = null, coverMime: String = "image/jpeg"): ByteArray {
+    private fun buildId3v23Tag(title: String, artist: String, album: String, year: String, genre: String, albumArtist: String, composer: String, trackNumber: String, cover: ByteArray? = null, coverMime: String = "image/jpeg"): ByteArray {
         val frames = listOf(
             "TIT2" to title,
             "TPE1" to artist,
             "TALB" to album,
             "TYER" to year,
-            "TCON" to genre
+            "TCON" to genre,
+            "TPE2" to albumArtist,
+            "TCOM" to composer,
+            "TRCK" to trackNumber
         ).filter { it.second.isNotBlank() }
         val body = java.io.ByteArrayOutputStream()
         frames.forEach { (id, value) ->
