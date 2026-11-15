@@ -16,7 +16,7 @@ object AuraTimePitchProcessor {
         val tempo = tempoPercent.coerceIn(50, 200) / 100.0
         val semitones = pitchSemitones.coerceIn(-12, 12)
         if (tempo == 1.0 && semitones == 0) return pcm
-        require(pcm.size <= 64 * 1024 * 1024) { "A tempó/hangmagasság feldolgozás jelenleg legfeljebb 64 MB WAV-adaton használható." }
+        require(pcm.size <= 16 * 1024 * 1024) { "A tempó/hangmagasság feldolgozás jelenleg legfeljebb 16 MB WAV-hangadaton használható." }
         val frameSize = channels * 2
         val inputFrames = pcm.size / frameSize
         require(inputFrames > 0)
