@@ -44,6 +44,10 @@ class MainActivity : Activity() {
     private val backupExportRequest = 7102
     private val backupImportRequest = 7103
     private val wavEditRequest = 7104
+    private val id3CoverRequest = 7105
+    private var pendingId3CoverUri: Uri? = null
+    private var pendingId3SourceUri: Uri? = null
+    private var pendingId3CoverLabel: TextView? = null
     private val player: ExoPlayer? get() = AuraPlaybackService.player
     private val eqProcessor get() = AuraPlaybackService.eqProcessor
     private val soundEngineProcessor get() = AuraPlaybackService.soundEngineProcessor
@@ -2589,6 +2593,20 @@ class MainActivity : Activity() {
             inputs.add(input)
             panel.addView(input, LinearLayout.LayoutParams(-1, dp(48)))
         }
+        pendingId3SourceUri = uri
+        val coverLabel = label(if (pendingId3CoverUri != null) "Borítókép kiválasztva" else "Nincs külön borítókép kiválasztva", 11f, Color.rgb(170, 180, 190))
+        pendingId3CoverLabel = coverLabel
+        panel.addView(Button(this).apply {
+            text = "BORÍTÓKÉP KIVÁLASZTÁSA"
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                }
+                startActivityForResult(intent, id3CoverRequest)
+            }
+        }, LinearLayout.LayoutParams(-1, dp(44)))
+        panel.addView(coverLabel)
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("ID3 Editor")
@@ -2605,13 +2623,13 @@ class MainActivity : Activity() {
                     return@setOnClickListener
                 }
                 dialog.dismiss()
-                createTaggedMp3Copy(uri, displayName, values)
+                createTaggedMp3Copy(uri, displayName, values, pendingId3CoverUri)
             }
         }
         dialog.show()
     }
 
-    private fun createTaggedMp3Copy(sourceUri: Uri, originalName: String, fields: List<String>) {
+    private fun createTaggedMp3Copy(sourceUri: Uri, originalName: String, fields: List<String>, coverUri: Uri?) {
         toast("ID3-másolat készítése…")
         Thread {
             var destination: Uri? = null
@@ -2661,7 +2679,15 @@ class MainActivity : Activity() {
                             skipFully(input, tagSize.toLong() + if ((first[5].toInt() and 0x10) != 0) 10L else 0L)
                         }
 
-                        output.write(buildId3v23Tag(title, artist, album, year, genre))
+                        val coverBytes = coverUri?.let { cover ->
+                            contentResolver.openInputStream(cover)?.use { stream ->
+                                val data = stream.readBytes()
+                                if (data.size > 10 * 1024 * 1024) throw IllegalArgumentException("A borítókép legfeljebb 10 MB lehet.")
+                                data
+                            }
+                        }
+                        val coverMime = coverUri?.let { contentResolver.getType(it) } ?: "image/jpeg"
+                        output.write(buildId3v23Tag(title, artist, album, year, genre, coverBytes, coverMime))
                         if (!hasId3 && firstCount > 0) output.write(first, 0, firstCount)
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
@@ -2686,7 +2712,7 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun buildId3v23Tag(title: String, artist: String, album: String, year: String, genre: String): ByteArray {
+    private fun buildId3v23Tag(title: String, artist: String, album: String, year: String, genre: String, cover: ByteArray? = null, coverMime: String = "image/jpeg"): ByteArray {
         val frames = listOf(
             "TIT2" to title,
             "TPE1" to artist,
@@ -2698,13 +2724,12 @@ class MainActivity : Activity() {
         frames.forEach { (id, value) ->
             val text = byteArrayOf(1, 0xff.toByte(), 0xfe.toByte()) +
                 value.toByteArray(Charsets.UTF_16LE)
-            body.write(id.toByteArray(Charsets.US_ASCII))
-            val size = text.size
-            body.write(byteArrayOf(
-                (size ushr 24).toByte(), (size ushr 16).toByte(),
-                (size ushr 8).toByte(), size.toByte(), 0, 0
-            ))
-            body.write(text)
+            writeId3Frame(body, id, text)
+        }
+        if (cover != null && cover.isNotEmpty()) {
+            val mime = coverMime.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+            val apic = byteArrayOf(0) + mime.toByteArray(Charsets.ISO_8859_1) + byteArrayOf(0, 3, 0) + cover
+            writeId3Frame(body, "APIC", apic)
         }
         val payload = body.toByteArray()
         val size = payload.size
@@ -2716,6 +2741,16 @@ class MainActivity : Activity() {
             (size and 0x7f).toByte()
         )
         return header + payload
+    }
+
+    private fun writeId3Frame(body: java.io.ByteArrayOutputStream, id: String, data: ByteArray) {
+        body.write(id.toByteArray(Charsets.US_ASCII))
+        val size = data.size
+        body.write(byteArrayOf(
+            (size ushr 24).toByte(), (size ushr 16).toByte(),
+            (size ushr 8).toByte(), size.toByte(), 0, 0
+        ))
+        body.write(data)
     }
 
     private fun skipFully(input: java.io.InputStream, bytes: Long) {
@@ -4094,6 +4129,13 @@ class MainActivity : Activity() {
                         }.show()
                 }
                 .onFailure { toast("A mentés nem olvasható: ${it.message ?: "hiba"}") }
+            return
+        }
+        if (requestCode == id3CoverRequest) {
+            val uri = data.data ?: return
+            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
+            pendingId3CoverUri = uri
+            pendingId3CoverLabel?.text = "Borítókép kiválasztva"
             return
         }
         if (requestCode == wavEditRequest) {
