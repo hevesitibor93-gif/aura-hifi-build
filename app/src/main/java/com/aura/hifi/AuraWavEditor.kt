@@ -28,7 +28,9 @@ object AuraWavEditor {
         trimStartMs: Long,
         trimEndMs: Long,
         normalize: Boolean,
-        noiseGateDb: Int
+        noiseGateDb: Int,
+        fadeInMs: Long = 0L,
+        fadeOutMs: Long = 0L
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -54,11 +56,19 @@ object AuraWavEditor {
             i += 2
         }
         val gain = if (normalize && peak > 0) minOf(32767.0 / peak, 8.0) else 1.0
+        val selectedFrames = selected.size / frameSize
+        val fadeInFrames = (fadeInMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
+        val fadeOutFrames = (fadeOutMs.coerceAtLeast(0L) * wav.sampleRate / 1000L).coerceAtMost(selectedFrames.toLong()).toInt()
         i = 0
         while (i + 1 < selected.size) {
             val sample = ((selected[i + 1].toInt() shl 8) or (selected[i].toInt() and 0xff)).toShort().toInt()
             val gated = if (noiseGateDb > -90 && abs(sample).toDouble() < threshold) 0 else sample
-            val adjusted = (gated * gain).roundToInt().coerceIn(-32768, 32767)
+            val frame = i / frameSize
+            val fadeIn = if (fadeInFrames > 0 && frame < fadeInFrames) frame.toDouble() / fadeInFrames else 1.0
+            val framesFromEnd = selectedFrames - 1 - frame
+            val fadeOut = if (fadeOutFrames > 0 && framesFromEnd < fadeOutFrames) framesFromEnd.toDouble() / fadeOutFrames else 1.0
+            val envelope = minOf(fadeIn, fadeOut).coerceIn(0.0, 1.0)
+            val adjusted = (gated * gain * envelope).roundToInt().coerceIn(-32768, 32767)
             selected[i] = adjusted.toByte()
             selected[i + 1] = (adjusted shr 8).toByte()
             i += 2
