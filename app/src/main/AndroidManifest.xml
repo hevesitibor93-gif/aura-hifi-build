@@ -24,6 +24,5 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/aura_mini_widget_info" />
         </receiver>
-        <activity android:name=".AuraRemixerActivity" android:exported="false" />
     </application>
 </manifest>
