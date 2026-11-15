@@ -2860,7 +2860,16 @@ class MainActivity : Activity() {
         val rangeStatus = label("Jelöld ki a megtartandó részt a csúszkán.", 11f, Color.rgb(238, 202, 137))
         val normalize = CheckBox(this).apply { text = "Csúcsnormalizálás (max. 0 dBFS)"; isChecked = true }
         val gate = SeekBar(this).apply { max = 80; progress = 0 }
-        val gateLabel = label("Zajkapu: kikapcsolva", 11f, Color.WHITE)
+        val gateLabel = label("Zajkapu küszöb: -90 dB", 11f, Color.WHITE)
+        val noiseReductionControl = SeekBar(this).apply { max = 100; progress = 0 }
+        val noiseReductionLabel = label("Finom zajcsökkentés: kikapcsolva", 11f, Color.WHITE)
+        noiseReductionControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                noiseReductionLabel.text = if (progress == 0) "Finom zajcsökkentés: kikapcsolva" else "Finom zajcsökkentés: $progress%"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
         val gainControl = SeekBar(this).apply { max = 24; progress = 12 }
         val gainLabel = label("Kézi erősítés: 0 dB", 11f, Color.WHITE)
         gainControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -3016,6 +3025,7 @@ class MainActivity : Activity() {
             addView(normalize)
             addView(gainLabel); addView(gainControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(gateLabel); addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(noiseReductionLabel); addView(noiseReductionControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(echoLabel); addView(echoControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(reverbLabel); addView(reverbControl, LinearLayout.LayoutParams(-1, dp(38)))
             addView(bassToneLabel); addView(bassToneControl, LinearLayout.LayoutParams(-1, dp(38)))
@@ -3037,14 +3047,14 @@ class MainActivity : Activity() {
                     val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
-                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress, bassToneControl.progress - 12, trebleToneControl.progress - 12, stereoWidthControl.progress)
+                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong(), gainControl.progress - 12, 250L, echoControl.progress, reverbControl.progress, bassToneControl.progress - 12, trebleToneControl.progress - 12, stereoWidthControl.progress, noiseReductionControl.progress)
                 }
             }.setNegativeButton("MÉGSE", null).create()
         editorDialog.setOnDismissListener { stopWavPreview() }
         editorDialog.show()
     }
 
-    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int, bassDb: Int, trebleDb: Int, stereoWidthPercent: Int) {
+    private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long, gainDb: Int, echoDelayMs: Long, echoMixPercent: Int, reverbPercent: Int, bassDb: Int, trebleDb: Int, stereoWidthPercent: Int, noiseReductionPercent: Int) {
         toast("AURA WAV-feldolgozás indul…")
         Thread {
             var destination: Uri? = null
@@ -3068,7 +3078,7 @@ class MainActivity : Activity() {
                     ?: throw IllegalStateException("Nem hozható létre az exportfájl.")
                 contentResolver.openInputStream(uri)?.use { input ->
                     contentResolver.openOutputStream(destination!!, "w")?.use { output ->
-                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent, bassDb, trebleDb, stereoWidthPercent)
+                        AuraWavEditor.process(input, output, startMs, endMs, normalize, gateDb, fadeInMs, fadeOutMs, gainDb, echoDelayMs, echoMixPercent, reverbPercent, bassDb, trebleDb, stereoWidthPercent, noiseReductionPercent)
                     } ?: throw IllegalStateException("Az exportfájl nem írható.")
                 } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
