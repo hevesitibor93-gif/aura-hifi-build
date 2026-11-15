@@ -7,6 +7,11 @@ import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.SoundPool
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -26,8 +31,12 @@ class RemixerActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private val gold = Color.rgb(255, 190, 82)
     private val handler = Handler(Looper.getMainLooper())
-    private val tracks = mutableSetOf<AudioTrack>()
     private val audioExecutor = Executors.newSingleThreadExecutor()
+    private var soundPool: SoundPool? = null
+    private val soundIds = Array(3) { IntArray(8) }
+    private var soundsReady = false
+    private var soundsLoaded = 0
+    private var pendingKit = 0
     private var kit = 0
     private var playing = false
     private var currentStep = -1
@@ -72,17 +81,23 @@ class RemixerActivity : Activity() {
         }
 
     private fun sound(pad: Int) {
+        val pool = soundPool ?: return
+        val id = soundIds[kit][pad]
+        if (id != 0) pool.play(id, 1f, 1f, 1, 0, 1f)
+    }
+
+    private fun generatePcm(pad: Int, selectedKit: Int): ShortArray {
         val rate = 44100
         val seconds = when (pad) { 0 -> .48; 1 -> .34; 2 -> .12; 3 -> .62; 4 -> .30; 5 -> .42; 6 -> .30; else -> .16 }
         val data = ShortArray((rate * seconds).toInt())
-        val random = Random(pad * 7919 + kit * 104729 + 17)
+        val random = Random(pad * 7919 + selectedKit * 104729 + 17)
         var filteredNoise = 0.0
-        val pitch = when (kit) { 1 -> 1.22; 2 -> .82; else -> 1.0 }
+        val pitch = when (selectedKit) { 1 -> 1.22; 2 -> .82; else -> 1.0 }
         for (i in data.indices) {
             val t = i.toDouble() / rate
             val n = random.nextDouble(-1.0, 1.0)
             val v = when (pad) {
-                0 -> sin(2 * PI * ((if (kit == 2) 105.0 else 145.0) * exp(-t * 15) + 38) * pitch * t) * exp(-t * 7.5) * .92 + n * exp(-t * 85) * .1
+                0 -> sin(2 * PI * ((if (selectedKit == 2) 105.0 else 145.0) * exp(-t * 15) + 38) * pitch * t) * exp(-t * 7.5) * .92 + n * exp(-t * 85) * .1
                 1 -> n * exp(-t * 17) * .58 + sin(2 * PI * 185 * t) * exp(-t * 23) * .28
                 2, 3 -> {
                     filteredNoise = filteredNoise * .35 + n * .65
@@ -97,21 +112,57 @@ class RemixerActivity : Activity() {
             }
             data[i] = (v * .82).coerceIn(-.98, .98).times(Short.MAX_VALUE).toInt().toShort()
         }
-        try {
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setAudioFormat(AudioFormat.Builder().setSampleRate(rate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .setBufferSizeInBytes(data.size * 2)
-                .build()
-            track.write(data, 0, data.size, AudioTrack.WRITE_BLOCKING)
-            synchronized(tracks) { tracks.add(track) }
-            track.play()
-            handler.postDelayed({
-                synchronized(tracks) { tracks.remove(track) }
-                try { track.release() } catch (_: Exception) {}
-            }, (data.size * 1000L / rate) + 200L)
-        } catch (_: Exception) {}
+        return data
+    }
+
+    private fun writeWav(file: File, samples: ShortArray) {
+        val dataBytes = samples.size * 2
+        FileOutputStream(file).use { out ->
+            val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+            header.put("RIFF".toByteArray(Charsets.US_ASCII))
+            header.putInt(36 + dataBytes)
+            header.put("WAVE".toByteArray(Charsets.US_ASCII))
+            header.put("fmt ".toByteArray(Charsets.US_ASCII))
+            header.putInt(16); header.putShort(1); header.putShort(1)
+            header.putInt(44100); header.putInt(88200); header.putShort(2); header.putShort(16)
+            header.put("data".toByteArray(Charsets.US_ASCII)); header.putInt(dataBytes)
+            out.write(header.array())
+            val pcm = ByteBuffer.allocate(dataBytes).order(ByteOrder.LITTLE_ENDIAN)
+            samples.forEach { pcm.putShort(it) }
+            out.write(pcm.array())
+        }
+    }
+
+    private fun prepareSounds() {
+        val attributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+        val pool = SoundPool.Builder().setMaxStreams(24).setAudioAttributes(attributes).build()
+        soundPool = pool
+        pool.setOnLoadCompleteListener { _, _, status ->
+            if (status == 0) {
+                soundsLoaded++
+                if (soundsLoaded >= 24) {
+                    soundsReady = true
+                    runOnUiThread {
+                        kitText.text = "KIT  •  " + listOf("AURA ACOUSTIC", "AURA ELECTRO", "AURA 808")[kit]
+                    }
+                }
+            }
+        }
+        audioExecutor.execute {
+            for (kitIndex in 0..2) {
+                for (pad in 0..7) {
+                    val file = File(cacheDir, "aura_kit_${kitIndex}_pad_${pad}.wav")
+                    try {
+                        if (!file.exists()) writeWav(file, generatePcm(pad, kitIndex))
+                        val id = pool.load(file.absolutePath, 1)
+                        soundIds[kitIndex][pad] = id
+                    } catch (_: Exception) { }
+                }
+            }
+        }
     }
 
     private fun buildPads(parent: LinearLayout) {
@@ -277,6 +328,7 @@ class RemixerActivity : Activity() {
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         buildPads(content)
         buildSequencer(content)
+        prepareSounds()
         content.addView(text("KÖVETKEZŐ MODULOK", 11f, gold, true).apply { setPadding(dp(3), dp(20), 0, dp(8)) })
         for ((title, desc) in listOf(
             "AI STEM SEPARATOR" to "Ének, dob, basszus és hangszer sávok szétválasztása.",
@@ -299,10 +351,8 @@ class RemixerActivity : Activity() {
         playing = false
         handler.removeCallbacksAndMessages(null)
         audioExecutor.shutdownNow()
-        synchronized(tracks) {
-            tracks.forEach { try { it.stop(); it.release() } catch (_: Exception) {} }
-            tracks.clear()
-        }
+        try { soundPool?.release() } catch (_: Exception) {}
+        soundPool = null
         super.onDestroy()
     }
 }
