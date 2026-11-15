@@ -2843,94 +2843,61 @@ class MainActivity : Activity() {
 
     private fun showWavEditor(uri: Uri) {
         var durationMs = 0L
-        try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(this, uri)
-            durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-            retriever.release()
-        } catch (_: Exception) {}
-        val startInput = EditText(this).apply {
-            hint = "Kezdés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setText("0")
-        }
-        val endInput = EditText(this).apply {
-            hint = "Befejezés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setText(if (durationMs > 0) "%.2f".format(java.util.Locale.US, durationMs / 1000.0) else "0")
-        }
+        try { durationMs = contentResolver.openInputStream(uri)?.use { AuraWavEditor.inspect(it).durationMs } ?: 0L } catch (_: Exception) {}
+        val durationSeconds = (durationMs / 1000.0).coerceAtLeast(0.0)
+        val startInput = EditText(this).apply { hint = "Kezdés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText("0") }
+        val endInput = EditText(this).apply { hint = "Befejezés másodpercben"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText(if (durationMs > 0) "%.3f".format(java.util.Locale.US, durationSeconds) else "0") }
+        val rangeStatus = label("Jelöld ki a megtartandó részt a csúszkán.", 11f, Color.rgb(238, 202, 137))
         val normalize = CheckBox(this).apply { text = "Csúcsnormalizálás (max. 0 dBFS)"; isChecked = true }
         val gate = SeekBar(this).apply { max = 80; progress = 0 }
         val gateLabel = label("Zajkapu: kikapcsolva", 11f, Color.WHITE)
-        val fadeInInput = EditText(this).apply {
-            hint = "Fade-in (másodperc)"; setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setText("0")
-        }
-        val fadeOutInput = EditText(this).apply {
-            hint = "Fade-out (másodperc)"; setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setText("0")
-        }
+        val fadeInInput = EditText(this).apply { hint = "Fade-in (másodperc)"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText("0") }
+        val fadeOutInput = EditText(this).apply { hint = "Fade-out (másodperc)"; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL; setText("0") }
         gate.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                gateLabel.text = if (progress == 0) "Zajkapu: kikapcsolva" else "Zajkapu küszöb: ${-90 + progress} dB"
-            }
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) { gateLabel.text = if (progress == 0) "Zajkapu: kikapcsolva" else "Zajkapu küszöb: ${-90 + progress} dB" }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
         val waveformPreview = AuraWaveformView(this)
+        val trimRange = AuraTrimRangeView(this).apply {
+            setRange(0f, 1f)
+            onRangeChanged = { from, to ->
+                val first = from * durationSeconds; val last = to * durationSeconds
+                startInput.setText("%.3f".format(java.util.Locale.US, first))
+                endInput.setText("%.3f".format(java.util.Locale.US, last))
+                rangeStatus.text = "Kijelölés: %.3f – %.3f mp (%.3f mp)".format(java.util.Locale.US, first, last, (last-first).coerceAtLeast(0.0))
+            }
+        }
         val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(6), dp(18), dp(2))
-            addView(label("A szerkesztő jelenleg 16 bites, tömörítetlen PCM WAV-fájlokat kezel. Az eredeti fájl érintetlen marad.", 11f, Color.rgb(165, 175, 190)))
-            addView(label("HULLÁMFORMA • ELŐNÉZET", 10f, Color.rgb(238, 202, 137)))
-            addView(waveformPreview, LinearLayout.LayoutParams(-1, dp(112)).apply {
-                topMargin = dp(5)
-                bottomMargin = dp(8)
-            })
-            addView(label("Kezdés (mp)", 11f, Color.rgb(238, 202, 137)))
-            addView(startInput, LinearLayout.LayoutParams(-1, dp(48)))
-            addView(label("Befejezés (mp)", 11f, Color.rgb(238, 202, 137)))
-            addView(endInput, LinearLayout.LayoutParams(-1, dp(48)))
-            addView(normalize)
-            addView(gateLabel)
-            addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
-            addView(label("Fade-in (mp)", 11f, Color.rgb(238, 202, 137)))
-            addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(44)))
-            addView(label("Fade-out (mp)", 11f, Color.rgb(238, 202, 137)))
-            addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(44)))
+            orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(6), dp(18), dp(2))
+            addView(label("16 bites PCM WAV • Az eredeti fájl érintetlen marad.", 11f, Color.rgb(165,175,190)))
+            addView(label("HULLÁMFORMA • ELŐNÉZET", 10f, Color.rgb(238,202,137)))
+            addView(waveformPreview, LinearLayout.LayoutParams(-1, dp(100)).apply { topMargin = dp(5) })
+            addView(label("HÚZD A KÉT JELÖLŐT A VÁGÁSI PONTOKHOZ", 10f, Color.rgb(238,202,137)))
+            addView(trimRange, LinearLayout.LayoutParams(-1, dp(52)))
+            addView(rangeStatus)
+            addView(label("Kezdés (mp)", 11f, Color.rgb(238,202,137))); addView(startInput, LinearLayout.LayoutParams(-1, dp(44)))
+            addView(label("Befejezés (mp)", 11f, Color.rgb(238,202,137))); addView(endInput, LinearLayout.LayoutParams(-1, dp(44)))
+            addView(normalize); addView(gateLabel); addView(gate, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(label("Fade-in (mp)", 11f, Color.rgb(238,202,137))); addView(fadeInInput, LinearLayout.LayoutParams(-1, dp(42)))
+            addView(label("Fade-out (mp)", 11f, Color.rgb(238,202,137))); addView(fadeOutInput, LinearLayout.LayoutParams(-1, dp(42)))
         }
         Thread {
-            try {
-                val peaks = contentResolver.openInputStream(uri)?.use { AuraWavEditor.waveform(it, 240) }
-                    ?: throw IllegalStateException("A WAV-fájl nem olvasható.")
-                waveformPreview.post { waveformPreview.setWaveform(peaks) }
-            } catch (e: Exception) {
-                waveformPreview.post {
-                    waveformPreview.setWaveform(FloatArray(0))
-                    gateLabel.text = "Hullámforma nem tölthető be: ${e.localizedMessage ?: "ismeretlen hiba"}"
-                }
-            }
+            try { val peaks = contentResolver.openInputStream(uri)?.use { AuraWavEditor.waveform(it, 240) } ?: throw IllegalStateException("A WAV-fájl nem olvasható."); waveformPreview.post { waveformPreview.setWaveform(peaks) } }
+            catch (e: Exception) { waveformPreview.post { gateLabel.text = "Hullámforma nem tölthető be: ${e.localizedMessage ?: "ismeretlen hiba"}" } }
         }.start()
-        AlertDialog.Builder(this)
-            .setTitle("AURA Audio Lab • WAV Editor")
-            .setView(panel)
+        AlertDialog.Builder(this).setTitle("AURA Audio Lab • WAV Editor").setView(panel)
             .setPositiveButton("EXPORT ÚJ FÁJLKÉNT") { _, _ ->
-                val start = (startInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0)
-                val end = (endInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0)
-                if (start < 0 || end < 0 || (end > 0 && end <= start)) {
-                    toast("Ellenőrizd a vágási időket.")
-                } else {
+                val start = startInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+                val end = endInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+                if (start < 0 || end < 0 || (end > 0 && end <= start) || (durationSeconds > 0 && end > durationSeconds + 0.01)) toast("Ellenőrizd a vágási időket.")
+                else {
                     val fadeIn = fadeInInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                     val fadeOut = fadeOutInput.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
-                    if (fadeIn < 0 || fadeOut < 0) {
-                        toast("A fade értéke nem lehet negatív.")
-                    } else {
-                        exportEditedWav(uri, (start * 1000).toLong(), (end * 1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90 + gate.progress, (fadeIn * 1000).toLong(), (fadeOut * 1000).toLong())
-                    }
+                    if (fadeIn < 0 || fadeOut < 0) toast("A fade értéke nem lehet negatív.")
+                    else exportEditedWav(uri, (start*1000).toLong(), (end*1000).toLong(), normalize.isChecked, if (gate.progress == 0) -90 else -90+gate.progress, (fadeIn*1000).toLong(), (fadeOut*1000).toLong())
                 }
-            }
-            .setNegativeButton("MÉGSE", null)
-            .show()
+            }.setNegativeButton("MÉGSE", null).show()
     }
 
     private fun exportEditedWav(uri: Uri, startMs: Long, endMs: Long, normalize: Boolean, gateDb: Int, fadeInMs: Long, fadeOutMs: Long) {
