@@ -2542,92 +2542,193 @@ class MainActivity : Activity() {
     }
 
     private fun showId3Editor(uri: Uri) {
-        val current = librarySongByUri[uri.toString()]
-        var existingYear = ""
-        var existingGenre = ""
+        val displayName = runCatching {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        }.getOrNull() ?: librarySongByUri[uri.toString()]?.fileName.orEmpty()
+
+        if (!displayName.endsWith(".mp3", ignoreCase = true)) {
+            showFeatureNotice("ID3 Editor", "A valódi fájlszintű ID3-mentés első körben MP3-fájlokhoz érhető el. Más formátumnál nem módosítunk semmit.")
+            return
+        }
+
+        var title = trackLabel.text?.toString().orEmpty()
+        var artist = metadataLabel.text?.toString().orEmpty()
+        var album = albumLabel.text?.toString().orEmpty()
+        var year = ""
+        var genre = ""
         try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(this, uri)
-            existingYear = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR) ?: ""
-            existingGenre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE) ?: ""
-            retriever.release()
+            MediaMetadataRetriever().also { retriever ->
+                retriever.setDataSource(this, uri)
+                title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: title
+                artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: artist
+                album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: album
+                year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR) ?: ""
+                genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE) ?: ""
+                retriever.release()
+            }
         } catch (_: Exception) {}
-        val fields = listOf(
-            "Cím" to (trackLabel.text?.toString() ?: ""),
-            "Előadó" to (metadataLabel.text?.toString() ?: ""),
-            "Album" to (albumLabel.text?.toString() ?: ""),
-            "Év" to existingYear,
-            "Műfaj" to existingGenre
-        )
+
+        val names = listOf("Cím", "Előadó", "Album", "Év", "Műfaj")
+        val initial = listOf(title, artist, album, year, genre)
         val inputs = mutableListOf<EditText>()
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
         }
-        fields.forEachIndexed { index, pair ->
+        names.forEachIndexed { index, name ->
             val input = EditText(this).apply {
-                hint = pair.first
+                hint = name
                 setSingleLine(true)
-                setText(pair.second)
+                setText(initial[index])
                 textSize = 14f
                 if (index == 3) inputType = android.text.InputType.TYPE_CLASS_NUMBER
             }
             inputs.add(input)
             panel.addView(input, LinearLayout.LayoutParams(-1, dp(48)))
         }
-        AlertDialog.Builder(this)
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle("ID3 Editor")
-            .setMessage("A módosításokat az AURA médiatárában mentjük. Az eredeti hangadatot nem módosítjuk.")
+            .setMessage("Mentés új MP3-fájlként, valódi ID3v2.3 címkékkel. Az eredeti zenefájl változatlan marad.")
             .setView(panel)
-            .setPositiveButton("MENTÉS") { _, _ ->
-                val values = ContentValues().apply {
-                    put(MediaStore.Audio.Media.TITLE, inputs[0].text.toString().trim())
-                    put(MediaStore.Audio.Media.ARTIST, inputs[1].text.toString().trim())
-                    put(MediaStore.Audio.Media.ALBUM, inputs[2].text.toString().trim())
-                    inputs[3].text.toString().trim().toIntOrNull()?.let { put(MediaStore.Audio.Media.YEAR, it) }
-                }
-                try {
-                    val changed = contentResolver.update(uri, values, null, null)
-                    val genreName = inputs[4].text.toString().trim()
-                    val audioId = android.content.ContentUris.parseId(uri)
-                    if (genreName.isNotBlank()) {
-                        val genresUri = MediaStore.Audio.Genres.getContentUri("external")
-                        var genreId: Long? = null
-                        contentResolver.query(genresUri, arrayOf(MediaStore.Audio.Genres._ID), MediaStore.Audio.Genres.NAME + "=?", arrayOf(genreName), null)?.use { cursor ->
-                            if (cursor.moveToFirst()) genreId = cursor.getLong(0)
-                        }
-                        if (genreId == null) {
-                            val created = contentResolver.insert(genresUri, ContentValues().apply { put(MediaStore.Audio.Genres.NAME, genreName) })
-                            genreId = created?.let { android.content.ContentUris.parseId(it) }
-                        }
-                        genreId?.let { id ->
-                            val members = MediaStore.Audio.Genres.Members.getContentUri("external", id)
-                            val memberValues = ContentValues().apply { put(MediaStore.Audio.Genres.Members.AUDIO_ID, audioId) }
-                            try { contentResolver.insert(members, memberValues) } catch (_: Exception) {}
-                        }
-                    }
-                    if (changed > 0) {
-                        trackLabel.text = inputs[0].text.toString().ifBlank { "Ismeretlen cím" }
-                        metadataLabel.text = inputs[1].text.toString().ifBlank { "Ismeretlen előadó" }
-                        albumLabel.text = inputs[2].text.toString().ifBlank { "Ismeretlen album" }
-                        current?.let { old ->
-                            val updated = old.copy(title = trackLabel.text.toString(), artist = metadataLabel.text.toString(), album = albumLabel.text.toString())
-                            librarySongByUri[uri.toString()] = updated
-                            val index = librarySongs.indexOfFirst { it.uri == uri }
-                            if (index >= 0) librarySongs[index] = updated
-                        }
-                        toast("A dal adatai elmentve.")
-                    } else {
-                        toast("A tárhely nem engedte az adatok módosítását.")
-                    }
-                } catch (_: SecurityException) {
-                    toast("A fájl módosításához Android-hozzáférés szükséges. A fájlkezelőben engedélyezd a hozzáférést.")
-                } catch (e: Exception) {
-                    toast("Mentési hiba: ${e.localizedMessage ?: "ismeretlen hiba"}")
-                }
-            }
+            .setPositiveButton("MENTÉS MÁSOLATKÉNT", null)
             .setNegativeButton("MÉGSE", null)
-            .show()
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val values = inputs.map { it.text.toString().trim() }
+                if (values[0].isBlank()) {
+                    inputs[0].error = "A cím nem lehet üres"
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                createTaggedMp3Copy(uri, displayName, values)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun createTaggedMp3Copy(sourceUri: Uri, originalName: String, fields: List<String>) {
+        toast("ID3-másolat készítése…")
+        Thread {
+            var destination: Uri? = null
+            try {
+                val title = fields[0]
+                val artist = fields[1]
+                val album = fields[2]
+                val year = fields[3]
+                val genre = fields[4]
+                val baseName = originalName.substringBeforeLast('.', originalName)
+                    .replace(Regex("[\\\\/:*?\""<>|]"), "_")
+                val outputName = "$baseName - AURA.mp3"
+                val metadata = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, outputName)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
+                    put(MediaStore.Audio.Media.TITLE, title)
+                    put(MediaStore.Audio.Media.ARTIST, artist)
+                    put(MediaStore.Audio.Media.ALBUM, album)
+                    year.toIntOrNull()?.let { put(MediaStore.Audio.Media.YEAR, it) }
+                    put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Audio.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MUSIC + "/AURA ID3")
+                        put(MediaStore.Audio.Media.IS_PENDING, 1)
+                    }
+                }
+                destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, metadata)
+                    ?: throw IllegalStateException("Nem sikerült létrehozni a célfájlt.")
+
+                contentResolver.openInputStream(sourceUri)?.use { input ->
+                    contentResolver.openOutputStream(destination!!, "w")?.use { output ->
+                        val first = ByteArray(10)
+                        var firstCount = 0
+                        while (firstCount < first.size) {
+                            val count = input.read(first, firstCount, first.size - firstCount)
+                            if (count <= 0) break
+                            firstCount += count
+                        }
+                        val hasId3 = firstCount == 10 &&
+                            first[0] == 'I'.code.toByte() &&
+                            first[1] == 'D'.code.toByte() &&
+                            first[2] == '3'.code.toByte()
+                        if (hasId3) {
+                            val tagSize = ((first[6].toInt() and 0x7f) shl 21) or
+                                ((first[7].toInt() and 0x7f) shl 14) or
+                                ((first[8].toInt() and 0x7f) shl 7) or
+                                (first[9].toInt() and 0x7f)
+                            skipFully(input, tagSize.toLong() + if ((first[5].toInt() and 0x10) != 0) 10L else 0L)
+                        } else if (firstCount > 0) {
+                            output.write(first, 0, firstCount)
+                        }
+
+                        output.write(buildId3v23Tag(title, artist, album, year, genre))
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            if (count > 0) output.write(buffer, 0, count)
+                        }
+                        output.flush()
+                    } ?: throw IllegalStateException("Nem írható a célfájl.")
+                } ?: throw IllegalStateException("A forrásfájl nem olvasható.")
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentResolver.update(destination!!, ContentValues().apply {
+                        put(MediaStore.Audio.Media.IS_PENDING, 0)
+                    }, null, null)
+                }
+                runOnUiThread { toast("Kész! Az új ID3-címkés másolat a Music/AURA ID3 mappába került. Az eredeti megmaradt.") }
+            } catch (e: Exception) {
+                destination?.let { runCatching { contentResolver.delete(it, null, null) } }
+                runOnUiThread { toast("ID3-mentési hiba: \${e.localizedMessage ?: "ismeretlen hiba"}") }
+            }
+        }.start()
+    }
+
+    private fun buildId3v23Tag(title: String, artist: String, album: String, year: String, genre: String): ByteArray {
+        val frames = listOf(
+            "TIT2" to title,
+            "TPE1" to artist,
+            "TALB" to album,
+            "TYER" to year,
+            "TCON" to genre
+        ).filter { it.second.isNotBlank() }
+        val body = java.io.ByteArrayOutputStream()
+        frames.forEach { (id, value) ->
+            val text = byteArrayOf(1, 0xff.toByte(), 0xfe.toByte()) +
+                value.toByteArray(Charsets.UTF_16LE)
+            body.write(id.toByteArray(Charsets.US_ASCII))
+            val size = text.size
+            body.write(byteArrayOf(
+                (size ushr 24).toByte(), (size ushr 16).toByte(),
+                (size ushr 8).toByte(), size.toByte(), 0, 0
+            ))
+            body.write(text)
+        }
+        val payload = body.toByteArray()
+        val size = payload.size
+        val header = byteArrayOf(
+            'I'.code.toByte(), 'D'.code.toByte(), '3'.code.toByte(), 3, 0, 0,
+            ((size ushr 21) and 0x7f).toByte(),
+            ((size ushr 14) and 0x7f).toByte(),
+            ((size ushr 7) and 0x7f).toByte(),
+            (size and 0x7f).toByte()
+        )
+        return header + payload
+    }
+
+    private fun skipFully(input: java.io.InputStream, bytes: Long) {
+        var remaining = bytes
+        while (remaining > 0) {
+            val skipped = input.skip(remaining)
+            if (skipped > 0) {
+                remaining -= skipped
+            } else {
+                if (input.read() < 0) throw java.io.EOFException("Hiányos ID3 címke.")
+                remaining--
+            }
+        }
     }
 
     private fun showAudioLab() {
