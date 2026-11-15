@@ -66,7 +66,8 @@ object AuraWavEditor {
         reverbPercent: Int = 0,
         bassDb: Int = 0,
         trebleDb: Int = 0,
-        stereoWidthPercent: Int = 100
+        stereoWidthPercent: Int = 100,
+        noiseReductionPercent: Int = 0
     ) {
         val wav = parse(input)
         require(wav.audioFormat == 1 && wav.bitsPerSample == 16) {
@@ -138,7 +139,14 @@ object AuraWavEditor {
         i = 0
         while (i + 1 < selected.size) {
             val sample = ((selected[i + 1].toInt() shl 8) or (selected[i].toInt() and 0xff)).toShort().toInt()
-            val gated = if (noiseGateDb > -90 && abs(sample).toDouble() < threshold) 0 else sample
+            val magnitude = abs(sample).toDouble()
+            val reduction = noiseReductionPercent.coerceIn(0, 100) / 100.0
+            val softAttenuation = if (reduction > 0.0 && threshold > 0.0 && magnitude < threshold) {
+                val belowThreshold = (1.0 - magnitude / threshold).coerceIn(0.0, 1.0)
+                1.0 - reduction * belowThreshold * belowThreshold
+            } else 1.0
+            val gated = if (noiseGateDb > -90 && magnitude < threshold && noiseReductionPercent == 0) 0
+                else (sample * softAttenuation).roundToInt()
             val delayedIndex = i - echoDelayBytes
             val delayed = if (echoMix > 0.0 && delayedIndex >= 0) {
                 ((original[delayedIndex + 1].toInt() shl 8) or (original[delayedIndex].toInt() and 0xff)).toShort().toInt()
