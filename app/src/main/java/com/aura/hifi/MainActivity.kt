@@ -2643,7 +2643,9 @@ class MainActivity : Activity() {
             playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
         }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
+        // BLACK-ONIX already has its own original transport and navigation controls.
+        // Keep the generic navigation row only in the portrait UI.
+        if (!landscape) root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(8) })
         showPage(0)
         setContentView(root)
         
