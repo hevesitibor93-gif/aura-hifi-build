@@ -158,7 +158,7 @@ class BlackOnixDeckView(
             // bin 5. The first band includes the main kick range (20–80 Hz).
             val nyquist = 22050.0
             val edges = doubleArrayOf(20.0, 80.0, 125.0, 190.0, 280.0)
-            val firstFour = i@ for (i in 0 until 4) {
+            for (i in 0 until 4) {
                 val startBin = (edges[i] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(1)
                 val endBin = kotlin.math.ceil(edges[i + 1] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(startBin + 1)
                 var peak = 0f
