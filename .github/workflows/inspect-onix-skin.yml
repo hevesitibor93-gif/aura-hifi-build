@@ -16,6 +16,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract original skin image assets
         run: |
+          file BLACK-ONIX.acs3
+          mkdir -p /tmp/onix-acs3
+          if unzip -q BLACK-ONIX.acs3 -d /tmp/onix-acs3 2>/tmp/acs3-unzip.log; then
+            echo "ACS3 is ZIP-compatible"
+            find /tmp/onix-acs3 -type f | sort > /tmp/acs3-files.txt
+            cat /tmp/acs3-files.txt
+            cp -a /tmp/onix-acs3 onix-skin-extract/acs3
+            cp /tmp/acs3-files.txt onix-skin-extract/
+          else
+            cat /tmp/acs3-unzip.log
+          fi
           mkdir -p /tmp/onix-assets
           unzip -q BLACK-ONIX-Images.zip -d /tmp/onix-assets
           find /tmp/onix-assets -type f | sort > /tmp/onix-assets-list.txt
