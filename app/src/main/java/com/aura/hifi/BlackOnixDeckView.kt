@@ -154,9 +154,14 @@ class BlackOnixDeckView(
         if (fft.size > 8) {
             fftActive = true
             val bins = fft.size / 2
+            // Spread 30 logarithmic bands across the usable spectrum. Start above
+            // the first few coarse FFT bins so the bass bars do not all read bin 1.
+            val lowestBin = 5.0
+            val highestBin = (bins - 1).coerceAtLeast(6).toDouble()
+            val binRange = highestBin / lowestBin
             for (i in 0 until 30) {
-                val startBin = Math.pow(220.0, i / 29.0).toInt().coerceAtLeast(1)
-                val endBin = Math.pow(220.0, (i + 1) / 29.0).toInt().coerceAtLeast(startBin + 1)
+                val startBin = (lowestBin * Math.pow(binRange, i / 30.0)).toInt().coerceAtLeast(1)
+                val endBin = (lowestBin * Math.pow(binRange, (i + 1) / 30.0)).toInt().coerceAtLeast(startBin + 1)
                 var peak = 0f
                 for (bin in startBin until min(endBin, bins)) {
                     val offset = bin * 2
