@@ -174,11 +174,13 @@ class BlackOnixDeckView(
                 spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
                     else spectrumLevels[i] * .68f + target * .32f
             }
-            // Remaining 26 bars are logarithmically distributed from 280 Hz to Nyquist.
+            // Upper 26 bars cover 280 Hz–16 kHz, keeping the final bars
+            // in the audible treble range instead of mostly-unused ultrasonic bins.
             val lowBin = (edges[4] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(1)
-            val highBin = (bins - 1).coerceAtLeast(lowBin + 1)
+            val highBin = (16000.0 * fft.size / (2.0 * nyquist)).toInt().coerceAtMost(bins - 1).coerceAtLeast(lowBin + 1)
             val ratio = highBin.toDouble() / lowBin
             for (i in 4 until 30) {
+                val bandPosition = (i - 4) / 25f
                 val startBin = (lowBin * Math.pow(ratio, (i - 4) / 26.0)).toInt().coerceAtLeast(lowBin)
                 val endBin = (lowBin * Math.pow(ratio, (i - 3) / 26.0)).toInt().coerceAtLeast(startBin + 1)
                 var peak = 0f
@@ -189,7 +191,9 @@ class BlackOnixDeckView(
                     val im = fft[offset + 1].toInt()
                     peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
                 }
-                val target = (kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f)) * 2.0f).coerceIn(0f, 1f)
+                // Gradually compensate for the naturally quieter treble; bass/kick bars stay untouched.
+                val sensitivity = 2.0f + bandPosition * 3.5f
+                val target = (kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f)) * sensitivity).coerceIn(0f, 1f)
                 spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
                     else spectrumLevels[i] * .68f + target * .32f
             }
