@@ -197,6 +197,7 @@ object AuraOriginIsland {
             putString("notification.superx.capsule.content", "AURA")
         })
 
+        // Vivo expects the island payload under island.superx.infos.
         root.putBundle("island.superx.infos", Bundle().apply {
             putInt("island.superx.leftTemplate", 3)
             putInt("island.superx.rightTemplate", 1)
