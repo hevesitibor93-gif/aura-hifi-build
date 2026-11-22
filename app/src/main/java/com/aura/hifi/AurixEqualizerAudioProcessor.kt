@@ -19,6 +19,8 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile private var bassDb = 0f
     @Volatile private var trebleDb = 0f
     @Volatile private var preampDb = 0f
+    @Volatile private var enabled = true
+    private var lastEnabledState = true
     @Volatile private var coeffs = Array(12) { Coeff() }
     private var channels = 2
     private var rate = 44100
@@ -33,6 +35,7 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
     fun setBassBoostDb(v:Float) { bassDb=v.coerceIn(0f,12f); rebuild() }
     fun setTrebleBoostDb(v:Float) { trebleDb=v.coerceIn(0f,12f); rebuild() }
     fun setPreampDb(v:Float) { preampDb=v.coerceIn(-6f,6f) }
+    fun setEnabled(value:Boolean) { enabled = value }
     override fun onConfigure(f:AudioProcessor.AudioFormat):AudioProcessor.AudioFormat {
         if(f.encoding!=C.ENCODING_PCM_16BIT) throw AudioProcessor.UnhandledAudioFormatException(f)
         rate=f.sampleRate.coerceAtLeast(8000); channels=f.channelCount.coerceIn(1,8); resetState(); clippingFrames = 0; rebuild(); return f
@@ -59,23 +62,28 @@ class AurixEqualizerAudioProcessor : BaseAudioProcessor() {
         val n=inputBuffer.remaining(); if(n<=0)return
         val out=replaceOutputBuffer(n).order(ByteOrder.LITTLE_ENDIAN); val input=inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val cfs=coeffs; val pre=10.0.pow(preampDb/20.0).toFloat()
+        val processEq = enabled
+        if (processEq != lastEnabledState) { resetState(); lastEnabledState = processEq }
         var peakLeft = 0f
         var peakRight = 0f
         var clipped = false
         while(input.remaining()>=2*channels) for(ch in 0 until channels) {
-            var sample=input.short/32768f*pre
-            for(b in 0 until 12) {
-                val c=cfs[b]
-                val y=c.b0*sample+c.b1*x1[b][ch]+c.b2*x2[b][ch]-c.a1*y1[b][ch]-c.a2*y2[b][ch]
-                x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
+            val raw = input.short
+            var sample = raw / 32768f
+            if (processEq) {
+                sample *= pre
+                for(b in 0 until 12) {
+                    val c=cfs[b]
+                    val y=c.b0*sample+c.b1*x1[b][ch]+c.b2*x2[b][ch]-c.a1*y1[b][ch]-c.a2*y2[b][ch]
+                    x2[b][ch]=x1[b][ch]; x1[b][ch]=sample; y2[b][ch]=y1[b][ch]; y1[b][ch]=y; sample=y
+                }
             }
-            // PCM16 represents -1.0 exactly; +0.9999695 is also the normal positive maximum.
-            // Only values outside that representable range indicate actual clipping.
-            if (sample < -1f || sample > 0.9999695f) clipped = true
-            val bounded = sample.coerceIn(-1f,0.9999695f)
+            // In bypass mode preserve the original PCM16 sample bit-for-bit.
+            if (processEq && (sample < -1f || sample > 0.9999695f)) clipped = true
+            val bounded = if (processEq) sample.coerceIn(-1f,0.9999695f) else sample
             if (ch == 0) peakLeft = maxOf(peakLeft, kotlin.math.abs(bounded))
             else if (ch == 1) peakRight = maxOf(peakRight, kotlin.math.abs(bounded))
-            out.putShort((bounded*32768f).toInt().toShort())
+            out.putShort(if (processEq) (bounded*32768f).toInt().toShort() else raw)
         }
         input.position(input.limit()); out.flip()
         if (channels == 1) peakRight = peakLeft
