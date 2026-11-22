@@ -169,7 +169,8 @@ class BlackOnixDeckView(
                     val im = fft[offset + 1].toInt()
                     peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
                 }
-                val target = kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f))
+                val sensitivity = floatArrayOf(1.0f, 1.35f, 1.65f, 1.85f)[i]
+                val target = (kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f)) * sensitivity).coerceIn(0f, 1f)
                 spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
                     else spectrumLevels[i] * .68f + target * .32f
             }
@@ -188,7 +189,7 @@ class BlackOnixDeckView(
                     val im = fft[offset + 1].toInt()
                     peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
                 }
-                val target = kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f))
+                val target = (kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f)) * 2.0f).coerceIn(0f, 1f)
                 spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
                     else spectrumLevels[i] * .68f + target * .32f
             }
