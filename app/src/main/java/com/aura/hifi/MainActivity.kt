@@ -162,6 +162,8 @@ class MainActivity : Activity() {
     private var openVuSettingsPage: (() -> Unit)? = null
     private var openSoundEnginePage: (() -> Unit)? = null
     private var blackOnixDeck: BlackOnixDeckView? = null
+    private var onixVisualizer: android.media.audiofx.Visualizer? = null
+    private var onixVisualizerSessionId: Int = -1
     private var onixVuMode = 0
     private var onixSpectrumMode = 0
     private var onixMuted = false
@@ -205,6 +207,11 @@ class MainActivity : Activity() {
         buildUi()
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7136)
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7137)
+        } else {
+            handler.postDelayed({ ensureOnixFftCapture() }, 500L)
         }
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -4491,6 +4498,7 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
         else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
+        if (requestCode == 7137 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) ensureOnixFftCapture()
     }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
@@ -6072,7 +6080,36 @@ class MainActivity : Activity() {
         } catch (_: Exception) {}
     }
 
+    private fun ensureOnixFftCapture() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+        val activePlayer = player ?: return
+        val sessionId = activePlayer.audioSessionId
+        if (sessionId <= 0 || sessionId == onixVisualizerSessionId) return
+        runCatching { onixVisualizer?.release() }
+        onixVisualizer = null
+        onixVisualizerSessionId = -1
+        try {
+            val capture = android.media.audiofx.Visualizer(sessionId)
+            val captureSize = android.media.audiofx.Visualizer.getCaptureSizeRange()[1]
+            capture.captureSize = captureSize
+            capture.setDataCaptureListener(object : android.media.audiofx.Visualizer.OnDataCaptureListener {
+                override fun onWaveFormDataCapture(visualizer: android.media.audiofx.Visualizer, waveform: ByteArray, samplingRate: Int) {}
+                override fun onFftDataCapture(visualizer: android.media.audiofx.Visualizer, fft: ByteArray, samplingRate: Int) {
+                    blackOnixDeck?.setFft(fft)
+                }
+            }, android.media.audiofx.Visualizer.getMaxCaptureRate(), false, true)
+            capture.enabled = true
+            onixVisualizer = capture
+            onixVisualizerSessionId = sessionId
+        } catch (_: Exception) {
+            runCatching { onixVisualizer?.release() }
+            onixVisualizer = null
+            onixVisualizerSessionId = -1
+        }
+    }
+
     private fun updateOnixSystemInfo() {
+        ensureOnixFftCapture()
         val p = player ?: return
         if (blackOnixDeck == null) return
         try {
@@ -6115,6 +6152,9 @@ class MainActivity : Activity() {
         pendingRadioStartRunnable = null
         pendingRadioStation = null
         pendingRadioStartAttempts = 0
+        runCatching { onixVisualizer?.enabled = false; onixVisualizer?.release() }
+        onixVisualizer = null
+        onixVisualizerSessionId = -1
         audioDeviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = null
         AuraPlaybackService.onPreviousRequested = null
