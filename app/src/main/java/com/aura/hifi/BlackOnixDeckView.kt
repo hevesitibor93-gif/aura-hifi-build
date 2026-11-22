@@ -35,6 +35,7 @@ class BlackOnixDeckView(
     private val onPlaylist: () -> Unit,
     private val onLibrary: () -> Unit,
     private val onEqualizer: () -> Unit,
+    private val onEqualizerToggle: () -> Unit,
     private val onUtilities: () -> Unit,
     private val onRadio: () -> Unit,
     private val onSettings: () -> Unit,
@@ -58,6 +59,7 @@ class BlackOnixDeckView(
     private var trackCounter = "0 DAL HÁTRA"
     private var vuMode = 0
     private var muted = false
+    private var equalizerEnabled = true
     private var spectrumMode = 0
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
@@ -221,6 +223,7 @@ class BlackOnixDeckView(
     }
 
     fun setMuted(value: Boolean) { muted = value; invalidate() }
+    fun setEqualizerEnabled(value: Boolean) { equalizerEnabled = value; invalidate() }
 
     fun setSpectrumMode(mode: Int) {
         spectrumMode = mode.coerceIn(0, 17)
@@ -442,6 +445,8 @@ class BlackOnixDeckView(
         // Original AIMP screen tabs on the left bottom panel.
         sprite(R.drawable.onix_pl_scr_a_skin, canvas, 26f, 341f, 44f, 19f, 0, 4)
         sprite(R.drawable.onix_eq_scr_a_skin, canvas, 70f, 341f, 44f, 19f, 0, 4)
+        spectrumPaint.color = if (equalizerEnabled) Color.rgb(105, 205, 128) else Color.rgb(105, 112, 122)
+        canvas.drawCircle(108f, 345f, 2.5f, spectrumPaint)
 
         // Original five-button transport row in its source order.
         sprite(R.drawable.black_onix_prev_normal, canvas, 123f, 328f, 73f, 49f, 0, 1)
@@ -557,6 +562,8 @@ class BlackOnixDeckView(
         val held = event.eventTime - touchDownTime
         if (RectF(659f, 339f, 696f, 366f).contains(x, y) && held >= 500L) {
             onRepeatLong()
+        } else if (RectF(70f, 341f, 114f, 360f).contains(x, y) && held >= 500L) {
+            onEqualizerToggle()
         } else {
             hitTargets.firstOrNull { it.first.contains(x, y) }?.second?.invoke()
         }
