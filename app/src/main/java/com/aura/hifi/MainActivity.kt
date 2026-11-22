@@ -161,6 +161,11 @@ class MainActivity : Activity() {
     private var openPlayerPage: (() -> Unit)? = null
     private var openVuSettingsPage: (() -> Unit)? = null
     private var openSoundEnginePage: (() -> Unit)? = null
+    private var blackOnixDeck: BlackOnixDeckView? = null
+    private var onixVuMode = 0
+    private var onixSpectrumMode = 0
+    private var onixMuted = false
+    private var onixPreMuteVolume = 1f
     private var shuffleMode = 0
     private var repeatMode = 0
     private var shuffleOriginalQueue: List<Uri>? = null
@@ -484,6 +489,7 @@ class MainActivity : Activity() {
             applyVuCustomSettings()
             setVuOverallScale(prefs.getInt("vu_overall_scale", 100))
             setVuActive(player?.isPlaying == true)
+            updateProgress()
         }
     }
 
@@ -803,11 +809,25 @@ class MainActivity : Activity() {
         getSharedPreferences("aurix_settings", MODE_PRIVATE).edit().putBoolean(prefix + name, value).apply()
     }
 
+    private fun toggleOnixMute() {
+        val p = player ?: return
+        if (onixMuted) {
+            p.volume = onixPreMuteVolume.coerceIn(0f, 1f).takeIf { it > 0f } ?: 1f
+            onixMuted = false
+        } else {
+            onixPreMuteVolume = p.volume.coerceIn(0f, 1f).takeIf { it > 0f } ?: 1f
+            p.volume = 0f
+            onixMuted = true
+        }
+        blackOnixDeck?.setMuted(onixMuted)
+    }
+
     private fun setVuActive(value: Boolean) {
         vu.setActive(value); sideVuLeft?.setActive(value); sideVuRight?.setActive(value); centerAurixVu?.setActive(value); portraitLeftVu?.setActive(value); portraitRightVu?.setActive(value); settingsPreviewVu?.setActive(value)
     }
     private fun setVuLevels(left: Float, right: Float) {
         vu.setLevels(left, right); sideVuLeft?.setLevels(left, right); sideVuRight?.setLevels(left, right); centerAurixVu?.setLevels(left, right); portraitLeftVu?.setLevels(left, right); portraitRightVu?.setLevels(left, right); settingsPreviewVu?.setLevels(left, right); stylePickerPreviewVu?.setLevels(left, right)
+        blackOnixDeck?.setLevels(left, right)
     }
     private fun setVuStyle(value: String) {
         vu.setStyle(value); sideVuLeft?.setStyle(value); sideVuRight?.setStyle(value); centerAurixVu?.setStyle(value); portraitLeftVu?.setStyle(value); portraitRightVu?.setStyle(value); settingsPreviewVu?.setStyle(value); stylePickerPreviewVu?.setStyle(value)
@@ -867,6 +887,7 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi() {
+        blackOnixDeck = null
         val themePrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         // AURA Original is the only active theme. Legacy themes are retired.
         themePrefs.edit().putString("aura_theme", "original").apply()
@@ -2525,6 +2546,53 @@ class MainActivity : Activity() {
             scrollToCurrentLibraryRow()
         }
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
+        if (landscape) {
+            val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+            onixVuMode = onixPrefs.getInt("onix_vu_mode", 0).coerceIn(0, 3)
+            onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 2)
+            val deck = BlackOnixDeckView(
+                this,
+                onPrevious = { playPrevious() },
+                onPlayPause = { togglePlayback() },
+                onNext = { playNext() },
+                onStop = { player?.let { it.pause(); it.seekTo(0L) } },
+                onShuffle = { cycleShuffleMode() },
+                onRepeat = { cycleRepeatMode() },
+                onRepeatLong = { showRepeatOptions() },
+                onOpen = { openAudio() },
+                onSleep = { toast("Hátralévő zeneszámok: ${(queue.size - currentIndex).coerceAtLeast(0)}") },
+                onPlaylist = { showPage(1); showPlaylists() },
+                onEqualizer = { showPage(2) },
+                onUtilities = { openSoundEnginePage?.invoke() },
+                onRadio = { showFavoriteRadioStations() },
+                onSettings = { showPage(3) },
+                onMainMenu = { showPage(0) },
+                onMinimize = { moveTaskToBack(true) },
+                onExit = { finish() },
+                onVuModeChanged = { mode -> onixVuMode = mode; onixPrefs.edit().putInt("onix_vu_mode", mode).apply() },
+                onSpectrumModeChanged = { mode -> onixSpectrumMode = mode; onixPrefs.edit().putInt("onix_spectrum_mode", mode).apply() },
+                onSeekTo = { position -> player?.seekTo(position) },
+                onMute = { toggleOnixMute() }
+            )
+            blackOnixDeck = deck
+            deck.setVuMode(onixVuMode)
+            deck.setSpectrumMode(onixSpectrumMode)
+            deck.setMuted(onixMuted)
+            deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
+            val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
+                .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+                .distinct().joinToString("   •   ").ifBlank { "AURA Hi-Fi" }
+            val initialPosition = player?.currentPosition ?: 0L
+            val initialDuration = (player?.duration ?: 0L).coerceAtLeast(0L)
+            deck.setTrack(initialTrackInfo, formatTime(initialPosition), "-${formatTime(initialDuration - initialPosition)}")
+            deck.setTrackProgress(initialPosition, initialDuration)
+            deck.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
+            playerPage.removeAllViews()
+            playerPage.orientation = LinearLayout.VERTICAL
+            playerPage.setPadding(0, 0, 0, 0)
+            playerPage.background = android.graphics.drawable.ColorDrawable(Color.BLACK)
+            playerPage.addView(deck, LinearLayout.LayoutParams(-1, -1))
+        }
         pageScrolls.forEach { root.addView(it, LinearLayout.LayoutParams(-1, 0, 1f)) }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(if (landscape) 30 else 58)).apply { topMargin = dp(if (landscape) 3 else 8) })
         showPage(0)
@@ -5993,6 +6061,34 @@ class MainActivity : Activity() {
             val trackCount = if (queue.isEmpty()) "0 / 0" else "${(currentIndex + 1).coerceAtMost(queue.size)} / ${queue.size}"
             // Radio mode has no meaningful local playlist position; show it again for MP3 playback.
             timeLabel.text = if (activeRadioStationName != null) timeText else "$timeText   •   $trackCount"
+            val onixTitle = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
+                .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+                .distinct().joinToString("   •   ").ifBlank { "AURA Hi-Fi" }
+            blackOnixDeck?.setTrack(onixTitle, formatTime(position), "-${formatTime(duration - position)}")
+            blackOnixDeck?.setTrackProgress(position, duration)
+            blackOnixDeck?.setTrackCounter(if (queue.isEmpty()) "0 DAL HÁTRA" else "${(queue.size - currentIndex).coerceAtLeast(0)} DAL HÁTRA")
+            blackOnixDeck?.setPlaybackState(p.isPlaying, shuffleMode, repeatMode)
+            updateOnixSystemInfo()
+        } catch (_: Exception) {}
+    }
+
+    private fun updateOnixSystemInfo() {
+        val p = player ?: return
+        if (blackOnixDeck == null) return
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+            val currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val volumePercent = (currentVolume * 100f / maxVolume).toInt().coerceIn(0, 100)
+            val selectedAudioFormat = p.currentTracks.groups.asSequence()
+                .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+                .flatMap { group -> (0 until group.length).asSequence().filter { group.isTrackSelected(it) }.map { group.getTrackFormat(it) } }
+                .firstOrNull()
+            val sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }?.let { "%.1f".format(java.util.Locale.US, it / 1000f) } ?: "--"
+            val metadataBitrate = technicalLabel.text?.toString()?.substringAfter("•", "")?.trim()?.substringBefore(" ")?.takeIf { it.toIntOrNull() != null }
+            val bitrate = selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }?.let { (it / 1000).toString() } ?: metadataBitrate ?: "--"
+            val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+            blackOnixDeck?.setSystemInfo(volumePercent, sampleRate, bitrate, clock)
         } catch (_: Exception) {}
     }
 
