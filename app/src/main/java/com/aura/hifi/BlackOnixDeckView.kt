@@ -186,15 +186,6 @@ class BlackOnixDeckView(
         val onixR = (r * 1.22f).coerceIn(0f, 1f)
         onixVuLeftLevel = if (onixL >= onixVuLeftLevel) onixVuLeftLevel * .12f + onixL * .88f else onixVuLeftLevel * .58f + onixL * .42f
         onixVuRightLevel = if (onixR >= onixVuRightLevel) onixVuRightLevel * .12f + onixR * .88f else onixVuRightLevel * .58f + onixR * .42f
-        if (!fftActive) {
-            val signal = max(l, r)
-            for (i in spectrumLevels.indices) {
-                val bandShape = .22f + .78f * abs(kotlin.math.sin(i * .47f))
-                val target = (signal * bandShape).coerceIn(0f, 1f)
-                spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .35f + target * .65f
-                    else spectrumLevels[i] * .86f + target * .14f
-            }
-        }
         postInvalidateOnAnimation()
     }
 
