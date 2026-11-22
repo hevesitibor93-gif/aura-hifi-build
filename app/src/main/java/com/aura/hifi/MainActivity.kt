@@ -4751,14 +4751,6 @@ class MainActivity : Activity() {
         startTrack(queue[currentIndex])
     }
     private fun attachVuMeter() {
-        soundEngineProcessor.onSpectrum = { fft ->
-            val activeDeck = blackOnixDeck
-            if (activeDeck != null) {
-                activeDeck.post {
-                    if (blackOnixDeck === activeDeck) activeDeck.setFft(fft)
-                }
-            }
-        }
         eqProcessor.onLevel = { left, right ->
             val threshold = vuThreshold
             val gain = vuGain
@@ -6116,7 +6108,6 @@ class MainActivity : Activity() {
         playbackListener?.let { player?.removeListener(it) }; playbackListener = null
         eqProcessor.onLevel = null
         eqProcessor.onClipping = null
-        soundEngineProcessor.onSpectrum = null
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
