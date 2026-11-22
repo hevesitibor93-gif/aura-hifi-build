@@ -157,7 +157,7 @@ class AuraPlaybackService : MediaSessionService() {
                 savePlaybackState()
                 showTrackChangeNotification(mediaItem)
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
-                if (mediaItem != null) AuraOriginIsland.update(this@AuraPlaybackService, exoPlayer.isPlaying)
+                if (mediaItem != null) updateOriginIsland(mediaItem, exoPlayer.isPlaying)
                 else AuraOriginIsland.cancel(this@AuraPlaybackService)
             }
 
@@ -167,7 +167,7 @@ class AuraPlaybackService : MediaSessionService() {
                 if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
                     AuraOriginIsland.cancel(this@AuraPlaybackService)
                 } else if (exoPlayer.currentMediaItem != null) {
-                    AuraOriginIsland.update(this@AuraPlaybackService, exoPlayer.isPlaying)
+                    updateOriginIsland(exoPlayer.currentMediaItem, exoPlayer.isPlaying)
                 }
             }
 
@@ -176,7 +176,7 @@ class AuraPlaybackService : MediaSessionService() {
                 if (isPlaying) saveHandler.postDelayed(savePositionTask, 5000L)
                 savePlaybackState()
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
-                if (exoPlayer.currentMediaItem != null) AuraOriginIsland.update(this@AuraPlaybackService, isPlaying)
+                if (exoPlayer.currentMediaItem != null) updateOriginIsland(exoPlayer.currentMediaItem, isPlaying)
                 else AuraOriginIsland.cancel(this@AuraPlaybackService)
             }
 
@@ -229,6 +229,19 @@ class AuraPlaybackService : MediaSessionService() {
             .build()
     }
 
+
+    private fun updateOriginIsland(item: MediaItem?, isPlaying: Boolean) {
+        if (item == null) {
+            AuraOriginIsland.cancel(this)
+            return
+        }
+        val metadata = item.mediaMetadata
+        val title = metadata.title?.toString()?.takeIf { it.isNotBlank() }
+            ?: item.localConfiguration?.uri?.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')
+            ?: "Ismeretlen cím"
+        val artist = metadata.artist?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi"
+        AuraOriginIsland.update(this, isPlaying, title, artist)
+    }
 
     private fun createTrackNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
