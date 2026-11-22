@@ -2564,7 +2564,7 @@ class MainActivity : Activity() {
         if (landscape) {
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             onixVuMode = onixPrefs.getInt("onix_vu_mode", 0).coerceIn(0, 3)
-            onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 2)
+            onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 17)
             val deck = BlackOnixDeckView(
                 this,
                 onPrevious = { playPrevious() },
