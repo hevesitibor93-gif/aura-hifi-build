@@ -146,7 +146,7 @@ class AuraPlaybackService : MediaSessionService() {
                     // rather than replaying an old buffered segment and stalling later.
                     if (radioPausedAtLiveEdge) {
                         radioPausedAtLiveEdge = false
-                        exoPlayer.seekToDefaultPosition()
+                        exoPlayer.prepare()
                     }
                     if (!requestAudioFocus()) {
                         exoPlayer.pause()
@@ -155,10 +155,12 @@ class AuraPlaybackService : MediaSessionService() {
                     val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
                     val isNetworkStream = currentUri?.scheme.equals("http", true) ||
                         currentUri?.scheme.equals("https", true)
-                    val timeline = exoPlayer.currentTimeline
-                    val isLive = isNetworkStream && !timeline.isEmpty &&
-                        timeline.getWindow(exoPlayer.currentMediaItemIndex, androidx.media3.common.Timeline.Window()).isLive
-                    if (isLive) radioPausedAtLiveEdge = true
+                    if (isNetworkStream && exoPlayer.mediaItemCount > 0) {
+                        // Stop the old buffer completely. On Play, prepare() reconnects
+                        // to the stream so live radio does not resume minutes behind.
+                        radioPausedAtLiveEdge = true
+                        exoPlayer.stop()
+                    }
                     restoreVolumeAfterDucking()
                     abandonAudioFocus()
                 }
