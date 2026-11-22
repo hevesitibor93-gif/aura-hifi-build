@@ -154,14 +154,13 @@ class BlackOnixDeckView(
         if (fft.size > 8) {
             fftActive = true
             val bins = fft.size / 2
-            // Spread 30 logarithmic bands across the usable spectrum. Start above
-            // the first few coarse FFT bins so the bass bars do not all read bin 1.
-            val lowestBin = 5.0
-            val highestBin = (bins - 1).coerceAtLeast(6).toDouble()
-            val binRange = highestBin / lowestBin
-            for (i in 0 until 30) {
-                val startBin = (lowestBin * Math.pow(binRange, i / 30.0)).toInt().coerceAtLeast(1)
-                val endBin = (lowestBin * Math.pow(binRange, (i + 1) / 30.0)).toInt().coerceAtLeast(startBin + 1)
+            // Give the kick/bass region dedicated bands instead of starting at
+            // bin 5. The first band includes the main kick range (20–80 Hz).
+            val nyquist = 22050.0
+            val edges = doubleArrayOf(20.0, 80.0, 125.0, 190.0, 280.0)
+            val firstFour = i@ for (i in 0 until 4) {
+                val startBin = (edges[i] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(1)
+                val endBin = kotlin.math.ceil(edges[i + 1] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(startBin + 1)
                 var peak = 0f
                 for (bin in startBin until min(endBin, bins)) {
                     val offset = bin * 2
@@ -170,9 +169,28 @@ class BlackOnixDeckView(
                     val im = fft[offset + 1].toInt()
                     peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
                 }
-                val target = kotlin.math.sqrt((peak / 105f).coerceIn(0f, 1f))
-                spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .24f + target * .76f
-                    else spectrumLevels[i] * .78f + target * .22f
+                val target = kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f))
+                spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
+                    else spectrumLevels[i] * .68f + target * .32f
+            }
+            // Remaining 26 bars are logarithmically distributed from 280 Hz to Nyquist.
+            val lowBin = (edges[4] * fft.size / (2.0 * nyquist)).toInt().coerceAtLeast(1)
+            val highBin = (bins - 1).coerceAtLeast(lowBin + 1)
+            val ratio = highBin.toDouble() / lowBin
+            for (i in 4 until 30) {
+                val startBin = (lowBin * Math.pow(ratio, (i - 4) / 26.0)).toInt().coerceAtLeast(lowBin)
+                val endBin = (lowBin * Math.pow(ratio, (i - 3) / 26.0)).toInt().coerceAtLeast(startBin + 1)
+                var peak = 0f
+                for (bin in startBin until min(endBin, bins)) {
+                    val offset = bin * 2
+                    if (offset + 1 >= fft.size) break
+                    val re = fft[offset].toInt()
+                    val im = fft[offset + 1].toInt()
+                    peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
+                }
+                val target = kotlin.math.sqrt((peak / 78f).coerceIn(0f, 1f))
+                spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .12f + target * .88f
+                    else spectrumLevels[i] * .68f + target * .32f
             }
         } else {
             fftActive = false
