@@ -2607,7 +2607,8 @@ class MainActivity : Activity() {
                     audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, targetVolume, 0)
                     blackOnixDeck?.setSystemVolume(percent)
                 },
-                onMute = { toggleOnixMute() }
+                onMute = { toggleOnixMute() },
+                onPreampAdjust = { showDeckPreampDialog() }
             )
             blackOnixDeck = deck
             deck.setVuMode(onixVuMode)
@@ -4534,6 +4535,56 @@ class MainActivity : Activity() {
             if (audioPermissionIndex >= 0 && grantResults.getOrNull(audioPermissionIndex) == PackageManager.PERMISSION_GRANTED) ensureOnixFftCapture()
         }
     }
+    private fun showDeckPreampDialog() {
+        val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
+        val initial = prefs.getInt("eq_preamp", 0).coerceIn(-6, 6)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(12), dp(22), dp(4))
+        }
+        val valueLabel = TextView(this).apply {
+            text = "%+d dB".format(initial)
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(238, 194, 116))
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val seek = SeekBar(this).apply {
+            max = 12
+            progress = initial + 6
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(190, 145, 76))
+            thumbTintList = android.content.res.ColorStateList.valueOf(Color.rgb(255, 207, 91))
+        }
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val value = progress - 6
+                valueLabel.text = "%+d dB".format(value)
+                prefs.edit().putInt("eq_preamp", value).apply()
+                eqProcessor.setPreampDb(value.toFloat())
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
+        panel.addView(valueLabel)
+        panel.addView(seek, LinearLayout.LayoutParams(-1, dp(48)))
+        panel.addView(TextView(this).apply {
+            text = "A deck hangerősítése • −6 dB … +6 dB"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(150, 158, 170))
+        })
+        android.app.AlertDialog.Builder(this)
+            .setTitle("BLACK-ONIX • PREAMP")
+            .setView(panel)
+            .setNeutralButton("NULLÁZÁS") { _, _ ->
+                prefs.edit().putInt("eq_preamp", 0).apply()
+                eqProcessor.setPreampDb(0f)
+            }
+            .setPositiveButton("KÉSZ", null)
+            .show()
+    }
+
     private fun showSleepTimerDialog() {
         val options = arrayOf("5 perc", "10 perc", "15 perc", "30 perc", "45 perc", "60 perc", "90 perc", "Időzítő kikapcsolása")
         AlertDialog.Builder(this)
