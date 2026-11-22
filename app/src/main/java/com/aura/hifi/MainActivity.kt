@@ -2571,6 +2571,7 @@ class MainActivity : Activity() {
                 onOpen = { openAudio() },
                 onSleep = { showSleepTimerDialog() },
                 onPlaylist = { showPage(1); showPlaylists() },
+                onLibrary = { openLibraryPage?.invoke() },
                 onEqualizer = { showPage(2) },
                 onUtilities = { openSoundEnginePage?.invoke() },
                 onRadio = { showFavoriteRadioStations() },
