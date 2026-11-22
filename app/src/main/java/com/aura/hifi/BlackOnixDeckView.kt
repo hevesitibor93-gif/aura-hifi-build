@@ -259,9 +259,9 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f, if (vuMode == 0) 1 else 0, 6)
         sprite(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f, if (vuMode == 1) 3 else 2, 6)
         sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode == 2) 5 else 4, 6)
-        sprite(R.drawable.onix_s_mode_a_skin, canvas, 799f, 223f, 21f, 25f, if (spectrumMode == 0) 1 else 0, 6)
-        sprite(R.drawable.onix_s_mode_b_skin, canvas, 829f, 223f, 21f, 25f, if (spectrumMode == 1) 3 else 2, 6)
-        sprite(R.drawable.onix_s_mode_c_skin, canvas, 859f, 223f, 21f, 25f, if (spectrumMode == 2) 5 else 4, 6)
+        sprite(R.drawable.onix_s_mode_a_skin, canvas, 799f, 223f, 21f, 25f, if (spectrumMode / 6 == 0) 1 else 0, 6)
+        sprite(R.drawable.onix_s_mode_b_skin, canvas, 829f, 223f, 21f, 25f, if (spectrumMode / 6 == 1) 3 else 2, 6)
+        sprite(R.drawable.onix_s_mode_c_skin, canvas, 859f, 223f, 21f, 25f, if (spectrumMode / 6 == 2) 5 else 4, 6)
 
         // Original scrolling-title strip and the two time readouts.
         sprite(R.drawable.onix_running_line_skin, canvas, 127f, 79f, 645f, 24f, 0, 2)
