@@ -30,6 +30,7 @@ jobs:
           mkdir -p /tmp/onix-assets
           unzip -q BLACK-ONIX-Images.zip -d /tmp/onix-assets
           find /tmp/onix-assets -type f | sort > /tmp/onix-assets-list.txt
+          cp -a /tmp/onix-assets onix-skin-extract/all-original-images
           echo "Extracted files:"
           cat /tmp/onix-assets-list.txt
           echo "Volume-related files:"
