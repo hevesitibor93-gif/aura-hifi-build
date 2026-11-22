@@ -88,6 +88,7 @@ class AuraPlaybackService : MediaSessionService() {
         super.onCreate()
         instance = this
         createTrackNotificationChannel()
+        AuraOriginIsland.ensureChannel(this)
         val renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,
@@ -156,11 +157,18 @@ class AuraPlaybackService : MediaSessionService() {
                 savePlaybackState()
                 showTrackChangeNotification(mediaItem)
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
+                if (mediaItem != null) AuraOriginIsland.update(this@AuraPlaybackService, exoPlayer.isPlaying)
+                else AuraOriginIsland.cancel(this@AuraPlaybackService)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 savePlaybackState()
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
+                if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
+                    AuraOriginIsland.cancel(this@AuraPlaybackService)
+                } else if (exoPlayer.currentMediaItem != null) {
+                    AuraOriginIsland.update(this@AuraPlaybackService, exoPlayer.isPlaying)
+                }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -168,6 +176,8 @@ class AuraPlaybackService : MediaSessionService() {
                 if (isPlaying) saveHandler.postDelayed(savePositionTask, 5000L)
                 savePlaybackState()
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
+                if (exoPlayer.currentMediaItem != null) AuraOriginIsland.update(this@AuraPlaybackService, isPlaying)
+                else AuraOriginIsland.cancel(this@AuraPlaybackService)
             }
 
             override fun onPositionDiscontinuity(
@@ -469,6 +479,7 @@ class AuraPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         serviceDestroyed = true
+        AuraOriginIsland.cancel(this)
         queueRestoreExecutor.shutdownNow()
         savePlaybackState()
         saveHandler.removeCallbacks(savePositionTask)
