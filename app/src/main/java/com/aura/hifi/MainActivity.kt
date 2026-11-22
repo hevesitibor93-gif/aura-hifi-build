@@ -2569,6 +2569,8 @@ class MainActivity : Activity() {
             onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 17)
             val onixSpectrumColorMode = onixPrefs.getInt("onix_spectrum_color_mode", 0).coerceIn(0, 2)
             val onixSpectrumSegmented = onixPrefs.getBoolean("onix_spectrum_segmented", true)
+            val onixSeekStyle = onixPrefs.getInt("onix_seek_style", 0).coerceIn(0, 3)
+            val onixSeekColor = onixPrefs.getInt("onix_seek_color", 0).coerceIn(0, 1)
             val deck = BlackOnixDeckView(
                 this,
                 onPrevious = { playPrevious() },
@@ -2599,6 +2601,8 @@ class MainActivity : Activity() {
                 onSpectrumModeChanged = { mode -> onixSpectrumMode = mode; onixPrefs.edit().putInt("onix_spectrum_mode", mode).apply() },
                 onSpectrumColorModeChanged = { mode -> onixPrefs.edit().putInt("onix_spectrum_color_mode", mode).apply() },
                 onSpectrumSegmentedChanged = { enabled -> onixPrefs.edit().putBoolean("onix_spectrum_segmented", enabled).apply() },
+                onSeekStyleChanged = { style -> onixPrefs.edit().putInt("onix_seek_style", style).apply() },
+                onSeekColorChanged = { color -> onixPrefs.edit().putInt("onix_seek_color", color).apply() },
                 onSeekTo = { position -> player?.seekTo(position) },
                 onVolumeChanged = { percent ->
                     val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -2625,6 +2629,8 @@ class MainActivity : Activity() {
             deck.setSpectrumMode(onixSpectrumMode)
             deck.setSpectrumColorMode(onixSpectrumColorMode)
             deck.setSpectrumSegmented(onixSpectrumSegmented)
+            deck.setSeekStyle(onixSeekStyle)
+            deck.setSeekColor(onixSeekColor)
             deck.setMuted(onixMuted)
             deck.setEqualizerEnabled(onixPrefs.getBoolean("eq_enabled", true))
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
