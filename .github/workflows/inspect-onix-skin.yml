@@ -25,7 +25,7 @@ jobs:
           grep -Ei 'vol|knob|dial|rotary|button' /tmp/onix-assets-list.txt || true
           mkdir -p onix-skin-extract
           cp /tmp/onix-assets-list.txt onix-skin-extract/
-          find /tmp/onix-assets -type f \( -iname '*vol*' -o -iname '*knob*' -o -iname '*dial*' -o -iname '*rotary*' -o -iname '*button*' \) -exec cp --parents {} onix-skin-extract/ \;
+          find /tmp/onix-assets -type f \( -iname '*vol*' -o -iname '*knob*' -o -iname '*dial*' -o -iname '*rotary*' -o -iname '*button*' -o -iname '*slider*' \) -exec cp --parents {} onix-skin-extract/ \;
       - uses: actions/upload-artifact@v4
         with:
           name: BLACK-ONIX-Original-Volume-Assets
