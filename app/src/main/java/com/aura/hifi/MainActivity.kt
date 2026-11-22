@@ -2580,6 +2580,13 @@ class MainActivity : Activity() {
                 onVuModeChanged = { mode -> onixVuMode = mode; onixPrefs.edit().putInt("onix_vu_mode", mode).apply() },
                 onSpectrumModeChanged = { mode -> onixSpectrumMode = mode; onixPrefs.edit().putInt("onix_spectrum_mode", mode).apply() },
                 onSeekTo = { position -> player?.seekTo(position) },
+                onVolumeChanged = { percent ->
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                    val targetVolume = ((percent * maxVolume) / 100f + 0.5f).toInt().coerceIn(0, maxVolume)
+                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, targetVolume, 0)
+                    blackOnixDeck?.setSystemVolume(percent)
+                },
                 onMute = { toggleOnixMute() }
             )
             blackOnixDeck = deck
