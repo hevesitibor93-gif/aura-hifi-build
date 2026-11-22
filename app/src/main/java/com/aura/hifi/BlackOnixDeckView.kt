@@ -44,6 +44,8 @@ class BlackOnixDeckView(
     private val onExit: () -> Unit,
     private val onVuModeChanged: (Int) -> Unit,
     private val onSpectrumModeChanged: (Int) -> Unit,
+    private val onSpectrumColorModeChanged: (Int) -> Unit,
+    private val onSpectrumSegmentedChanged: (Boolean) -> Unit,
     private val onSeekTo: (Long) -> Unit,
     private val onVolumeChanged: (Int) -> Unit,
     private val onMute: () -> Unit
@@ -61,6 +63,8 @@ class BlackOnixDeckView(
     private var muted = false
     private var equalizerEnabled = true
     private var spectrumMode = 0
+    private var spectrumColorMode = 0 // 0 = original, 1 = red, 2 = blue
+    private var spectrumSegmented = true
     private var leftLevel = 0.08f
     private var rightLevel = 0.08f
     // Dedicated faster response for the upper BLACK-ONIX VU only.
@@ -225,6 +229,9 @@ class BlackOnixDeckView(
     fun setMuted(value: Boolean) { muted = value; invalidate() }
     fun setEqualizerEnabled(value: Boolean) { equalizerEnabled = value; invalidate() }
 
+    fun setSpectrumColorMode(mode: Int) { spectrumColorMode = mode.coerceIn(0, 2); invalidate() }
+    fun setSpectrumSegmented(value: Boolean) { spectrumSegmented = value; invalidate() }
+
     fun setSpectrumMode(mode: Int) {
         spectrumMode = mode.coerceIn(0, 17)
         onSpectrumModeChanged(spectrumMode)
@@ -336,16 +343,26 @@ class BlackOnixDeckView(
             val value = spectrumLevels[i].coerceIn(0f, 1f)
             val x = 286f + i * 11f
             val t = i / 29f
-            val red = if (t < .62f) (45 + t / .62f * 190).toInt() else 235
-            val green = if (t < .62f) 205 else (205 - (t - .62f) / .38f * 150).toInt()
-            val blue = if (t < .62f) 95 else 45
-            spectrumPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), blue)
+            val red: Int
+            val green: Int
+            val blue: Int
+            when (spectrumColorMode) {
+                1 -> { red = 220 + (t * 35).toInt(); green = 45 + (t * 30).toInt(); blue = 28 }
+                2 -> { red = 25; green = 105 + (t * 75).toInt(); blue = 210 + (t * 45).toInt() }
+                else -> { red = if (t < .62f) (45 + t / .62f * 190).toInt() else 235; green = if (t < .62f) 205 else (205 - (t - .62f) / .38f * 150).toInt(); blue = if (t < .62f) 95 else 45 }
+            }
+            spectrumPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), blue.coerceIn(0, 255))
             when (spectrumMode / 6) {
                 1 -> {
                     val barHeight = max(1.5f, value * 34f)
                     canvas.drawRoundRect(RectF(x, 199f - barHeight, x + 8f, 199f + barHeight), 1.5f, 1.5f, spectrumPaint)
                 }
                 2 -> {
+                    if (!spectrumSegmented) {
+                        val barHeight = max(2f, value * 73f)
+                        canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
+                        continue
+                    }
                     val segments = 8
                     val lit = (value * segments).toInt().coerceIn(0, segments)
                     for (segment in 0 until lit) {
@@ -562,6 +579,14 @@ class BlackOnixDeckView(
         val held = event.eventTime - touchDownTime
         if (RectF(659f, 339f, 696f, 366f).contains(x, y) && held >= 500L) {
             onRepeatLong()
+        } else if (RectF(799f, 223f, 880f, 248f).contains(x, y) && held >= 500L) {
+            spectrumColorMode = (spectrumColorMode + 1) % 3
+            onSpectrumColorModeChanged(spectrumColorMode)
+            invalidate()
+        } else if (RectF(279f, 159f, 620f, 258f).contains(x, y) && held >= 500L) {
+            spectrumSegmented = !spectrumSegmented
+            onSpectrumSegmentedChanged(spectrumSegmented)
+            invalidate()
         } else if (RectF(70f, 341f, 114f, 360f).contains(x, y) && held >= 500L) {
             onEqualizerToggle()
         } else {
