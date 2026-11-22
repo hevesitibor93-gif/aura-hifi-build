@@ -210,6 +210,16 @@ class BlackOnixDeckView(
         invalidate()
     }
 
+    private fun selectVuPpmMode(index: Int) {
+        val selected = index.coerceIn(0, 2)
+        val nextMode = if (vuMode % 3 == selected) {
+            if (vuMode < 3) vuMode + 3 else vuMode - 3
+        } else {
+            (if (vuMode >= 3) 3 else 0) + selected
+        }
+        setVuMode(nextMode)
+    }
+
     fun setMuted(value: Boolean) { muted = value; invalidate() }
 
     fun setSpectrumMode(mode: Int) {
