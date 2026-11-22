@@ -76,8 +76,8 @@ object AuraOriginIsland {
                 Notification.Builder(context)
             }
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("AURA HI-FI")
-                .setContentText(if (isPlaying) "Lejátszás aktív" else "Lejátszás szünetel")
+                .setContentTitle(cleanTitle)
+                .setContentText(cleanArtist)
                 .setContentIntent(clickIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -145,7 +145,9 @@ object AuraOriginIsland {
     private fun buildSuperXExtras(
         icon: Icon,
         clickIntent: PendingIntent,
-        isPlaying: Boolean
+        isPlaying: Boolean,
+        trackTitle: String,
+        artist: String
     ): Bundle {
         val root = Bundle().apply {
             putInt("notification.superx.operation", 0)
