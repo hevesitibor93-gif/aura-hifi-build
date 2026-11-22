@@ -176,6 +176,7 @@ class BlackOnixDeckView(
         postInvalidateOnAnimation()
     }
 
+    // Keep the original 1.43 signal-driven spectrum response.
     fun setLevels(left: Float, right: Float) {
         val l = left.coerceIn(0f, 1f)
         val r = right.coerceIn(0f, 1f)
