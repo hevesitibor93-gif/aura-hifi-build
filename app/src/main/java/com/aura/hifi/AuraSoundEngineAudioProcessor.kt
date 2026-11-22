@@ -42,16 +42,6 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
 
     @Volatile var onPeak: ((Float, Float) -> Unit)? = null
     @Volatile var onClipping: ((Boolean) -> Unit)? = null
-    @Volatile var onSpectrum: ((ByteArray) -> Unit)? = null
-
-    // Higher FFT resolution gives the lowest bass bars distinct frequency bins.
-    private val spectrumFftSize = 4096
-    private val spectrumSamples = FloatArray(spectrumFftSize)
-    private val spectrumReal = FloatArray(spectrumFftSize)
-    private val spectrumImag = FloatArray(spectrumFftSize)
-    private val spectrumBytes = ByteArray(spectrumFftSize)
-    private var spectrumWriteIndex = 0
-    private var spectrumSamplesSeen = 0
 
     private var sampleRate = 44100
     private var channelCount = 2
@@ -133,12 +123,6 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
         cleanFrames = 0
         clippingState = false
         punchFastEnvelope = 0f
-        spectrumSamples.fill(0f)
-        spectrumReal.fill(0f)
-        spectrumImag.fill(0f)
-        spectrumBytes.fill(0)
-        spectrumWriteIndex = 0
-        spectrumSamplesSeen = 0
         punchSlowEnvelope = 0f
     }
 
@@ -228,18 +212,6 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
                 frame[1] *= rightGain
             }
 
-            // Analyze the actual post-DSP music signal, not the VU envelope.
-            if (onSpectrum != null) {
-                var monoSample = 0f
-                for (ch in 0 until channelCount) monoSample += frame[ch]
-                spectrumSamples[spectrumWriteIndex] = monoSample / channelCount
-                spectrumWriteIndex = (spectrumWriteIndex + 1) % spectrumFftSize
-                spectrumSamplesSeen++
-                if (spectrumSamplesSeen >= spectrumFftSize && spectrumSamplesSeen % (spectrumFftSize / 2) == 0) {
-                    emitSpectrumFrame()
-                }
-            }
-
             for (ch in 0 until channelCount) {
                 val sample = frame[ch]
                 if (sample < -1f || sample > 0.9999695f) clipped = true
@@ -270,72 +242,6 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
                 onClipping?.invoke(false)
             }
         }
-    }
-
-    private fun emitSpectrumFrame() {
-        val callback = onSpectrum ?: return
-        val size = spectrumFftSize
-        // Hann-window the latest 2048 samples before the in-place radix-2 FFT.
-        for (i in 0 until size) {
-            val sample = spectrumSamples[(spectrumWriteIndex + i) % size]
-            val window = 0.5 - 0.5 * cos(2.0 * PI * i / (size - 1))
-            spectrumReal[i] = (sample * window).toFloat()
-            spectrumImag[i] = 0f
-        }
-
-        var j = 0
-        for (i in 1 until size) {
-            var bit = size shr 1
-            while ((j and bit) != 0) {
-                j = j xor bit
-                bit = bit shr 1
-            }
-            j = j xor bit
-            if (i < j) {
-                val real = spectrumReal[i]; spectrumReal[i] = spectrumReal[j]; spectrumReal[j] = real
-                val imag = spectrumImag[i]; spectrumImag[i] = spectrumImag[j]; spectrumImag[j] = imag
-            }
-        }
-
-        var length = 2
-        while (length <= size) {
-            val angle = -2.0 * PI / length
-            val stepReal = cos(angle).toFloat()
-            val stepImag = sin(angle).toFloat()
-            val half = length / 2
-            var start = 0
-            while (start < size) {
-                var wr = 1f
-                var wi = 0f
-                for (k in 0 until half) {
-                    val even = start + k
-                    val odd = even + half
-                    val tr = spectrumReal[odd] * wr - spectrumImag[odd] * wi
-                    val ti = spectrumReal[odd] * wi + spectrumImag[odd] * wr
-                    spectrumReal[odd] = spectrumReal[even] - tr
-                    spectrumImag[odd] = spectrumImag[even] - ti
-                    spectrumReal[even] += tr
-                    spectrumImag[even] += ti
-                    val nextWr = wr * stepReal - wi * stepImag
-                    wi = wr * stepImag + wi * stepReal
-                    wr = nextWr
-                }
-                start += length
-            }
-            length = length shl 1
-        }
-
-        spectrumBytes.fill(0)
-        for (bin in 1 until size / 2) {
-            val magnitude = kotlin.math.sqrt(
-                spectrumReal[bin] * spectrumReal[bin] + spectrumImag[bin] * spectrumImag[bin]
-            )
-            // Normalize the Hann-windowed FFT to the byte scale expected by the deck renderer.
-            val level = (magnitude * (4f / size) * 105f).toInt().coerceIn(0, 127)
-            spectrumBytes[bin * 2] = level.toByte()
-            spectrumBytes[bin * 2 + 1] = 0
-        }
-        callback(spectrumBytes.copyOf())
     }
 
     private class Biquad {
