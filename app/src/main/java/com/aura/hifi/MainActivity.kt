@@ -2563,7 +2563,7 @@ class MainActivity : Activity() {
         listOf("LEJÁTSZÓ", "DALOK", "EQ", "BEÁLLÍTÁS").forEachIndexed { i, title -> val b = button(title, Color.rgb(29, 29, 30), Color.rgb(190, 184, 171)) { showPage(i) }; b.textSize = if (landscape) 8f else 10f; b.letterSpacing = 0.04f; navButtons.add(b); nav.addView(b, LinearLayout.LayoutParams(0, dp(if (landscape) 22 else 42), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }) }
         if (landscape) {
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
-            onixVuMode = onixPrefs.getInt("onix_vu_mode", 0).coerceIn(0, 3)
+            onixVuMode = onixPrefs.getInt("onix_vu_mode", 0).coerceIn(0, 5)
             onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 17)
             val deck = BlackOnixDeckView(
                 this,
