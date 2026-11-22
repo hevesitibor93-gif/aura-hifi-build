@@ -213,9 +213,16 @@ class BlackOnixDeckView(
     fun setMuted(value: Boolean) { muted = value; invalidate() }
 
     fun setSpectrumMode(mode: Int) {
-        spectrumMode = mode.coerceIn(0, 2)
+        spectrumMode = mode.coerceIn(0, 17)
         onSpectrumModeChanged(spectrumMode)
         invalidate()
+    }
+
+    private fun cycleSpectrumGroup(group: Int) {
+        val currentGroup = spectrumMode / 6
+        val currentVariant = spectrumMode % 6
+        val nextVariant = if (currentGroup == group) (currentVariant + 1) % 6 else 0
+        setSpectrumMode(group * 6 + nextVariant)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -291,8 +298,24 @@ class BlackOnixDeckView(
         // SpectrumA1 is positioned inside SpecModeA1: container origin (279,159),
         // control margins (6,0,5,3), exact 330x80 display area.
         val spectrumBackground = when (spectrumMode) {
-            1 -> R.drawable.onix_spec_mode_b1_texture
-            2 -> R.drawable.onix_spec_mode_c1_texture
+            0 -> R.drawable.onix_spec_mode_a1_texture
+            1 -> R.drawable.onix_spec_mode_a2_texture
+            2 -> R.drawable.onix_spec_mode_a3_texture
+            3 -> R.drawable.onix_spec_mode_a4_texture
+            4 -> R.drawable.onix_spec_mode_a5_texture
+            5 -> R.drawable.onix_spec_mode_a6_texture
+            6 -> R.drawable.onix_spec_mode_b1_texture
+            7 -> R.drawable.onix_spec_mode_b2_texture
+            8 -> R.drawable.onix_spec_mode_b3_texture
+            9 -> R.drawable.onix_spec_mode_b4_texture
+            10 -> R.drawable.onix_spec_mode_b5_texture
+            11 -> R.drawable.onix_spec_mode_b6_texture
+            12 -> R.drawable.onix_spec_mode_c1_texture
+            13 -> R.drawable.onix_spec_mode_c2_texture
+            14 -> R.drawable.onix_spec_mode_c3_texture
+            15 -> R.drawable.onix_spec_mode_c4_texture
+            16 -> R.drawable.onix_spec_mode_c5_texture
+            17 -> R.drawable.onix_spec_mode_c6_texture
             else -> R.drawable.onix_spec_mode_a1_texture
         }
         draw(spectrumBackground, canvas, 279f, 159f, 341f, 99f)
@@ -304,7 +327,7 @@ class BlackOnixDeckView(
             val green = if (t < .62f) 205 else (205 - (t - .62f) / .38f * 150).toInt()
             val blue = if (t < .62f) 95 else 45
             spectrumPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), blue)
-            when (spectrumMode) {
+            when (spectrumMode / 6) {
                 1 -> {
                     val barHeight = max(1.5f, value * 34f)
                     canvas.drawRoundRect(RectF(x, 199f - barHeight, x + 8f, 199f + barHeight), 1.5f, 1.5f, spectrumPaint)
@@ -462,9 +485,9 @@ class BlackOnixDeckView(
         hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(if (vuMode == 1) 3 else 1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(if (vuMode == 2) 3 else 2) }
         hitTargets += RectF(799f, 184f, 840f, 209f) to onMute
-        hitTargets += RectF(799f, 223f, 820f, 248f) to { setSpectrumMode(0) }
-        hitTargets += RectF(829f, 223f, 850f, 248f) to { setSpectrumMode(1) }
-        hitTargets += RectF(859f, 223f, 880f, 248f) to { setSpectrumMode(2) }
+        hitTargets += RectF(799f, 223f, 820f, 248f) to { cycleSpectrumGroup(0) }
+        hitTargets += RectF(829f, 223f, 850f, 248f) to { cycleSpectrumGroup(1) }
+        hitTargets += RectF(859f, 223f, 880f, 248f) to { cycleSpectrumGroup(2) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
