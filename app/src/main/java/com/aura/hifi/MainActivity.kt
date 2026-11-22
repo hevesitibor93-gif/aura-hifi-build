@@ -123,6 +123,7 @@ class MainActivity : Activity() {
     private var showRemaining = false
     private val handler = Handler(Looper.getMainLooper())
     private val progressTask = object : Runnable { override fun run() { updateProgress(); handler.postDelayed(this, 500) } }
+    private var sleepTimerRunnable: Runnable? = null
     private var selectedUri: Uri? = null
     private var vuAutoGain = 1f
     private var vuSmoothedLevel = 0f
@@ -4511,6 +4512,32 @@ class MainActivity : Activity() {
             if (audioPermissionIndex >= 0 && grantResults.getOrNull(audioPermissionIndex) == PackageManager.PERMISSION_GRANTED) ensureOnixFftCapture()
         }
     }
+    private fun showSleepTimerDialog() {
+        val options = arrayOf("5 perc", "10 perc", "15 perc", "30 perc", "45 perc", "60 perc", "90 perc", "Időzítő kikapcsolása")
+        AlertDialog.Builder(this)
+            .setTitle("ELALVÁSIDŐZÍTŐ")
+            .setItems(options) { dialog, which ->
+                sleepTimerRunnable?.let { handler.removeCallbacks(it) }
+                sleepTimerRunnable = null
+                if (which == options.lastIndex) {
+                    toast("Elalvásidőzítő kikapcsolva.")
+                } else {
+                    val minutes = intArrayOf(5, 10, 15, 30, 45, 60, 90)[which]
+                    val task = Runnable {
+                        player?.let { it.pause(); it.seekTo(0L) }
+                        sleepTimerRunnable = null
+                        toast("Elalvásidőzítő: a lejátszás leállítva.")
+                    }
+                    sleepTimerRunnable = task
+                    handler.postDelayed(task, minutes * 60_000L)
+                    toast("Elalvásidőzítő beállítva: $minutes perc.")
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("MÉGSE", null)
+            .show()
+    }
+
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
         startActivityForResult(i, 1)
@@ -6159,6 +6186,8 @@ class MainActivity : Activity() {
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
+        sleepTimerRunnable?.let { handler.removeCallbacks(it) }
+        sleepTimerRunnable = null
         pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
         pendingRadioStartRunnable = null
         pendingRadioStation = null
