@@ -24,8 +24,8 @@ object AuraOriginIsland {
     private const val NOTIFICATION_TAG = "VIVO_SUPERX_TAG"
     private const val NOTIFICATION_ID = 7136
     private const val SCENE = "NAVIGATION"
-    private const val AURA_TEAL = "#00D9D0"
-    private const val DISPLAYS = 65809 // notification + lockscreen + status bar + AOD
+    private val AURA_WAVE_COLORS = arrayListOf("#00D9D0", "#36F5E8", "#00B8C9")
+    private const val DISPLAYS = 65808 // lockscreen + status bar + AOD; keep shade popup separate
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -43,7 +43,7 @@ object AuraOriginIsland {
         manager.createNotificationChannel(channel)
     }
 
-    fun update(context: Context, isPlaying: Boolean) {
+    fun update(context: Context, isPlaying: Boolean, trackTitle: String, artist: String) {
         if (!isVivoDevice()) return
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
@@ -67,7 +67,7 @@ object AuraOriginIsland {
 
             // Reuse the same app icon instance in every Vivo bundle. No track artwork is read.
             val appIcon = Icon.createWithResource(context, R.mipmap.ic_launcher)
-            val extras = buildSuperXExtras(appIcon, clickIntent, isPlaying)
+            val cleanTitle = trackTitle.trim().ifBlank { "Ismeretlen cím" }.take(48)\n            val cleanArtist = artist.trim().ifBlank { "AURA Hi-Fi" }.take(48)\n            val extras = buildSuperXExtras(appIcon, clickIntent, isPlaying, cleanTitle, cleanArtist)
 
             val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Notification.Builder(context, CHANNEL_ID)
@@ -159,19 +159,19 @@ object AuraOriginIsland {
 
         root.putBundle("notification.superx.baseInfos", Bundle().apply {
             putParcelable("notification.superx.baseInfos.icon", icon)
-            putCharSequence("notification.superx.baseInfos.title", "AURA HI-FI")
+            putCharSequence("notification.superx.baseInfos.title", trackTitle)
             putCharSequence(
                 "notification.superx.baseInfos.content",
-                if (isPlaying) "Most szól" else "Szünet"
+                if (isPlaying) artist else "Szünet"
             )
             putInt("notification.superx.baseInfos.subInfo", 0)
         })
 
         root.putBundle("notification.superx.infos", Bundle().apply {
-            putString("notification.superx.infos.describe", "AURA HI-FI")
+            putString("notification.superx.infos.describe", trackTitle)
             putString(
                 "notification.superx.infos.coreInfo",
-                if (isPlaying) "Zenelejátszó aktív" else "Lejátszás szünetel"
+                artist
             )
             putParcelable("notification.superx.infos.image", icon)
             putParcelable("notification.superx.infos.imageClickResp", clickIntent)
@@ -179,10 +179,10 @@ object AuraOriginIsland {
 
         root.putBundle("notification.superx.shortInfos", Bundle().apply {
             putParcelable("notification.superx.shortInfos.image", icon)
-            putString("notification.superx.shortInfos.describeShort", "AURA HI-FI")
+            putString("notification.superx.shortInfos.describeShort", trackTitle)
             putString(
                 "notification.superx.shortInfos.coreInfoShort",
-                if (isPlaying) "Most szól" else "Szünet"
+                if (isPlaying) artist else "Szünet"
             )
             putParcelable("notification.superx.shortInfos.imageClickResp", clickIntent)
         })
@@ -194,7 +194,7 @@ object AuraOriginIsland {
         })
 
         root.putBundle("notification.superx.island", Bundle().apply {
-            putInt("island.superx.leftTemplate", 1)
+            putInt("island.superx.leftTemplate", 3)
             putInt("island.superx.rightTemplate", 1)
             putBoolean("island.superx.forceShow", true)
             putBoolean("island.superx.showBarWhenCard", false)
@@ -203,14 +203,14 @@ object AuraOriginIsland {
 
             putBundle("island.superx.leftInfo", Bundle().apply {
                 putParcelable("island.superx.leftInfo.icon", icon)
-                putString("island.superx.leftInfo.content", "AURA")
+                putCharSequenceArrayList(\n                    "island.superx.leftInfo.doublelineText",\n                    arrayListOf(trackTitle, artist)\n                )
             })
 
             putBundle("island.superx.rightInfo", Bundle().apply {
                 putInt("island.superx.rightInfo.waveState", if (isPlaying) 1 else 0)
                 putStringArrayList(
                     "island.superx.rightInfo.waveColor",
-                    arrayListOf(AURA_TEAL)
+                    ArrayList(AURA_WAVE_COLORS)
                 )
             })
         })
