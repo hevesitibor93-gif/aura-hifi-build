@@ -44,6 +44,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     @Volatile var onClipping: ((Boolean) -> Unit)? = null
     @Volatile var onSpectrum: ((ByteArray) -> Unit)? = null
 
+    // Higher FFT resolution gives the lowest bass bars distinct frequency bins.
     private val spectrumFftSize = 8192
     private val spectrumSamples = FloatArray(spectrumFftSize)
     private val spectrumReal = FloatArray(spectrumFftSize)
