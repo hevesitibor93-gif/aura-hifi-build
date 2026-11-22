@@ -399,9 +399,9 @@ class BlackOnixDeckView(
         originalVolumeButton?.let { knob ->
             val frameHeight = knob.height / 4
             val knobRect = Rect(0, 0, knob.width, frameHeight)
-            val knobCenterX = 838f
-            val knobCenterY = 145f
-            val knobSize = 56f
+            val knobCenterX = 842.5f
+            val knobCenterY = 119f
+            val knobSize = 100f
             canvas.drawBitmap(knob, knobRect, RectF(knobCenterX - knobSize / 2f, knobCenterY - knobSize / 2f, knobCenterX + knobSize / 2f, knobCenterY + knobSize / 2f), paint)
             val pointerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(193, 190, 181)
