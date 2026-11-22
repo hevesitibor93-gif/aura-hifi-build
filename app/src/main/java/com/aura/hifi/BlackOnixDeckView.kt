@@ -46,6 +46,8 @@ class BlackOnixDeckView(
     private val onSpectrumModeChanged: (Int) -> Unit,
     private val onSpectrumColorModeChanged: (Int) -> Unit,
     private val onSpectrumSegmentedChanged: (Boolean) -> Unit,
+    private val onSeekStyleChanged: (Int) -> Unit,
+    private val onSeekColorChanged: (Int) -> Unit,
     private val onSeekTo: (Long) -> Unit,
     private val onVolumeChanged: (Int) -> Unit,
     private val onMute: () -> Unit,
@@ -87,6 +89,8 @@ class BlackOnixDeckView(
     private var trackDurationMs = 0L
     private var seekPreviewMs = 0L
     private var seekDragging = false
+    private var seekStyle = 0
+    private var seekColor = 0
     private var scroll = 0f
     private var lastFrame = 0L
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -243,6 +247,9 @@ class BlackOnixDeckView(
         onSpectrumModeChanged(spectrumMode)
         invalidate()
     }
+
+    fun setSeekStyle(style: Int) { seekStyle = style.coerceIn(0, 3); invalidate() }
+    fun setSeekColor(color: Int) { seekColor = color.coerceIn(0, 1); invalidate() }
 
     private fun cycleSpectrumGroup(group: Int) {
         val currentGroup = spectrumMode / 6
@@ -406,17 +413,114 @@ class BlackOnixDeckView(
             }
         }
 
-        // AURA playback seek control in the gap directly below the spectrum.
-        val seekLeft = 286f
-        val seekRight = 615f
-        val seekY = 306f
+        // Full-width BLACK-ONIX seek rail: four distinct visual styles.
+        val seekLeft = 27f
+        val seekRight = 872f
+        val seekY = 278f
         val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
-        spectrumPaint.color = Color.rgb(27, 31, 38)
-        canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, seekRight, seekY + 2f), 2f, 2f, spectrumPaint)
-        spectrumPaint.color = Color.rgb(193, 153, 91)
-        canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, seekLeft + (seekRight - seekLeft) * fraction, seekY + 2f), 2f, 2f, spectrumPaint)
-        spectrumPaint.color = Color.rgb(238, 213, 164)
-        canvas.drawCircle(seekLeft + (seekRight - seekLeft) * fraction, seekY, 3.4f, spectrumPaint)
+        val activeX = seekLeft + (seekRight - seekLeft) * fraction
+        val activeColor = if (seekColor == 1) Color.rgb(255, 48, 48) else Color.rgb(0, 174, 255)
+        spectrumPaint.style = Paint.Style.FILL
+        spectrumPaint.color = Color.rgb(4, 7, 12)
+        canvas.drawRoundRect(RectF(seekLeft - 5f, seekY - 12f, seekRight + 5f, seekY + 12f), 11f, 11f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.STROKE
+        spectrumPaint.strokeWidth = 1.3f
+        spectrumPaint.color = Color.rgb(74, 87, 103)
+        canvas.drawRoundRect(RectF(seekLeft - 5f, seekY - 12f, seekRight + 5f, seekY + 12f), 11f, 11f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.FILL
+        spectrumPaint.color = Color.rgb(18, 23, 31)
+        canvas.drawRoundRect(RectF(seekLeft, seekY - 5f, seekRight, seekY + 5f), 5f, 5f, spectrumPaint)
+        when (seekStyle) {
+            0 -> { // LED dots
+                var x = seekLeft + 5f
+                while (x < seekRight - 3f) {
+                    spectrumPaint.color = if (x <= activeX) activeColor else Color.rgb(48, 57, 70)
+                    canvas.drawCircle(x, seekY, 2.5f, spectrumPaint)
+                    x += 10f
+                }
+            }
+            1 -> { // diagonal segmented slashes
+                var x = seekLeft + 3f
+                while (x < seekRight - 4f) {
+                    spectrumPaint.color = if (x <= activeX) activeColor else Color.rgb(48, 57, 70)
+                    val path = android.graphics.Path().apply {
+                        moveTo(x, seekY + 4f); lineTo(x + 4f, seekY - 4f)
+                        lineTo(x + 7f, seekY - 4f); lineTo(x + 3f, seekY + 4f); close()
+                    }
+                    canvas.drawPath(path, spectrumPaint)
+                    x += 11f
+                }
+            }
+            2 -> { // energy channel
+                spectrumPaint.color = Color.argb(65, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor))
+                canvas.drawRoundRect(RectF(seekLeft, seekY - 7f, seekRight, seekY + 7f), 7f, 7f, spectrumPaint)
+                spectrumPaint.color = activeColor
+                canvas.drawRoundRect(RectF(seekLeft, seekY - 2f, activeX, seekY + 2f), 2f, 2f, spectrumPaint)
+                var x = seekLeft + 12f
+                while (x < activeX) {
+                    spectrumPaint.color = Color.argb(210, 220, 245, 255)
+                    canvas.drawCircle(x, seekY, 1.6f, spectrumPaint)
+                    x += 25f
+                }
+            }
+            else -> { // hexagon chain
+                var x = seekLeft + 5f
+                while (x < seekRight - 6f) {
+                    spectrumPaint.color = if (x <= activeX) activeColor else Color.rgb(48, 57, 70)
+                    val path = android.graphics.Path()
+                    val r = 4.2f
+                    for (i in 0..5) {
+                        val a = Math.PI / 3.0 * i
+                        val px = x + kotlin.math.cos(a).toFloat() * r
+                        val py = seekY + kotlin.math.sin(a).toFloat() * r
+                        if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                    }
+                    path.close()
+                    canvas.drawPath(path, spectrumPaint)
+                    x += 11f
+                }
+            }
+        }
+        spectrumPaint.color = Color.BLACK
+        canvas.drawCircle(activeX, seekY, 10f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.STROKE
+        spectrumPaint.strokeWidth = 2.4f
+        spectrumPaint.color = activeColor
+        canvas.drawCircle(activeX, seekY, 9f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.FILL
+        spectrumPaint.color = Color.rgb(220, 230, 240)
+        canvas.drawCircle(activeX, seekY, 3.2f, spectrumPaint)
+
+        val styleNames = arrayOf("1  LED DOTS", "2  SLASH", "3  ENERGY", "5  HEX")
+        val cardLefts = floatArrayOf(18f, 234f, 450f, 666f)
+        for (i in 0..3) {
+            val left = cardLefts[i]
+            val right = left + 207f
+            spectrumPaint.style = Paint.Style.FILL
+            spectrumPaint.color = if (seekStyle == i) Color.rgb(25, 34, 48) else Color.rgb(8, 11, 16)
+            canvas.drawRoundRect(RectF(left, 294f, right, 320f), 5f, 5f, spectrumPaint)
+            spectrumPaint.style = Paint.Style.STROKE
+            spectrumPaint.strokeWidth = if (seekStyle == i) 1.8f else 1f
+            spectrumPaint.color = if (seekStyle == i) activeColor else Color.rgb(79, 87, 98)
+            canvas.drawRoundRect(RectF(left, 294f, right, 320f), 5f, 5f, spectrumPaint)
+            smallPaint.color = if (seekStyle == i) activeColor else Color.rgb(180, 188, 198)
+            smallPaint.textSize = 10f
+            smallPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(styleNames[i], (left + right) / 2f, 311f, smallPaint)
+        }
+        smallPaint.textAlign = Paint.Align.LEFT
+        spectrumPaint.style = Paint.Style.FILL
+        spectrumPaint.color = Color.rgb(0, 174, 255)
+        canvas.drawCircle(844f, 265f, 4f, spectrumPaint)
+        spectrumPaint.color = Color.rgb(255, 48, 48)
+        canvas.drawCircle(862f, 265f, 4f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.STROKE
+        spectrumPaint.strokeWidth = 1.2f
+        spectrumPaint.color = if (seekColor == 0) Color.WHITE else Color.GRAY
+        canvas.drawCircle(844f, 265f, 6.5f, spectrumPaint)
+        spectrumPaint.color = if (seekColor == 1) Color.WHITE else Color.GRAY
+        canvas.drawCircle(862f, 265f, 6.5f, spectrumPaint)
+        spectrumPaint.style = Paint.Style.FILL
 
         // Original 341x32 VU mode background, followed by its animated level sprites.
         val ppmMode = vuMode >= 3
@@ -552,8 +656,8 @@ class BlackOnixDeckView(
         hitTargets += RectF(805f, 27f, 828f, 50f) to onMinimize
         hitTargets += RectF(865f, 27f, 888f, 50f) to onExit
         // VU / PPM labels on the left edge of the original meter strip.
-        hitTargets += RectF(279f, 127f, 310f, 143f) to { if (vuMode >= 3) setVuMode(vuMode - 3) else setVuMode(vuMode) }
-        hitTargets += RectF(279f, 143f, 310f, 159f) to { if (vuMode < 3) setVuMode(vuMode + 3) else setVuMode(vuMode) }
+        hitTargets += RectF(279f, 127f, 310f, 143f) to { setVuMode(vuMode % 3) }
+        hitTargets += RectF(279f, 143f, 310f, 159f) to { setVuMode(3 + (vuMode % 3)) }
         // Numbered VU meter design keys (1, 2, 3).
         hitTargets += RectF(19f, 121f, 46f, 148f) to { selectVuPpmMode(0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { selectVuPpmMode(1) }
@@ -563,6 +667,12 @@ class BlackOnixDeckView(
         hitTargets += RectF(799f, 223f, 820f, 248f) to { cycleSpectrumGroup(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { cycleSpectrumGroup(1) }
         hitTargets += RectF(859f, 223f, 880f, 248f) to { cycleSpectrumGroup(2) }
+        hitTargets += RectF(18f, 293f, 225f, 321f) to { seekStyle = 0; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(234f, 293f, 441f, 321f) to { seekStyle = 1; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(450f, 293f, 657f, 321f) to { seekStyle = 2; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(666f, 293f, 873f, 321f) to { seekStyle = 3; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(836f, 257f, 852f, 273f) to { seekColor = 0; onSeekColorChanged(seekColor); invalidate() }
+        hitTargets += RectF(854f, 257f, 870f, 273f) to { seekColor = 1; onSeekColorChanged(seekColor); invalidate() }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -582,7 +692,7 @@ class BlackOnixDeckView(
                 volumeTouchMoved = false
                 return true
             }
-            if (RectF(270f, 291f, 630f, 321f).contains(x, y) && trackDurationMs > 0L) {
+            if (RectF(20f, 265f, 879f, 289f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
                 parent?.requestDisallowInterceptTouchEvent(true)
                 updateSeekPreview(x)
@@ -678,7 +788,7 @@ class BlackOnixDeckView(
     }
 
     private fun updateSeekPreview(x: Float) {
-        val fraction = ((x - 286f) / (615f - 286f)).coerceIn(0f, 1f)
+        val fraction = ((x - 27f) / (872f - 27f)).coerceIn(0f, 1f)
         seekPreviewMs = (trackDurationMs * fraction).toLong()
         invalidate()
     }
