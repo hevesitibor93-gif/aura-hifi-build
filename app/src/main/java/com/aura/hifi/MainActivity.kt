@@ -2567,6 +2567,8 @@ class MainActivity : Activity() {
             val onixPrefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
             onixVuMode = onixPrefs.getInt("onix_vu_mode", 0).coerceIn(0, 5)
             onixSpectrumMode = onixPrefs.getInt("onix_spectrum_mode", 0).coerceIn(0, 17)
+            val onixSpectrumColorMode = onixPrefs.getInt("onix_spectrum_color_mode", 0).coerceIn(0, 2)
+            val onixSpectrumSegmented = onixPrefs.getBoolean("onix_spectrum_segmented", true)
             val deck = BlackOnixDeckView(
                 this,
                 onPrevious = { playPrevious() },
@@ -2595,6 +2597,8 @@ class MainActivity : Activity() {
                 onExit = { finish() },
                 onVuModeChanged = { mode -> onixVuMode = mode; onixPrefs.edit().putInt("onix_vu_mode", mode).apply() },
                 onSpectrumModeChanged = { mode -> onixSpectrumMode = mode; onixPrefs.edit().putInt("onix_spectrum_mode", mode).apply() },
+                onSpectrumColorModeChanged = { mode -> onixPrefs.edit().putInt("onix_spectrum_color_mode", mode).apply() },
+                onSpectrumSegmentedChanged = { enabled -> onixPrefs.edit().putBoolean("onix_spectrum_segmented", enabled).apply() },
                 onSeekTo = { position -> player?.seekTo(position) },
                 onVolumeChanged = { percent ->
                     val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -2608,6 +2612,8 @@ class MainActivity : Activity() {
             blackOnixDeck = deck
             deck.setVuMode(onixVuMode)
             deck.setSpectrumMode(onixSpectrumMode)
+            deck.setSpectrumColorMode(onixSpectrumColorMode)
+            deck.setSpectrumSegmented(onixSpectrumSegmented)
             deck.setMuted(onixMuted)
             deck.setEqualizerEnabled(onixPrefs.getBoolean("eq_enabled", true))
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
