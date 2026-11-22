@@ -48,6 +48,7 @@ class AuraPlaybackService : MediaSessionService() {
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
+    private var radioPausedAtLiveEdge = false
     private var isDuckedForNotification = false
     private var volumeBeforeDucking = 1f
 
@@ -141,16 +142,30 @@ class AuraPlaybackService : MediaSessionService() {
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (playWhenReady) {
+                    // A paused live stream must jump back to the live edge on resume,
+                    // rather than replaying an old buffered segment and stalling later.
+                    if (radioPausedAtLiveEdge) {
+                        radioPausedAtLiveEdge = false
+                        exoPlayer.seekToDefaultPosition()
+                    }
                     if (!requestAudioFocus()) {
                         exoPlayer.pause()
                     }
                 } else {
+                    val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
+                    val isNetworkStream = currentUri?.scheme.equals("http", true) ||
+                        currentUri?.scheme.equals("https", true)
+                    val timeline = exoPlayer.currentTimeline
+                    val isLive = isNetworkStream && !timeline.isEmpty &&
+                        timeline.getWindow(exoPlayer.currentMediaItemIndex, androidx.media3.common.Timeline.Window()).isLive
+                    if (isLive) radioPausedAtLiveEdge = true
                     restoreVolumeAfterDucking()
                     abandonAudioFocus()
                 }
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                radioPausedAtLiveEdge = false
                 val uri = mediaItem?.localConfiguration?.uri ?: return
                 val index = queueUris.indexOf(uri)
                 if (index >= 0) queueIndex = index
