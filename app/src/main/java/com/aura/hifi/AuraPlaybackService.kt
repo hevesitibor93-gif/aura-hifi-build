@@ -3,6 +3,9 @@ package com.aura.hifi
 import android.content.Context
 import android.content.Intent
 import android.app.PendingIntent
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.net.Uri
 import android.media.MediaMetadataRetriever
 import android.os.Handler
@@ -84,6 +87,7 @@ class AuraPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        createTrackNotificationChannel()
         val renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,
@@ -150,6 +154,7 @@ class AuraPlaybackService : MediaSessionService() {
                 val index = queueUris.indexOf(uri)
                 if (index >= 0) queueIndex = index
                 savePlaybackState()
+                showTrackChangeNotification(mediaItem)
                 AuraMiniWidgetProvider.updateAll(this@AuraPlaybackService)
             }
 
@@ -212,6 +217,61 @@ class AuraPlaybackService : MediaSessionService() {
             .setId("aura-hifi-session")
             .setSessionActivity(sessionActivity)
             .build()
+    }
+
+
+    private fun createTrackNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                TRACK_CHANNEL_ID,
+                "AURA dalváltási értesítések",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Rövid értesítés az újonnan elinduló zeneszámokról"
+                setShowBadge(false)
+            }
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showTrackChangeNotification(item: MediaItem?) {
+        if (item == null || AuraAppVisibility.isVisible) return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) return
+
+        val metadata = item.mediaMetadata
+        val title = metadata.title?.toString()?.takeIf { it.isNotBlank() } ?: "Ismeretlen cím"
+        val artist = metadata.artist?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi"
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("aura_open_player", true)
+        }
+        val pending = PendingIntent.getActivity(
+            this, 7135, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, TRACK_CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+        val notification = builder
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(artist)
+            .setSubText("AURA HI-FI  •  MOST SZÓL")
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(false)
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setPriority(Notification.PRIORITY_HIGH)
+            .setTimeoutAfter(4200L)
+            .build()
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(TRACK_NOTIFICATION_ID, notification)
     }
 
     private fun requestAudioFocus(): Boolean {
@@ -426,6 +486,8 @@ class AuraPlaybackService : MediaSessionService() {
     }
 
     companion object {
+        private const val TRACK_CHANNEL_ID = "aura_track_changes"
+        private const val TRACK_NOTIFICATION_ID = 7135
         private const val KEY_QUEUE = "queue_uris"
         private const val KEY_INDEX = "queue_index"
         private const val KEY_REPEAT = "repeat_mode"
