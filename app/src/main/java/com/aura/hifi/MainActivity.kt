@@ -198,6 +198,9 @@ class MainActivity : Activity() {
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7136)
+        }
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioDeviceCallback = object : android.media.AudioDeviceCallback() {
@@ -253,6 +256,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        AuraAppVisibility.isVisible = false
         // Persist the active output profile even if Android later recreates the Activity.
         val prefs = getSharedPreferences("aurix_settings", MODE_PRIVATE)
         if (isSoundProfileSaved(prefs, soundOutputProfile)) saveSoundProfile(prefs, soundOutputProfile)
@@ -262,6 +266,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        AuraAppVisibility.isVisible = true
         applyKeepScreenOnPreference()
         // Reattach the meter whenever the screen returns, not only after a track change.
         handler.post {
