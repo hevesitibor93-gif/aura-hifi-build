@@ -205,14 +205,15 @@ class MainActivity : Activity() {
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
+        val audioPermissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7136)
+            audioPermissions += Manifest.permission.POST_NOTIFICATIONS
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7137)
-        } else {
-            handler.postDelayed({ ensureOnixFftCapture() }, 500L)
+            audioPermissions += Manifest.permission.RECORD_AUDIO
         }
+        if (audioPermissions.isNotEmpty()) requestPermissions(audioPermissions.toTypedArray(), 7137)
+        else handler.postDelayed({ ensureOnixFftCapture() }, 500L)
         handler.postDelayed({ restorePlaybackState() }, 250L)
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioDeviceCallback = object : android.media.AudioDeviceCallback() {
@@ -4498,7 +4499,10 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 78 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) loadMusicLibrary()
         else if (requestCode == 78) toast("A zenetár engedély nélkül nem olvasható.")
-        if (requestCode == 7137 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) ensureOnixFftCapture()
+        if (requestCode == 7137) {
+            val audioPermissionIndex = permissions.indexOf(Manifest.permission.RECORD_AUDIO)
+            if (audioPermissionIndex >= 0 && grantResults.getOrNull(audioPermissionIndex) == PackageManager.PERMISSION_GRANTED) ensureOnixFftCapture()
+        }
     }
     private fun openAudio() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) }
