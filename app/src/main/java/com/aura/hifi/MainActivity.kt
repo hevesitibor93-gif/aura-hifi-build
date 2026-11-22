@@ -61,6 +61,12 @@ class MainActivity : Activity() {
     private var savedLocalTrackUri: Uri? = null
     private var tunerPowered = false
     private var activeRadioStationName: String? = null
+    @Volatile private var radioRecording = false
+    @Volatile private var radioRecordingStopRequested = false
+    private var radioRecordingThread: Thread? = null
+    @Volatile private var radioRecordingConnection: java.net.HttpURLConnection? = null
+    private var activeRadioStreamUrl: String? = null
+    private var activeRadioRecordingUri: Uri? = null
     private var radioStreamError = false
     private var playbackRestoreAttempts = 0
     private var pendingTrackStartUri: Uri? = null
@@ -2574,7 +2580,7 @@ class MainActivity : Activity() {
                 onLibrary = { openLibraryPage?.invoke() },
                 onEqualizer = { showPage(2) },
                 onUtilities = { openSoundEnginePage?.invoke() },
-                onRadio = { showFavoriteRadioStations() },
+                onRadio = { showRadioCaptureMenu() },
                 onSettings = { showPage(3) },
                 onMainMenu = { showPage(0) },
                 onMinimize = { moveTaskToBack(true) },
@@ -5361,6 +5367,131 @@ class MainActivity : Activity() {
         startRadioStation(station.first, station.second)
     }
 
+    private fun showRadioCaptureMenu() {
+        val recordingLabel = if (radioRecording) "FELVÉTEL LEÁLLÍTÁSA" else "FELVÉTEL INDÍTÁSA"
+        AlertDialog.Builder(this)
+            .setTitle("RADIO CAPTURE")
+            .setItems(arrayOf(recordingLabel, "RÁDIÓADÓK / KEDVENCEK")) { _, which ->
+                if (which == 0) {
+                    if (radioRecording) stopRadioRecording()
+                    else startRadioRecording()
+                } else {
+                    showFavoriteRadioStations()
+                }
+            }
+            .setNegativeButton("BEZÁR", null)
+            .show()
+    }
+
+    private fun startRadioRecording() {
+        val stationName = activeRadioStationName
+        val streamUrl = activeRadioStreamUrl
+        if (stationName.isNullOrBlank() || streamUrl.isNullOrBlank() || player?.isPlaying != true) {
+            toast("Előbb indíts el egy internetes rádióadót.")
+            return
+        }
+        if (radioRecording) {
+            toast("Már folyamatban van a rádiófelvétel.")
+            return
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            toast("A nyilvános rádiófelvétel Android 10 vagy újabb rendszeren támogatott.")
+            return
+        }
+        radioRecordingStopRequested = false
+        radioRecording = true
+        toast("Rádiófelvétel előkészítése…")
+        val safeName = stationName.replace(Regex("""[\\/:*?\"<>|]"""), "_").take(70).ifBlank { "AURA Radio" }
+        val worker = Thread({
+            var destination: Uri? = null
+            var connection: java.net.HttpURLConnection? = null
+            var output: java.io.OutputStream? = null
+            try {
+                val url = java.net.URL(streamUrl)
+                connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 12000
+                    readTimeout = 20000
+                    setRequestProperty("User-Agent", "AURA-HiFi/1.0")
+                    setRequestProperty("Icy-MetaData", "0")
+                    instanceFollowRedirects = true
+                }
+                radioRecordingConnection = connection
+                connection.connect()
+                if (connection.responseCode !in 200..299) throw IllegalStateException("A rádió szervere ${connection.responseCode} hibát adott.")
+                val contentType = connection.contentType?.substringBefore(';')?.trim()?.lowercase(java.util.Locale.ROOT).orEmpty()
+                val path = url.path.lowercase(java.util.Locale.ROOT)
+                val isHls = contentType.contains("mpegurl") || contentType.contains("x-mpegurl") || path.endsWith(".m3u8")
+                if (isHls) throw IllegalStateException("Ez HLS-adás. Ennél a felvételi módnál még nem támogatott.")
+                val extension: String
+                val mime: String
+                when {
+                    contentType.contains("mpeg") || path.endsWith(".mp3") -> { extension = "mp3"; mime = "audio/mpeg" }
+                    contentType.contains("aac") || path.endsWith(".aac") || contentType.contains("mp4") -> { extension = "aac"; mime = "audio/aac" }
+                    else -> throw IllegalStateException("Nem támogatott streamformátum: ${contentType.ifBlank { "ismeretlen" }}. MP3 vagy AAC stream szükséges.")
+                }
+                val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.ROOT).format(java.util.Date())
+                val values = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, "${safeName}_${stamp}.${extension}")
+                    put(MediaStore.Audio.Media.MIME_TYPE, mime)
+                    put(MediaStore.Audio.Media.TITLE, "${stationName} • ${stamp}")
+                    put(MediaStore.Audio.Media.ARTIST, stationName)
+                    put(MediaStore.Audio.Media.ALBUM, "AURA Radio Recordings")
+                    put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                    put(MediaStore.Audio.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MUSIC + "/AURA Radio Recordings")
+                    put(MediaStore.Audio.Media.IS_PENDING, 1)
+                }
+                destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Nem sikerült létrehozni a felvételfájlt.")
+                activeRadioRecordingUri = destination
+                output = contentResolver.openOutputStream(destination, "w")
+                    ?: throw IllegalStateException("A felvételfájl nem írható.")
+                val input = connection.inputStream
+                val buffer = ByteArray(32 * 1024)
+                var total = 0L
+                runOnUiThread { toast("RADIO CAPTURE • FELVÉTEL ELINDULT") }
+                input.use { source ->
+                    while (!radioRecordingStopRequested) {
+                        val count = source.read(buffer)
+                        if (count < 0) break
+                        if (count > 0) {
+                            output.write(buffer, 0, count)
+                            total += count
+                        }
+                    }
+                }
+                output.flush()
+                if (total < 4096L) throw IllegalStateException("A stream túl rövid vagy nem tartalmazott menthető hangadatot.")
+                contentResolver.update(destination, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+                destination = null
+                runOnUiThread { toast("Felvétel mentve: Music/AURA Radio Recordings") }
+            } catch (e: Exception) {
+                destination?.let { runCatching { contentResolver.delete(it, null, null) } }
+                val message = e.localizedMessage ?: "ismeretlen hiba"
+                runOnUiThread { toast("Rádiófelvételi hiba: $message") }
+            } finally {
+                runCatching { output?.close() }
+                runCatching { connection?.disconnect() }
+                radioRecordingConnection = null
+                radioRecording = false
+                radioRecordingStopRequested = false
+                radioRecordingThread = null
+                activeRadioRecordingUri = null
+            }
+        }, "AURA-Radio-Recorder")
+        radioRecordingThread = worker
+        worker.start()
+    }
+
+    private fun stopRadioRecording() {
+        if (!radioRecording) {
+            toast("Nincs aktív rádiófelvétel.")
+            return
+        }
+        radioRecordingStopRequested = true
+        runCatching { radioRecordingConnection?.disconnect() }
+        toast("Rádiófelvétel leállítása…")
+    }
+
     private fun startRadioStation(stationName: String, streamUrl: String) {
         // Hide the upcoming local MP3 immediately on the first radio switch,
         // including while the playback service/player is still starting.
@@ -5406,6 +5537,8 @@ class MainActivity : Activity() {
         pendingRadioStartRunnable = null
         pendingRadioStartAttempts = 0
         try {
+            if (radioRecording) stopRadioRecording()
+            activeRadioStreamUrl = streamUrl
             val previousUri = player?.currentMediaItem?.localConfiguration?.uri
             if (previousUri != null && !previousUri.scheme.equals("http", true) && !previousUri.scheme.equals("https", true)) savedLocalTrackUri = previousUri
             tunerPowered = true; tunerPowerButton?.text = "TUNER BE"
