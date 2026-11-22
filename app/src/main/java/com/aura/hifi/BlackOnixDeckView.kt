@@ -221,14 +221,15 @@ class BlackOnixDeckView(
         invalidate()
     }
 
+    // The three numbered keys select the meter design only.
+    // VU/PPM is a separate selector in the left side of the meter strip.
     private fun selectVuPpmMode(index: Int) {
         val selected = index.coerceIn(0, 2)
-        val nextMode = if (vuMode % 3 == selected) {
-            if (vuMode < 3) vuMode + 3 else vuMode - 3
-        } else {
-            (if (vuMode >= 3) 3 else 0) + selected
-        }
-        setVuMode(nextMode)
+        setVuMode((if (vuMode >= 3) 3 else 0) + selected)
+    }
+
+    private fun toggleVuPpmType() {
+        setVuMode(if (vuMode >= 3) vuMode - 3 else vuMode + 3)
     }
 
     fun setMuted(value: Boolean) { muted = value; invalidate() }
@@ -424,6 +425,15 @@ class BlackOnixDeckView(
         val ppmTextures = intArrayOf(R.drawable.onix_ppm_mode1_texture, R.drawable.onix_ppm_mode2_texture, R.drawable.onix_ppm_mode3_texture)
         val meterTexture = if (ppmMode) ppmTextures[meterIndex] else vuTextures[meterIndex]
         draw(meterTexture, canvas, 279f, 127f, 341f, 32f)
+        // The skin's VU / PPM labels are the independent type selector.
+        // A restrained gold outline makes the active type visible.
+        val typeHighlight = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.2f
+            color = Color.rgb(211, 168, 96)
+        }
+        val activeTypeRect = if (ppmMode) RectF(280f, 143f, 309f, 158f) else RectF(280f, 128f, 309f, 143f)
+        canvas.drawRoundRect(activeTypeRect, 2f, 2f, typeHighlight)
 
         // Original VU and PPM modes use separate sprite sets with matching stereo peaks.
         val vuSprites = arrayOf(
@@ -541,6 +551,10 @@ class BlackOnixDeckView(
         hitTargets += RectF(70f, 27f, 93f, 50f) to onUtilities
         hitTargets += RectF(805f, 27f, 828f, 50f) to onMinimize
         hitTargets += RectF(865f, 27f, 888f, 50f) to onExit
+        // VU / PPM labels on the left edge of the original meter strip.
+        hitTargets += RectF(279f, 127f, 310f, 143f) to { if (vuMode >= 3) setVuMode(vuMode - 3) else setVuMode(vuMode) }
+        hitTargets += RectF(279f, 143f, 310f, 159f) to { if (vuMode < 3) setVuMode(vuMode + 3) else setVuMode(vuMode) }
+        // Numbered VU meter design keys (1, 2, 3).
         hitTargets += RectF(19f, 121f, 46f, 148f) to { selectVuPpmMode(0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { selectVuPpmMode(1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { selectVuPpmMode(2) }
@@ -568,8 +582,9 @@ class BlackOnixDeckView(
                 volumeTouchMoved = false
                 return true
             }
-            if (RectF(278f, 296f, 623f, 316f).contains(x, y) && trackDurationMs > 0L) {
+            if (RectF(270f, 291f, 630f, 321f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
+                parent?.requestDisallowInterceptTouchEvent(true)
                 updateSeekPreview(x)
             }
             return true
@@ -586,6 +601,7 @@ class BlackOnixDeckView(
         if (event.action == MotionEvent.ACTION_CANCEL) {
             volumeDragging = false
             seekDragging = false
+            parent?.requestDisallowInterceptTouchEvent(false)
             seekPreviewMs = trackPositionMs
             invalidate()
             return true
@@ -602,6 +618,7 @@ class BlackOnixDeckView(
             updateSeekPreview(x)
             seekDragging = false
             onSeekTo(seekPreviewMs)
+            parent?.requestDisallowInterceptTouchEvent(false)
             performClick()
             return true
         }
