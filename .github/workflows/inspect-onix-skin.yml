@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract original skin image assets
         run: |
+          mkdir -p onix-skin-extract
           file BLACK-ONIX.acs3
           mkdir -p /tmp/onix-acs3
           if unzip -q BLACK-ONIX.acs3 -d /tmp/onix-acs3 2>/tmp/acs3-unzip.log; then
@@ -35,7 +36,6 @@ jobs:
           cat /tmp/onix-assets-list.txt
           echo "Volume-related files:"
           grep -Ei 'vol|knob|dial|rotary|button' /tmp/onix-assets-list.txt || true
-          mkdir -p onix-skin-extract
           cp /tmp/onix-assets-list.txt onix-skin-extract/
           find /tmp/onix-assets -type f \( -iname '*vol*' -o -iname '*knob*' -o -iname '*dial*' -o -iname '*rotary*' -o -iname '*button*' -o -iname '*slider*' \) -exec cp --parents {} onix-skin-extract/ \;
       - uses: actions/upload-artifact@v4
