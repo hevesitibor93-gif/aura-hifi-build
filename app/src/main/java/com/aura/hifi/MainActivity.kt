@@ -2568,7 +2568,7 @@ class MainActivity : Activity() {
                 onRepeat = { cycleRepeatMode() },
                 onRepeatLong = { showRepeatOptions() },
                 onOpen = { openAudio() },
-                onSleep = { toast("Hátralévő zeneszámok: ${(queue.size - currentIndex).coerceAtLeast(0)}") },
+                onSleep = { showSleepTimerDialog() },
                 onPlaylist = { showPage(1); showPlaylists() },
                 onEqualizer = { showPage(2) },
                 onUtilities = { openSoundEnginePage?.invoke() },
