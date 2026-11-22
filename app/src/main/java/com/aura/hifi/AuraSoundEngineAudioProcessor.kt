@@ -44,7 +44,7 @@ class AuraSoundEngineAudioProcessor : BaseAudioProcessor() {
     @Volatile var onClipping: ((Boolean) -> Unit)? = null
     @Volatile var onSpectrum: ((ByteArray) -> Unit)? = null
 
-    private val spectrumFftSize = 2048
+    private val spectrumFftSize = 8192
     private val spectrumSamples = FloatArray(spectrumFftSize)
     private val spectrumReal = FloatArray(spectrumFftSize)
     private val spectrumImag = FloatArray(spectrumFftSize)
