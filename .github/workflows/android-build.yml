@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -42,6 +43,21 @@ jobs:
           test -n "$AURIX_KEYSTORE_BASE64" || (echo "Missing AURIX_KEYSTORE_BASE64 secret" && exit 1)
           echo "$AURIX_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aurix-release.jks"
           test -s "$RUNNER_TEMP/aurix-release.jks"
+
+      - name: Restore original BLACK-ONIX volume dial asset
+        uses: actions/download-artifact@v4
+        with:
+          name: BLACK-ONIX-Original-Volume-Assets
+          repository: ${{ github.repository }}
+          run-id: 45071776869
+          github-token: ${{ github.token }}
+          path: /tmp/onix-volume-assets
+
+      - name: Install original volume dial resource
+        run: |
+          test -f /tmp/onix-volume-assets/all-original-images/Images/SliderMasked.Skin.png
+          mkdir -p app/src/main/res/drawable-nodpi
+          cp /tmp/onix-volume-assets/all-original-images/Images/SliderMasked.Skin.png app/src/main/res/drawable-nodpi/onix_volume_knob.png
 
       - name: Build debug APK with persistent signature
         env:
