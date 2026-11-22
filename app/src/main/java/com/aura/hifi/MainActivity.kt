@@ -534,6 +534,7 @@ class MainActivity : Activity() {
         if (!prefs.contains("eq_bass")) editor.putInt("eq_bass", 0)
         if (!prefs.contains("eq_treble")) editor.putInt("eq_treble", 0)
         if (!prefs.contains("eq_preamp")) editor.putInt("eq_preamp", 0)
+        if (!prefs.contains("eq_enabled")) editor.putBoolean("eq_enabled", true)
         for (i in 0 until 12) if (!prefs.contains("eq_band_$i")) editor.putInt("eq_band_$i", 0)
         editor.apply()
     }
@@ -608,6 +609,7 @@ class MainActivity : Activity() {
         eqProcessor.setBassBoostDb(prefs.getInt("eq_bass", 0).coerceIn(0, 120) / 10f)
         eqProcessor.setTrebleBoostDb(prefs.getInt("eq_treble", 0).coerceIn(0, 120) / 10f)
         eqProcessor.setPreampDb(prefs.getInt("eq_preamp", 0).coerceIn(-6, 6).toFloat())
+        eqProcessor.setEnabled(prefs.getBoolean("eq_enabled", true))
     }
 
     private fun isBluetoothAudioOutput(device: android.media.AudioDeviceInfo): Boolean =
@@ -2579,6 +2581,12 @@ class MainActivity : Activity() {
                 onPlaylist = { showPage(1); showPlaylists() },
                 onLibrary = { openLibraryPage?.invoke() },
                 onEqualizer = { showPage(2) },
+                onEqualizerToggle = {
+                    val enabled = !onixPrefs.getBoolean("eq_enabled", true)
+                    onixPrefs.edit().putBoolean("eq_enabled", enabled).apply()
+                    eqProcessor.setEnabled(enabled)
+                    blackOnixDeck?.setEqualizerEnabled(enabled)
+                },
                 onUtilities = { openSoundEnginePage?.invoke() },
                 onRadio = { showRadioCaptureMenu() },
                 onSettings = { showPage(3) },
@@ -2601,6 +2609,7 @@ class MainActivity : Activity() {
             deck.setVuMode(onixVuMode)
             deck.setSpectrumMode(onixSpectrumMode)
             deck.setMuted(onixMuted)
+            deck.setEqualizerEnabled(onixPrefs.getBoolean("eq_enabled", true))
             deck.setPlaybackState(player?.isPlaying == true, shuffleMode, repeatMode)
             val initialTrackInfo = listOf(trackLabel.text, metadataLabel.text, albumLabel.text)
                 .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
