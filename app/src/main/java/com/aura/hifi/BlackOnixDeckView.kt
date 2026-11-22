@@ -49,6 +49,7 @@ class BlackOnixDeckView(
     private val onSeekTo: (Long) -> Unit,
     private val onVolumeChanged: (Int) -> Unit,
     private val onMute: () -> Unit,
+    private val onVolumeMax: () -> Unit,
     private val onPreampAdjust: () -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -543,7 +544,8 @@ class BlackOnixDeckView(
         hitTargets += RectF(19f, 121f, 46f, 148f) to { selectVuPpmMode(0) }
         hitTargets += RectF(46f, 121f, 73f, 148f) to { selectVuPpmMode(1) }
         hitTargets += RectF(73f, 121f, 100f, 148f) to { selectVuPpmMode(2) }
-        hitTargets += RectF(799f, 184f, 840f, 209f) to onMute
+        hitTargets += RectF(799f, 184f, 820f, 209f) to onMute
+        hitTargets += RectF(820f, 184f, 840f, 209f) to onVolumeMax
         hitTargets += RectF(799f, 223f, 820f, 248f) to { cycleSpectrumGroup(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { cycleSpectrumGroup(1) }
         hitTargets += RectF(859f, 223f, 880f, 248f) to { cycleSpectrumGroup(2) }
