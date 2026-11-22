@@ -197,7 +197,7 @@ object AuraOriginIsland {
             putString("notification.superx.capsule.content", "AURA")
         })
 
-        root.putBundle("notification.superx.island", Bundle().apply {
+        root.putBundle("island.superx.infos", Bundle().apply {
             putInt("island.superx.leftTemplate", 3)
             putInt("island.superx.rightTemplate", 1)
             putBoolean("island.superx.forceShow", true)
