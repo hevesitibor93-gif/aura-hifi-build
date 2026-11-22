@@ -5640,6 +5640,7 @@ class MainActivity : Activity() {
     }
 
     private fun startTrack(uri: Uri) {
+        if (radioRecording) stopRadioRecording()
         activeRadioStationName = null
         radioStreamError = false
         tunerPowered = false; tunerPowerButton?.text = "TUNER KI"
@@ -6328,6 +6329,7 @@ class MainActivity : Activity() {
     }
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     override fun onDestroy() {
+        if (radioRecording) stopRadioRecording()
         sleepTimerRunnable?.let { handler.removeCallbacks(it) }
         sleepTimerRunnable = null
         pendingRadioStartRunnable?.let { handler.removeCallbacks(it) }
