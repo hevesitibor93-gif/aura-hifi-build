@@ -67,7 +67,9 @@ object AuraOriginIsland {
 
             // Reuse the same app icon instance in every Vivo bundle. No track artwork is read.
             val appIcon = Icon.createWithResource(context, R.mipmap.ic_launcher)
-            val cleanTitle = trackTitle.trim().ifBlank { "Ismeretlen cím" }.take(48)\n            val cleanArtist = artist.trim().ifBlank { "AURA Hi-Fi" }.take(48)\n            val extras = buildSuperXExtras(appIcon, clickIntent, isPlaying, cleanTitle, cleanArtist)
+            val cleanTitle = trackTitle.trim().ifBlank { "Ismeretlen cím" }.take(48)
+            val cleanArtist = artist.trim().ifBlank { "AURA Hi-Fi" }.take(48)
+            val extras = buildSuperXExtras(appIcon, clickIntent, isPlaying, cleanTitle, cleanArtist)
 
             val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Notification.Builder(context, CHANNEL_ID)
@@ -205,7 +207,10 @@ object AuraOriginIsland {
 
             putBundle("island.superx.leftInfo", Bundle().apply {
                 putParcelable("island.superx.leftInfo.icon", icon)
-                putCharSequenceArrayList(\n                    "island.superx.leftInfo.doublelineText",\n                    arrayListOf(trackTitle, artist)\n                )
+                putCharSequenceArrayList(
+                    "island.superx.leftInfo.doublelineText",
+                    arrayListOf(trackTitle, artist)
+                )
             })
 
             putBundle("island.superx.rightInfo", Bundle().apply {
