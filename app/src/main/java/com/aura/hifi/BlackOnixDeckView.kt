@@ -43,6 +43,7 @@ class BlackOnixDeckView(
     private val onVuModeChanged: (Int) -> Unit,
     private val onSpectrumModeChanged: (Int) -> Unit,
     private val onSeekTo: (Long) -> Unit,
+    private val onVolumeChanged: (Int) -> Unit,
     private val onMute: () -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -66,13 +67,7 @@ class BlackOnixDeckView(
     private var fftActive = false
     private val spectrumLevels = FloatArray(30)
     private var systemVolume = 0
-    private val originalVolumeButton: Bitmap? by lazy {
-        runCatching {
-            val encoded = context.assets.open("onix_button4_skin.b64").bufferedReader().use { it.readText() }
-            val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }.getOrNull()
-    }
+    private var volumeDragging = false
     private var sampleRateText = "-- kHz"
     private var bitrateText = "-- kbps"
     private var systemClock = "--:--:--"
@@ -142,12 +137,14 @@ class BlackOnixDeckView(
     }
 
     fun setSystemInfo(volumePercent: Int, sampleRate: String, bitrate: String, clock: String) {
-        systemVolume = volumePercent.coerceIn(0, 100)
+        setSystemVolume(volumePercent)
         sampleRateText = sampleRate
         bitrateText = bitrate
         systemClock = clock
         invalidate()
     }
+
+    fun setSystemVolume(value: Int) { systemVolume = value.coerceIn(0, 100); invalidate() }
 
     fun setPlaybackState(isPlaying: Boolean, shuffleState: Int, repeatState: Int) {
         playing = isPlaying
@@ -395,27 +392,10 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
         sprite(R.drawable.onix_button_radio_skin, canvas, 731f, 339f, 37f, 27f, 0, 6)
 
-        // Original AIMP BLACK-ONIX circular control sprite, driven by the phone's media volume.
-        originalVolumeButton?.let { knob ->
-            val frameHeight = knob.height / 4
-            val knobRect = Rect(0, 0, knob.width, frameHeight)
-            val knobCenterX = 842.5f
-            val knobCenterY = 119f
-            val knobSize = 100f
-            canvas.drawBitmap(knob, knobRect, RectF(knobCenterX - knobSize / 2f, knobCenterY - knobSize / 2f, knobCenterX + knobSize / 2f, knobCenterY + knobSize / 2f), paint)
-            val pointerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.rgb(193, 190, 181)
-                strokeWidth = 2.2f
-                strokeCap = Paint.Cap.ROUND
-                setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
-            }
-            canvas.save()
-            canvas.rotate(-135f + systemVolume * 2.7f, knobCenterX, knobCenterY)
-            canvas.drawLine(knobCenterX, knobCenterY - 3f, knobCenterX, knobCenterY - 15f, pointerPaint)
-            canvas.restore()
-            val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(49, 50, 52) }
-            canvas.drawCircle(knobCenterX, knobCenterY, 2.2f, centerPaint)
-        }
+        // Original AIMP BLACK-ONIX 102-frame masked rotary volume slider.
+        // Frame 101 is the hit-test mask; frames 0..100 represent volume 0..100.
+        spriteHorizontal(R.drawable.onix_volume_knob, canvas, 787f, 63f, 107f, 121f,
+            systemVolume.coerceIn(0, 100), 102)
         smallPaint.color = Color.rgb(222, 190, 137)
         smallPaint.textSize = 9f
         canvas.drawText("VOLUME", 151f, 174f, smallPaint)
@@ -496,10 +476,19 @@ class BlackOnixDeckView(
         val y = (event.y - oy) / scale
         if (event.action == MotionEvent.ACTION_DOWN) {
             touchDownTime = event.eventTime
+            if (RectF(787f, 63f, 894f, 184f).contains(x, y)) {
+                volumeDragging = true
+                updateVolumeFromTouch(x, y)
+                return true
+            }
             if (RectF(278f, 296f, 623f, 316f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
                 updateSeekPreview(x)
             }
+            return true
+        }
+        if (event.action == MotionEvent.ACTION_MOVE && volumeDragging) {
+            updateVolumeFromTouch(x, y)
             return true
         }
         if (event.action == MotionEvent.ACTION_MOVE && seekDragging) {
@@ -507,12 +496,19 @@ class BlackOnixDeckView(
             return true
         }
         if (event.action == MotionEvent.ACTION_CANCEL) {
+            volumeDragging = false
             seekDragging = false
             seekPreviewMs = trackPositionMs
             invalidate()
             return true
         }
         if (event.action != MotionEvent.ACTION_UP) return true
+        if (volumeDragging) {
+            updateVolumeFromTouch(x, y)
+            volumeDragging = false
+            performClick()
+            return true
+        }
         if (seekDragging) {
             updateSeekPreview(x)
             seekDragging = false
@@ -547,6 +543,22 @@ class BlackOnixDeckView(
             spectrumPaint.color = if (active) color else Color.rgb(31, 35, 40)
             val top = y + h - (i + 1) * segmentH - i * gap
             canvas.drawRoundRect(RectF(x, top, x + 4f, top + segmentH), 1f, 1f, spectrumPaint)
+        }
+    }
+
+    private fun updateVolumeFromTouch(x: Float, y: Float) {
+        val centerX = 840.5f
+        val centerY = 123.5f
+        var angle = Math.toDegrees(kotlin.math.atan2((y - centerY).toDouble(), (x - centerX).toDouble())).toFloat()
+        if (angle < 0f) angle += 360f
+        // The original dial sweeps 300 degrees, leaving a 60-degree dead zone at the bottom.
+        if (angle in 60f..120f) angle = if (angle - 60f <= 120f - angle) 60f else 120f
+        if (angle < 120f) angle += 360f
+        val percent = (((angle - 120f) / 300f) * 100f).toInt().coerceIn(0, 100)
+        if (percent != systemVolume) {
+            systemVolume = percent
+            onVolumeChanged(percent)
+            invalidate()
         }
     }
 
