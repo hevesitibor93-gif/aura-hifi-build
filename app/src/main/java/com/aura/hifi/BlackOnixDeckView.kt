@@ -165,7 +165,7 @@ class BlackOnixDeckView(
                     val im = fft[offset + 1].toInt()
                     peak = max(peak, kotlin.math.sqrt((re * re + im * im).toDouble()).toFloat())
                 }
-                val target = kotlin.math.sqrt((peak / 105f).coerceIn(0f, 1f))
+                val target = kotlin.math.sqrt((peak / 85f).coerceIn(0f, 1f))
                 spectrumLevels[i] = if (target > spectrumLevels[i]) spectrumLevels[i] * .24f + target * .76f
                     else spectrumLevels[i] * .78f + target * .22f
             }
