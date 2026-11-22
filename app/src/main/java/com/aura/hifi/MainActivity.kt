@@ -5229,6 +5229,23 @@ class MainActivity : Activity() {
         tunerPowered = true; tunerPowerButton?.text = "TUNER BE"; showRadioStationManager()
     }
 
+    private fun skipRadioStation(direction: Int) {
+        val stations = loadFavoriteRadioStations().filter { it.second.isNotBlank() }
+        if (stations.isEmpty()) {
+            toast("Nincs mentett rádióállomás.")
+            return
+        }
+        val currentUrl = player?.currentMediaItem?.localConfiguration?.uri?.toString()
+        val currentIndex = stations.indexOfFirst { it.second == currentUrl }
+        val nextIndex = if (currentIndex < 0) {
+            if (direction >= 0) 0 else stations.lastIndex
+        } else {
+            Math.floorMod(currentIndex + direction, stations.size)
+        }
+        val station = stations[nextIndex]
+        startRadioStation(station.first, station.second)
+    }
+
     private fun startRadioStation(stationName: String, streamUrl: String) {
         // Hide the upcoming local MP3 immediately on the first radio switch,
         // including while the playback service/player is still starting.
@@ -5291,8 +5308,8 @@ class MainActivity : Activity() {
                 text = "CONNECTING  •  $stationName"
                 setTextColor(Color.rgb(230, 190, 112))
             }
-            AuraPlaybackService.onPreviousRequested = { toast("Az internetes rádió élő adás.") }
-            AuraPlaybackService.onNextRequested = { toast("Az internetes rádió élő adás.") }
+            AuraPlaybackService.onPreviousRequested = { skipRadioStation(-1) }
+            AuraPlaybackService.onNextRequested = { skipRadioStation(1) }
             val metadata = MediaMetadata.Builder()
                 .setTitle(stationName)
                 .setArtist("MAGYAR INTERNET RÁDIÓ")
