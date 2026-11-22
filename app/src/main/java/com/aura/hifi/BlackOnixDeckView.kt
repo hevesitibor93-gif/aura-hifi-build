@@ -570,6 +570,7 @@ class BlackOnixDeckView(
             return true
         }
         if (event.action != MotionEvent.ACTION_UP) return true
+        val held = event.eventTime - touchDownTime
         if (volumeDragging) {
             if (held >= 500L && !volumeTouchMoved) onPreampAdjust() else updateVolumeFromTouch(x, y)
             volumeDragging = false
@@ -583,7 +584,6 @@ class BlackOnixDeckView(
             performClick()
             return true
         }
-        val held = event.eventTime - touchDownTime
         if (RectF(659f, 339f, 696f, 366f).contains(x, y) && held >= 500L) {
             onRepeatLong()
         } else if (RectF(799f, 223f, 880f, 248f).contains(x, y) && held >= 500L) {
