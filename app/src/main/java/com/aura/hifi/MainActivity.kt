@@ -5442,10 +5442,11 @@ class MainActivity : Activity() {
                     put(MediaStore.Audio.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MUSIC + "/AURA Radio Recordings")
                     put(MediaStore.Audio.Media.IS_PENDING, 1)
                 }
-                destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                val targetUri = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
                     ?: throw IllegalStateException("Nem sikerült létrehozni a felvételfájlt.")
-                activeRadioRecordingUri = destination
-                val sink = contentResolver.openOutputStream(destination, "w")
+                destination = targetUri
+                activeRadioRecordingUri = targetUri
+                val sink = contentResolver.openOutputStream(targetUri, "w")
                     ?: throw IllegalStateException("A felvételfájl nem írható.")
                 output = sink
                 val input = conn.inputStream
@@ -5463,7 +5464,7 @@ class MainActivity : Activity() {
                 }
                 sink.flush()
                 if (total < 4096L) throw IllegalStateException("A stream túl rövid vagy nem tartalmazott menthető hangadatot.")
-                contentResolver.update(destination, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+                contentResolver.update(targetUri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
                 destination = null
                 runOnUiThread { toast("Felvétel mentve: Music/AURA Radio Recordings") }
             } catch (e: Exception) {
