@@ -205,7 +205,7 @@ class BlackOnixDeckView(
     }
 
     fun setVuMode(mode: Int) {
-        vuMode = mode.coerceIn(0, 3)
+        vuMode = mode.coerceIn(0, 5)
         onVuModeChanged(vuMode)
         invalidate()
     }
@@ -256,9 +256,9 @@ class BlackOnixDeckView(
         draw(R.drawable.onix_panel_bottom_left_texture, canvas, 0f, 323f)
         draw(R.drawable.onix_panel_bottom_center_main_texture, canvas, 117f, 323f)
         draw(R.drawable.onix_panel_bottom_right_texture, canvas, 782f, 323f)
-        sprite(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f, if (vuMode == 0) 1 else 0, 6)
-        sprite(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f, if (vuMode == 1) 3 else 2, 6)
-        sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode == 2) 5 else 4, 6)
+        sprite(R.drawable.onix_vuppm_mode1_skin, canvas, 19f, 121f, 27f, 27f, if (vuMode % 3 == 0) 1 else 0, 6)
+        sprite(R.drawable.onix_vuppm_mode2_skin, canvas, 46f, 121f, 27f, 27f, if (vuMode % 3 == 1) 3 else 2, 6)
+        sprite(R.drawable.onix_vuppm_mode3_skin, canvas, 73f, 121f, 27f, 27f, if (vuMode % 3 == 2) 5 else 4, 6)
         sprite(R.drawable.onix_s_mode_a_skin, canvas, 799f, 223f, 21f, 25f, if (spectrumMode / 6 == 0) 1 else 0, 6)
         sprite(R.drawable.onix_s_mode_b_skin, canvas, 829f, 223f, 21f, 25f, if (spectrumMode / 6 == 1) 3 else 2, 6)
         sprite(R.drawable.onix_s_mode_c_skin, canvas, 859f, 223f, 21f, 25f, if (spectrumMode / 6 == 2) 5 else 4, 6)
@@ -364,27 +364,31 @@ class BlackOnixDeckView(
         canvas.drawCircle(seekLeft + (seekRight - seekLeft) * fraction, seekY, 3.4f, spectrumPaint)
 
         // Original 341x32 VU mode background, followed by its animated level sprites.
-        val vuTexture = when (vuMode) {
-            1 -> R.drawable.onix_vu_mode2_texture
-            2 -> R.drawable.onix_vu_mode3_texture
-            else -> R.drawable.onix_vu_mode1_texture
-        }
-        if (vuMode != 3) draw(vuTexture, canvas, 279f, 127f, 341f, 32f)
+        val ppmMode = vuMode >= 3
+        val meterIndex = vuMode % 3
+        val vuTextures = intArrayOf(R.drawable.onix_vu_mode1_texture, R.drawable.onix_vu_mode2_texture, R.drawable.onix_vu_mode3_texture)
+        val ppmTextures = intArrayOf(R.drawable.onix_ppm_mode1_texture, R.drawable.onix_ppm_mode2_texture, R.drawable.onix_ppm_mode3_texture)
+        val meterTexture = if (ppmMode) ppmTextures[meterIndex] else vuTextures[meterIndex]
+        draw(meterTexture, canvas, 279f, 127f, 341f, 32f)
 
-        // The four independent red/amber side-meter sprite sets (three selectable modes).
-        val prefixVu = when (vuMode) {
-            1 -> arrayOf(R.drawable.onix_vu_mode2_top_skin, R.drawable.onix_vu_mode2_bottom_skin, R.drawable.onix_vu_mode2_add_top_skin, R.drawable.onix_vu_mode2_add_bottom_skin)
-            2 -> arrayOf(R.drawable.onix_vu_mode3_top_skin, R.drawable.onix_vu_mode3_bottom_skin, R.drawable.onix_vu_mode3_add_top_skin, R.drawable.onix_vu_mode3_add_bottom_skin)
-            else -> arrayOf(R.drawable.onix_vu_mode1_top_skin, R.drawable.onix_vu_mode1_bottom_skin, R.drawable.onix_vu_mode1_add_top_skin, R.drawable.onix_vu_mode1_add_bottom_skin)
-        }
-        if (vuMode != 3) {
-            val frameL = (onixVuLeftLevel * 35f).toInt().coerceIn(0, 35)
-            val frameR = (onixVuRightLevel * 35f).toInt().coerceIn(0, 35)
-            sprite(prefixVu[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
-            sprite(prefixVu[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
-            sprite(prefixVu[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
-            sprite(prefixVu[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
-        }
+        // Original VU and PPM modes use separate sprite sets with matching stereo peaks.
+        val vuSprites = arrayOf(
+            intArrayOf(R.drawable.onix_vu_mode1_top_skin, R.drawable.onix_vu_mode1_bottom_skin, R.drawable.onix_vu_mode1_add_top_skin, R.drawable.onix_vu_mode1_add_bottom_skin),
+            intArrayOf(R.drawable.onix_vu_mode2_top_skin, R.drawable.onix_vu_mode2_bottom_skin, R.drawable.onix_vu_mode2_add_top_skin, R.drawable.onix_vu_mode2_add_bottom_skin),
+            intArrayOf(R.drawable.onix_vu_mode3_top_skin, R.drawable.onix_vu_mode3_bottom_skin, R.drawable.onix_vu_mode3_add_top_skin, R.drawable.onix_vu_mode3_add_bottom_skin)
+        )
+        val ppmSprites = arrayOf(
+            intArrayOf(R.drawable.onix_ppm_mode1_top_skin, R.drawable.onix_ppm_mode1_bottom_skin, R.drawable.onix_ppm_mode1_add_top_skin, R.drawable.onix_ppm_mode1_add_bottom_skin),
+            intArrayOf(R.drawable.onix_ppm_mode2_top_skin, R.drawable.onix_ppm_mode2_bottom_skin, R.drawable.onix_ppm_mode2_add_top_skin, R.drawable.onix_ppm_mode2_add_bottom_skin),
+            intArrayOf(R.drawable.onix_ppm_mode3_top_skin, R.drawable.onix_ppm_mode3_bottom_skin, R.drawable.onix_ppm_mode3_add_top_skin, R.drawable.onix_ppm_mode3_add_bottom_skin)
+        )
+        val meterSprites = if (ppmMode) ppmSprites[meterIndex] else vuSprites[meterIndex]
+        val frameL = (onixVuLeftLevel * 35f).toInt().coerceIn(0, 35)
+        val frameR = (onixVuRightLevel * 35f).toInt().coerceIn(0, 35)
+        sprite(meterSprites[0], canvas, 327f, 131f, 245f, 6f, frameL, 36)
+        sprite(meterSprites[2], canvas, 327f, 131f, 245f, 6f, frameL, 36)
+        sprite(meterSprites[1], canvas, 327f, 146f, 245f, 6f, frameR, 36)
+        sprite(meterSprites[3], canvas, 327f, 146f, 245f, 6f, frameR, 36)
 
         // Cover the baked AIMP3 branding in the top control row and place AURA
         // in the clear center gap between the left and right button groups.
@@ -481,9 +485,9 @@ class BlackOnixDeckView(
         hitTargets += RectF(70f, 27f, 93f, 50f) to onUtilities
         hitTargets += RectF(805f, 27f, 828f, 50f) to onMinimize
         hitTargets += RectF(865f, 27f, 888f, 50f) to onExit
-        hitTargets += RectF(19f, 121f, 46f, 148f) to { setVuMode(if (vuMode == 0) 3 else 0) }
-        hitTargets += RectF(46f, 121f, 73f, 148f) to { setVuMode(if (vuMode == 1) 3 else 1) }
-        hitTargets += RectF(73f, 121f, 100f, 148f) to { setVuMode(if (vuMode == 2) 3 else 2) }
+        hitTargets += RectF(19f, 121f, 46f, 148f) to { selectVuPpmMode(0) }
+        hitTargets += RectF(46f, 121f, 73f, 148f) to { selectVuPpmMode(1) }
+        hitTargets += RectF(73f, 121f, 100f, 148f) to { selectVuPpmMode(2) }
         hitTargets += RectF(799f, 184f, 840f, 209f) to onMute
         hitTargets += RectF(799f, 223f, 820f, 248f) to { cycleSpectrumGroup(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { cycleSpectrumGroup(1) }
