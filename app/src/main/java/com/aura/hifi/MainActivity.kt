@@ -5406,19 +5406,21 @@ class MainActivity : Activity() {
             var destination: Uri? = null
             var connection: java.net.HttpURLConnection? = null
             var output: java.io.OutputStream? = null
+            var total = 0L
             try {
                 val url = java.net.URL(streamUrl)
-                connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
                     connectTimeout = 12000
                     readTimeout = 20000
                     setRequestProperty("User-Agent", "AURA-HiFi/1.0")
                     setRequestProperty("Icy-MetaData", "0")
                     instanceFollowRedirects = true
                 }
-                radioRecordingConnection = connection
-                connection.connect()
-                if (connection.responseCode !in 200..299) throw IllegalStateException("A rádió szervere ${connection.responseCode} hibát adott.")
-                val contentType = connection.contentType?.substringBefore(';')?.trim()?.lowercase(java.util.Locale.ROOT).orEmpty()
+                connection = conn
+                radioRecordingConnection = conn
+                conn.connect()
+                if (conn.responseCode !in 200..299) throw IllegalStateException("A rádió szervere ${conn.responseCode} hibát adott.")
+                val contentType = conn.contentType?.substringBefore(';')?.trim()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 val path = url.path.lowercase(java.util.Locale.ROOT)
                 val isHls = contentType.contains("mpegurl") || contentType.contains("x-mpegurl") || path.endsWith(".m3u8")
                 if (isHls) throw IllegalStateException("Ez HLS-adás. Ennél a felvételi módnál még nem támogatott.")
@@ -5443,31 +5445,37 @@ class MainActivity : Activity() {
                 destination = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
                     ?: throw IllegalStateException("Nem sikerült létrehozni a felvételfájlt.")
                 activeRadioRecordingUri = destination
-                output = contentResolver.openOutputStream(destination, "w")
+                val sink = contentResolver.openOutputStream(destination, "w")
                     ?: throw IllegalStateException("A felvételfájl nem írható.")
-                val input = connection.inputStream
+                output = sink
+                val input = conn.inputStream
                 val buffer = ByteArray(32 * 1024)
-                var total = 0L
                 runOnUiThread { toast("RADIO CAPTURE • FELVÉTEL ELINDULT") }
                 input.use { source ->
                     while (!radioRecordingStopRequested) {
                         val count = source.read(buffer)
                         if (count < 0) break
                         if (count > 0) {
-                            output.write(buffer, 0, count)
+                            sink.write(buffer, 0, count)
                             total += count
                         }
                     }
                 }
-                output.flush()
+                sink.flush()
                 if (total < 4096L) throw IllegalStateException("A stream túl rövid vagy nem tartalmazott menthető hangadatot.")
                 contentResolver.update(destination, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
                 destination = null
                 runOnUiThread { toast("Felvétel mentve: Music/AURA Radio Recordings") }
             } catch (e: Exception) {
-                destination?.let { runCatching { contentResolver.delete(it, null, null) } }
-                val message = e.localizedMessage ?: "ismeretlen hiba"
-                runOnUiThread { toast("Rádiófelvételi hiba: $message") }
+                val partial = destination
+                if (radioRecordingStopRequested && partial != null && total >= 4096L) {
+                    runCatching { contentResolver.update(partial, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null) }
+                    runOnUiThread { toast("Felvétel mentve: Music/AURA Radio Recordings") }
+                } else {
+                    partial?.let { runCatching { contentResolver.delete(it, null, null) } }
+                    val message = e.localizedMessage ?: "ismeretlen hiba"
+                    runOnUiThread { toast("Rádiófelvételi hiba: $message") }
+                }
             } finally {
                 runCatching { output?.close() }
                 runCatching { connection?.disconnect() }
