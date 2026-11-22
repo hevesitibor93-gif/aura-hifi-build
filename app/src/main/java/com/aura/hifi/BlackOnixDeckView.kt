@@ -389,9 +389,33 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_radio_skin, canvas, 731f, 339f, 37f, 27f, 0, 6)
 
         // Live phone/system information in the original right-hand display field.
+        // Circular phone-volume indicator above the VOLUME readout.
+        val volumeCenterX = 178f
+        val volumeCenterY = 151f
+        val volumeRadius = 12f
+        val volumeTrack = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3.2f
+            color = Color.rgb(39, 43, 49)
+        }
+        val volumeArc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = 3.2f
+            color = Color.rgb(221, 174, 94)
+        }
+        canvas.drawCircle(volumeCenterX, volumeCenterY, volumeRadius, volumeTrack)
+        canvas.drawArc(RectF(volumeCenterX - volumeRadius, volumeCenterY - volumeRadius, volumeCenterX + volumeRadius, volumeCenterY + volumeRadius), -90f, systemVolume * 3.6f, false, volumeArc)
+        val volumeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(238, 218, 178)
+            textSize = 8f
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+        }
+        canvas.drawText("$systemVolume", volumeCenterX, volumeCenterY + 3f, volumeTextPaint)
         smallPaint.color = Color.rgb(222, 190, 137)
-        smallPaint.textSize = 10f
-        canvas.drawText("$systemVolume%", 163f, 171f, smallPaint)
+        smallPaint.textSize = 9f
+        canvas.drawText("VOLUME", 151f, 174f, smallPaint)
         canvas.drawText(sampleRateText, 149f, 222f, smallPaint)
         canvas.drawText(bitrateText, 140f, 242f, smallPaint)
         // Original AIMP screen tabs on the left bottom panel.
