@@ -358,28 +358,47 @@ class BlackOnixDeckView(
             spectrumPaint.color = Color.rgb(red.coerceIn(0, 255), green.coerceIn(0, 255), blue.coerceIn(0, 255))
             when (spectrumMode / 6) {
                 1 -> {
-                    val barHeight = max(1.5f, value * 34f)
-                    canvas.drawRoundRect(RectF(x, 199f - barHeight, x + 8f, 199f + barHeight), 1.5f, 1.5f, spectrumPaint)
+                    if (spectrumSegmented) {
+                        val segments = 8
+                        val lit = (value * segments).toInt().coerceIn(0, segments)
+                        for (segment in 0 until lit) {
+                            val offset = segment * 4.5f
+                            canvas.drawRoundRect(RectF(x, 199f - offset - 4f, x + 8f, 199f - offset - .5f), 1f, 1f, spectrumPaint)
+                            canvas.drawRoundRect(RectF(x, 199f + offset + .5f, x + 8f, 199f + offset + 4f), 1f, 1f, spectrumPaint)
+                        }
+                    } else {
+                        val barHeight = max(1.5f, value * 34f)
+                        canvas.drawRoundRect(RectF(x, 199f - barHeight, x + 8f, 199f + barHeight), 1.5f, 1.5f, spectrumPaint)
+                    }
                 }
                 2 -> {
-                    if (!spectrumSegmented) {
+                    if (spectrumSegmented) {
+                        val segments = 8
+                        val lit = (value * segments).toInt().coerceIn(0, segments)
+                        for (segment in 0 until lit) {
+                            val top = 239f - (segment + 1) * 9f
+                            canvas.drawRoundRect(RectF(x, top, x + 8f, top + 7f), 1f, 1f, spectrumPaint)
+                        }
+                    } else {
                         val barHeight = max(2f, value * 73f)
                         canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
-                        continue
-                    }
-                    val segments = 8
-                    val lit = (value * segments).toInt().coerceIn(0, segments)
-                    for (segment in 0 until lit) {
-                        val top = 239f - (segment + 1) * 9f
-                        canvas.drawRoundRect(RectF(x, top, x + 8f, top + 7f), 1f, 1f, spectrumPaint)
                     }
                 }
                 else -> {
                     val barHeight = max(2f, value * 73f)
-                    canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
-                    if (value > .12f) {
-                        spectrumPaint.color = Color.argb(150, 245, 220, 160)
-                        canvas.drawRect(x, 239f - barHeight, x + 8f, 237f - barHeight, spectrumPaint)
+                    if (spectrumSegmented) {
+                        val segments = 8
+                        val lit = (value * segments).toInt().coerceIn(0, segments)
+                        for (segment in 0 until lit) {
+                            val top = 239f - (segment + 1) * 9f
+                            canvas.drawRoundRect(RectF(x, top, x + 8f, top + 7f), 1f, 1f, spectrumPaint)
+                        }
+                    } else {
+                        canvas.drawRoundRect(RectF(x, 239f - barHeight, x + 8f, 239f), 1.5f, 1.5f, spectrumPaint)
+                        if (value > .12f) {
+                            spectrumPaint.color = Color.argb(150, 245, 220, 160)
+                            canvas.drawRect(x, 239f - barHeight, x + 8f, 237f - barHeight, spectrumPaint)
+                        }
                     }
                 }
             }
