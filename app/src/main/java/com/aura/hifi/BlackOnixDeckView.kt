@@ -419,7 +419,7 @@ class BlackOnixDeckView(
         val seekY = 278f
         val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
         val activeX = seekLeft + (seekRight - seekLeft) * fraction
-        val activeColor = if (seekColor == 1) Color.rgb(255, 48, 48) else Color.rgb(0, 174, 255)
+        val activeColor = when (seekStyle) { 1 -> Color.rgb(255, 48, 48); 2 -> Color.rgb(0, 174, 255); 3 -> Color.rgb(185, 85, 255); else -> if (seekColor == 1) Color.rgb(255, 48, 48) else Color.rgb(0, 174, 255) }
         spectrumPaint.style = Paint.Style.FILL
         spectrumPaint.color = Color.rgb(4, 7, 12)
         canvas.drawRoundRect(RectF(seekLeft - 5f, seekY - 12f, seekRight + 5f, seekY + 12f), 11f, 11f, spectrumPaint)
@@ -510,17 +510,19 @@ class BlackOnixDeckView(
         }
         smallPaint.textAlign = Paint.Align.LEFT
         spectrumPaint.style = Paint.Style.FILL
-        spectrumPaint.color = Color.rgb(0, 174, 255)
-        canvas.drawCircle(844f, 265f, 4f, spectrumPaint)
-        spectrumPaint.color = Color.rgb(255, 48, 48)
-        canvas.drawCircle(862f, 265f, 4f, spectrumPaint)
-        spectrumPaint.style = Paint.Style.STROKE
-        spectrumPaint.strokeWidth = 1.2f
-        spectrumPaint.color = if (seekColor == 0) Color.WHITE else Color.GRAY
-        canvas.drawCircle(844f, 265f, 6.5f, spectrumPaint)
-        spectrumPaint.color = if (seekColor == 1) Color.WHITE else Color.GRAY
-        canvas.drawCircle(862f, 265f, 6.5f, spectrumPaint)
-        spectrumPaint.style = Paint.Style.FILL
+        if (seekStyle == 0) {
+            spectrumPaint.color = Color.rgb(0, 174, 255)
+            canvas.drawCircle(844f, 265f, 4f, spectrumPaint)
+            spectrumPaint.color = Color.rgb(255, 48, 48)
+            canvas.drawCircle(862f, 265f, 4f, spectrumPaint)
+            spectrumPaint.style = Paint.Style.STROKE
+            spectrumPaint.strokeWidth = 1.2f
+            spectrumPaint.color = if (seekColor == 0) Color.WHITE else Color.GRAY
+            canvas.drawCircle(844f, 265f, 6.5f, spectrumPaint)
+            spectrumPaint.color = if (seekColor == 1) Color.WHITE else Color.GRAY
+            canvas.drawCircle(862f, 265f, 6.5f, spectrumPaint)
+            spectrumPaint.style = Paint.Style.FILL
+        }
 
         // Original 341x32 VU mode background, followed by its animated level sprites.
         val ppmMode = vuMode >= 3
@@ -671,8 +673,10 @@ class BlackOnixDeckView(
         hitTargets += RectF(234f, 293f, 441f, 321f) to { seekStyle = 1; onSeekStyleChanged(seekStyle); invalidate() }
         hitTargets += RectF(450f, 293f, 657f, 321f) to { seekStyle = 2; onSeekStyleChanged(seekStyle); invalidate() }
         hitTargets += RectF(666f, 293f, 873f, 321f) to { seekStyle = 3; onSeekStyleChanged(seekStyle); invalidate() }
-        hitTargets += RectF(836f, 257f, 852f, 273f) to { seekColor = 0; onSeekColorChanged(seekColor); invalidate() }
-        hitTargets += RectF(854f, 257f, 870f, 273f) to { seekColor = 1; onSeekColorChanged(seekColor); invalidate() }
+        if (seekStyle == 0) {
+            hitTargets += RectF(836f, 257f, 852f, 273f) to { seekColor = 0; onSeekColorChanged(seekColor); invalidate() }
+            hitTargets += RectF(854f, 257f, 870f, 273f) to { seekColor = 1; onSeekColorChanged(seekColor); invalidate() }
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
