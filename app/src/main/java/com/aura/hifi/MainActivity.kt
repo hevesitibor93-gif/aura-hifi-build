@@ -2608,6 +2608,16 @@ class MainActivity : Activity() {
                     blackOnixDeck?.setSystemVolume(percent)
                 },
                 onMute = { toggleOnixMute() },
+                onVolumeMax = {
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, maxVolume, 0)
+                    player?.volume = 1f
+                    onixPreMuteVolume = 1f
+                    onixMuted = false
+                    blackOnixDeck?.setMuted(false)
+                    blackOnixDeck?.setSystemVolume(100)
+                },
                 onPreampAdjust = { showDeckPreampDialog() }
             )
             blackOnixDeck = deck
