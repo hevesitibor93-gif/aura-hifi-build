@@ -66,6 +66,13 @@ class BlackOnixDeckView(
     private var fftActive = false
     private val spectrumLevels = FloatArray(30)
     private var systemVolume = 0
+    private val originalVolumeButton: Bitmap? by lazy {
+        runCatching {
+            val encoded = context.assets.open("onix_button4_skin.b64").bufferedReader().use { it.readText() }
+            val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }.getOrNull()
+    }
     private var sampleRateText = "-- kHz"
     private var bitrateText = "-- kbps"
     private var systemClock = "--:--:--"
@@ -388,31 +395,27 @@ class BlackOnixDeckView(
         sprite(R.drawable.onix_button_shuffle_skin, canvas, 695f, 339f, 37f, 27f, when (shuffleMode) { 0 -> 0; 1 -> 3; else -> 5 }, 6)
         sprite(R.drawable.onix_button_radio_skin, canvas, 731f, 339f, 37f, 27f, 0, 6)
 
-        // Live phone/system information in the original right-hand display field.
-        // Circular phone-volume indicator above the VOLUME readout.
-        val volumeCenterX = 178f
-        val volumeCenterY = 151f
-        val volumeRadius = 12f
-        val volumeTrack = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3.2f
-            color = Color.rgb(39, 43, 49)
+        // Original AIMP BLACK-ONIX circular control sprite, driven by the phone's media volume.
+        originalVolumeButton?.let { knob ->
+            val frameHeight = knob.height / 4
+            val knobRect = Rect(0, 0, knob.width, frameHeight)
+            val knobCenterX = 838f
+            val knobCenterY = 145f
+            val knobSize = 43f
+            canvas.drawBitmap(knob, knobRect, RectF(knobCenterX - knobSize / 2f, knobCenterY - knobSize / 2f, knobCenterX + knobSize / 2f, knobCenterY + knobSize / 2f), paint)
+            val pointerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.rgb(193, 190, 181)
+                strokeWidth = 2.2f
+                strokeCap = Paint.Cap.ROUND
+                setShadowLayer(1.5f, 0f, 1f, Color.BLACK)
+            }
+            canvas.save()
+            canvas.rotate(-135f + systemVolume * 2.7f, knobCenterX, knobCenterY)
+            canvas.drawLine(knobCenterX, knobCenterY - 3f, knobCenterX, knobCenterY - 15f, pointerPaint)
+            canvas.restore()
+            val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(49, 50, 52) }
+            canvas.drawCircle(knobCenterX, knobCenterY, 2.2f, centerPaint)
         }
-        val volumeArc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeWidth = 3.2f
-            color = Color.rgb(221, 174, 94)
-        }
-        canvas.drawCircle(volumeCenterX, volumeCenterY, volumeRadius, volumeTrack)
-        canvas.drawArc(RectF(volumeCenterX - volumeRadius, volumeCenterY - volumeRadius, volumeCenterX + volumeRadius, volumeCenterY + volumeRadius), -90f, systemVolume * 3.6f, false, volumeArc)
-        val volumeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(238, 218, 178)
-            textSize = 8f
-            textAlign = Paint.Align.CENTER
-            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
-        }
-        canvas.drawText("$systemVolume", volumeCenterX, volumeCenterY + 3f, volumeTextPaint)
         smallPaint.color = Color.rgb(222, 190, 137)
         smallPaint.textSize = 9f
         canvas.drawText("VOLUME", 151f, 174f, smallPaint)
