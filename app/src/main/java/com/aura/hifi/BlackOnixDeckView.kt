@@ -33,6 +33,7 @@ class BlackOnixDeckView(
     private val onOpen: () -> Unit,
     private val onSleep: () -> Unit,
     private val onPlaylist: () -> Unit,
+    private val onLibrary: () -> Unit,
     private val onEqualizer: () -> Unit,
     private val onUtilities: () -> Unit,
     private val onRadio: () -> Unit,
@@ -446,7 +447,7 @@ class BlackOnixDeckView(
         hitTargets += RectF(515f, 339f, 552f, 366f) to onOpen
         hitTargets += RectF(551f, 339f, 588f, 366f) to onSleep
         hitTargets += RectF(587f, 339f, 624f, 366f) to onUtilities
-        hitTargets += RectF(623f, 339f, 660f, 366f) to onMainMenu
+        hitTargets += RectF(623f, 339f, 660f, 366f) to onLibrary
         hitTargets += RectF(659f, 339f, 696f, 366f) to onRepeat
         hitTargets += RectF(695f, 339f, 732f, 366f) to onShuffle
         hitTargets += RectF(731f, 339f, 768f, 366f) to onRadio
