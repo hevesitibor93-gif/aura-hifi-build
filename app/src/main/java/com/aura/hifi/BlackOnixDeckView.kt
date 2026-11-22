@@ -401,7 +401,7 @@ class BlackOnixDeckView(
             val knobRect = Rect(0, 0, knob.width, frameHeight)
             val knobCenterX = 838f
             val knobCenterY = 145f
-            val knobSize = 43f
+            val knobSize = 56f
             canvas.drawBitmap(knob, knobRect, RectF(knobCenterX - knobSize / 2f, knobCenterY - knobSize / 2f, knobCenterX + knobSize / 2f, knobCenterY + knobSize / 2f), paint)
             val pointerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(193, 190, 181)
