@@ -48,7 +48,8 @@ class BlackOnixDeckView(
     private val onSpectrumSegmentedChanged: (Boolean) -> Unit,
     private val onSeekTo: (Long) -> Unit,
     private val onVolumeChanged: (Int) -> Unit,
-    private val onMute: () -> Unit
+    private val onMute: () -> Unit,
+    private val onPreampAdjust: () -> Unit
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmaps = HashMap<Int, Bitmap?>()
@@ -75,6 +76,9 @@ class BlackOnixDeckView(
     private val spectrumLevels = FloatArray(30)
     private var systemVolume = 0
     private var volumeDragging = false
+    private var volumeTouchStartX = 0f
+    private var volumeTouchStartY = 0f
+    private var volumeTouchMoved = false
     private var sampleRateText = "-- kHz"
     private var bitrateText = "-- kbps"
     private var systemClock = "--:--:--"
@@ -538,7 +542,9 @@ class BlackOnixDeckView(
             touchDownTime = event.eventTime
             if (RectF(787f, 63f, 894f, 184f).contains(x, y)) {
                 volumeDragging = true
-                updateVolumeFromTouch(x, y)
+                volumeTouchStartX = x
+                volumeTouchStartY = y
+                volumeTouchMoved = false
                 return true
             }
             if (RectF(278f, 296f, 623f, 316f).contains(x, y) && trackDurationMs > 0L) {
@@ -548,7 +554,8 @@ class BlackOnixDeckView(
             return true
         }
         if (event.action == MotionEvent.ACTION_MOVE && volumeDragging) {
-            updateVolumeFromTouch(x, y)
+            if (abs(x - volumeTouchStartX) > 3f || abs(y - volumeTouchStartY) > 3f) volumeTouchMoved = true
+            if (volumeTouchMoved) updateVolumeFromTouch(x, y)
             return true
         }
         if (event.action == MotionEvent.ACTION_MOVE && seekDragging) {
@@ -564,7 +571,7 @@ class BlackOnixDeckView(
         }
         if (event.action != MotionEvent.ACTION_UP) return true
         if (volumeDragging) {
-            updateVolumeFromTouch(x, y)
+            if (held >= 500L && !volumeTouchMoved) onPreampAdjust() else updateVolumeFromTouch(x, y)
             volumeDragging = false
             performClick()
             return true
