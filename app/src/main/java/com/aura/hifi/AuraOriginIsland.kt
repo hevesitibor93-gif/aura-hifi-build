@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
+import android.media.session.MediaSession
 import android.os.Build
 import android.os.Bundle
 
@@ -43,7 +44,13 @@ object AuraOriginIsland {
         manager.createNotificationChannel(channel)
     }
 
-    fun update(context: Context, isPlaying: Boolean, trackTitle: String, artist: String) {
+    fun update(
+        context: Context,
+        isPlaying: Boolean,
+        trackTitle: String,
+        artist: String,
+        sessionToken: MediaSession.Token?
+    ) {
         if (!isVivoDevice()) return
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
@@ -57,7 +64,6 @@ object AuraOriginIsland {
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra("aura_open_player", true)
-                putExtra("aura_show_controls", true)
             }
             val clickIntent = PendingIntent.getActivity(
                 context,
@@ -72,7 +78,7 @@ object AuraOriginIsland {
             val cleanArtist = artist.trim().ifBlank { "AURA Hi-Fi" }.take(48)
             val extras = buildSuperXExtras(appIcon, clickIntent, isPlaying, cleanTitle, cleanArtist)
 
-            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Notification.Builder(context, CHANNEL_ID)
             } else {
                 @Suppress("DEPRECATION")
@@ -89,9 +95,13 @@ object AuraOriginIsland {
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setPriority(Notification.PRIORITY_HIGH)
                 .addExtras(extras)
-                .build()
 
-            manager.notify(NOTIFICATION_TAG, NOTIFICATION_ID, notification)
+            // Mark this Vivo capsule notification as the active MediaSession surface.
+            // System UI can then render the session's five ordered media buttons and seek bar.
+            if (sessionToken != null) {
+                builder.setStyle(Notification.MediaStyle().setMediaSession(sessionToken))
+            }
+            manager.notify(NOTIFICATION_TAG, NOTIFICATION_ID, builder.build())
         }
     }
 
