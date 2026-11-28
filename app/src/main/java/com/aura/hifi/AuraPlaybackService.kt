@@ -286,6 +286,31 @@ class AuraPlaybackService : MediaSessionService() {
                 .build()
         }
 
+        override fun onPostConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ) {
+            // Media3's notification controller needs its own command grant.
+            // A builder-level preference alone can leave custom buttons disabled
+            // in System UI even though the app's other controllers can use them.
+            if (controller == session.mediaNotificationControllerInfo) {
+                val notificationCommands =
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                        .add(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
+                        .add(SessionCommand(CMD_CLOSE_PLAYER, Bundle.EMPTY))
+                        .build()
+                session.setAvailableCommands(
+                    controller,
+                    notificationCommands,
+                    session.player.availableCommands
+                )
+                session.setMediaButtonPreferences(
+                    controller,
+                    session.mediaButtonPreferences
+                )
+            }
+        }
+
         override fun onCustomCommand(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
