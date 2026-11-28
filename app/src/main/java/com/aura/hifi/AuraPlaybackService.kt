@@ -40,6 +40,7 @@ import java.util.concurrent.Executors
 @androidx.media3.common.util.UnstableApi
 class AuraPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private var notificationMediaButtonPreferences: List<CommandButton> = emptyList()
     private var queueUris: List<Uri> = emptyList()
     private var queueIndex = 0
     private var queueRepeatMode = 0
@@ -269,13 +270,15 @@ class AuraPlaybackService : MediaSessionService() {
             .setSlots(CommandButton.SLOT_FORWARD_SECONDARY)
             .build()
 
+        notificationMediaButtonPreferences = listOf(
+            shuffleButton, previousButton, playPauseButton, nextButton, closeButton
+        )
+
         mediaSession = MediaSession.Builder(this, sessionPlayer)
             .setId("aura-hifi-session")
             .setSessionActivity(sessionActivity)
             .setCallback(sessionCallback)
-            .setMediaButtonPreferences(
-                listOf(shuffleButton, previousButton, playPauseButton, nextButton, closeButton)
-            )
+            .setMediaButtonPreferences(notificationMediaButtonPreferences)
             .build()
     }
 
@@ -298,6 +301,30 @@ class AuraPlaybackService : MediaSessionService() {
                 .setAvailablePlayerCommands(session.player.availableCommands)
                 .setMediaButtonPreferences(session.mediaButtonPreferences)
                 .build()
+        }
+
+        override fun onPostConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ) {
+            // The platform notification controller needs its own explicit
+            // command permissions after connecting. Without this, Android
+            // can silently omit custom notification actions (Shuffle / Close).
+            if (controller == session.mediaNotificationControllerInfo) {
+                val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                    .add(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
+                    .add(SessionCommand(CMD_CLOSE_PLAYER, Bundle.EMPTY))
+                    .build()
+                session.setAvailableCommands(
+                    controller,
+                    commands,
+                    session.player.availableCommands
+                )
+                session.setMediaButtonPreferences(
+                    controller,
+                    notificationMediaButtonPreferences
+                )
+            }
         }
 
         override fun onCustomCommand(
