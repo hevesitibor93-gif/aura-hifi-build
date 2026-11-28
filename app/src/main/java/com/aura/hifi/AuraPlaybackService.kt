@@ -246,7 +246,7 @@ class AuraPlaybackService : MediaSessionService() {
         val shuffleButton = CommandButton.Builder(CommandButton.ICON_SHUFFLE_ON)
             .setDisplayName("Teljes zenetár keverése")
             .setSessionCommand(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
-            .setSlots(CommandButton.SLOT_BACK_SECONDARY)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .build()
         val previousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
             .setDisplayName("Előző")
@@ -267,7 +267,7 @@ class AuraPlaybackService : MediaSessionService() {
             .setCustomIconResId(R.drawable.ic_notification_close)
             .setDisplayName("AURA bezárása")
             .setSessionCommand(SessionCommand(CMD_CLOSE_PLAYER, Bundle.EMPTY))
-            .setSlots(CommandButton.SLOT_FORWARD_SECONDARY)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
             .build()
 
         notificationMediaButtonPreferences = listOf(
