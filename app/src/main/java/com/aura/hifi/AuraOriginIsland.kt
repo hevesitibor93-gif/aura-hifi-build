@@ -105,7 +105,7 @@ object AuraOriginIsland {
             // Add real notification actions: attaching a MediaSession token alone
             // does not populate actions on a notification built outside Media3.
             builder
-                .addAction(mediaAction(context, android.R.drawable.ic_menu_sort_by_size,
+                .addAction(mediaAction(context, R.drawable.ic_notification_shuffle,
                     "Keverés", ACTION_SHUFFLE, 7137))
                 .addAction(mediaAction(context, android.R.drawable.ic_media_previous,
                     "Előző", ACTION_PREVIOUS, 7138))
