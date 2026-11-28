@@ -251,10 +251,27 @@ class AuraPlaybackService : MediaSessionService() {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        // Fixed five-button layout matching the Poweramp/Vivo media card:
+        // shuffle | previous | play/pause | next | close.
         val shuffleButton = CommandButton.Builder(CommandButton.ICON_SHUFFLE_ON)
             .setDisplayName("Teljes zenetár keverése")
             .setSessionCommand(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
             .setSlots(CommandButton.SLOT_BACK_SECONDARY)
+            .build()
+        val previousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
+            .setDisplayName("Előző")
+            .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            .setSlots(CommandButton.SLOT_BACK)
+            .build()
+        val playPauseButton = CommandButton.Builder(CommandButton.ICON_PLAY)
+            .setDisplayName("Lejátszás / szünet")
+            .setPlayerCommand(Player.COMMAND_PLAY_PAUSE)
+            .setSlots(CommandButton.SLOT_CENTRAL)
+            .build()
+        val nextButton = CommandButton.Builder(CommandButton.ICON_NEXT)
+            .setDisplayName("Következő")
+            .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            .setSlots(CommandButton.SLOT_FORWARD)
             .build()
         val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
             .setCustomIconResId(R.drawable.ic_notification_close)
@@ -267,7 +284,9 @@ class AuraPlaybackService : MediaSessionService() {
             .setId("aura-hifi-session")
             .setSessionActivity(sessionActivity)
             .setCallback(sessionCallback)
-            .setMediaButtonPreferences(listOf(shuffleButton, closeButton))
+            .setMediaButtonPreferences(
+                listOf(shuffleButton, previousButton, playPauseButton, nextButton, closeButton)
+            )
             .build()
     }
 
