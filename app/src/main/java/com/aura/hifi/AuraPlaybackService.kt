@@ -14,6 +14,9 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioAttributes as PlatformAudioAttributes
 import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
+import android.content.ContentUris
 import org.json.JSONArray
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -23,6 +26,11 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import androidx.media3.session.CommandButton
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 
 /**
@@ -38,6 +46,9 @@ class AuraPlaybackService : MediaSessionService() {
     private var queueShuffleMode = 0
     private val playbackPrefs by lazy { getSharedPreferences("aura_playback_state", Context.MODE_PRIVATE) }
     private val saveHandler = Handler(Looper.getMainLooper())
+    private val shuffleExecutor = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "AuraFullLibraryShuffle").apply { isDaemon = true }
+    }
     private val queueRestoreExecutor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "AuraQueueRestore").apply { isDaemon = true }
     }
@@ -240,12 +251,118 @@ class AuraPlaybackService : MediaSessionService() {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val shuffleButton = CommandButton.Builder(CommandButton.ICON_SHUFFLE_ON)
+            .setDisplayName("Teljes zenetár keverése")
+            .setSessionCommand(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
+            .setSlots(CommandButton.SLOT_BACK_SECONDARY)
+            .build()
+        val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setCustomIconResId(R.drawable.ic_notification_close)
+            .setDisplayName("AURA bezárása")
+            .setSessionCommand(SessionCommand(CMD_CLOSE_PLAYER, Bundle.EMPTY))
+            .setSlots(CommandButton.SLOT_FORWARD_SECONDARY)
+            .build()
+
         mediaSession = MediaSession.Builder(this, sessionPlayer)
             .setId("aura-hifi-session")
             .setSessionActivity(sessionActivity)
+            .setCallback(sessionCallback)
+            .setMediaButtonPreferences(listOf(shuffleButton, closeButton))
             .build()
     }
 
+
+    private val sessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand(CMD_SHUFFLE_ALL, Bundle.EMPTY))
+                .add(SessionCommand(CMD_CLOSE_PLAYER, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands)
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                CMD_SHUFFLE_ALL -> shuffleEntireLibrary()
+                CMD_CLOSE_PLAYER -> closePlayback()
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+    }
+
+    private fun shuffleEntireLibrary() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.READ_MEDIA_AUDIO) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        if (Build.VERSION.SDK_INT < 33 &&
+            checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) return
+
+        val currentUri = player?.currentMediaItem?.localConfiguration?.uri
+        val currentPosition = player?.currentPosition?.coerceAtLeast(0L) ?: 0L
+        shuffleExecutor.execute {
+            val allUris = mutableListOf<Uri>()
+            try {
+                val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                contentResolver.query(
+                    collection,
+                    arrayOf(MediaStore.Audio.Media._ID),
+                    MediaStore.Audio.Media.IS_MUSIC + " != 0",
+                    null,
+                    MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC"
+                )?.use { cursor ->
+                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                    while (cursor.moveToNext()) {
+                        allUris.add(ContentUris.withAppendedId(collection, cursor.getLong(idColumn)))
+                    }
+                }
+            } catch (_: Exception) {
+                return@execute
+            }
+            if (allUris.isEmpty()) return@execute
+            val ordered = mutableListOf<Uri>()
+            currentUri?.takeIf { allUris.contains(it) }?.let { ordered.add(it) }
+            ordered.addAll(allUris.filter { it != currentUri }.shuffled())
+            val items = ordered.map { buildMediaItem(it) }
+            saveHandler.post {
+                if (serviceDestroyed || items.isEmpty()) return@post
+                queueRevision++
+                queueRestoreComplete = true
+                queueUris = ordered
+                queueIndex = 0
+                queueShuffleMode = 2
+                val exo = player ?: return@post
+                exo.setMediaItems(items, 0, if (currentUri != null && ordered.firstOrNull() == currentUri) currentPosition else 0L)
+                exo.prepare()
+                exo.play()
+                savePlaybackState()
+                AuraMiniWidgetProvider.updateAll(this)
+            }
+        }
+    }
+
+    private fun closePlayback() {
+        saveHandler.removeCallbacks(savePositionTask)
+        player?.apply {
+            pause()
+            stop()
+            clearMediaItems()
+        }
+        AuraOriginIsland.cancel(this)
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(TRACK_NOTIFICATION_ID)
+        saveHandler.post { stopSelf() }
+    }
 
     private fun updateOriginIsland(item: MediaItem?, isPlaying: Boolean) {
         if (item == null) {
@@ -511,6 +628,7 @@ class AuraPlaybackService : MediaSessionService() {
         serviceDestroyed = true
         AuraOriginIsland.cancel(this)
         queueRestoreExecutor.shutdownNow()
+        shuffleExecutor.shutdownNow()
         savePlaybackState()
         saveHandler.removeCallbacks(savePositionTask)
         audioDeviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
@@ -529,6 +647,8 @@ class AuraPlaybackService : MediaSessionService() {
     companion object {
         private const val TRACK_CHANNEL_ID = "aura_track_changes"
         private const val TRACK_NOTIFICATION_ID = 7135
+        private const val CMD_SHUFFLE_ALL = "com.aura.hifi.SHUFFLE_ALL"
+        private const val CMD_CLOSE_PLAYER = "com.aura.hifi.CLOSE_PLAYER"
         private const val KEY_QUEUE = "queue_uris"
         private const val KEY_INDEX = "queue_index"
         private const val KEY_REPEAT = "repeat_mode"
@@ -547,6 +667,14 @@ class AuraPlaybackService : MediaSessionService() {
             instance?.snapshotQueue() ?: QueueSnapshot(emptyList(), 0, 0, 0)
 
         fun isQueueRestoreComplete(): Boolean = instance?.queueRestoreComplete ?: true
+
+        fun shuffleAllFromNotification() {
+            instance?.shuffleEntireLibrary()
+        }
+
+        fun closeFromNotification() {
+            instance?.closePlayback()
+        }
 
         fun togglePlaybackFromWidget() {
             val active = player ?: return
