@@ -293,7 +293,7 @@ class AuraPlaybackService : MediaSessionService() {
             // Explicitly grant both player commands and the complete button layout
             // during connection. This is especially important for Media3's
             // notification controller, which backs Android's notification shade.
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
                 .setAvailablePlayerCommands(session.player.availableCommands)
                 .setMediaButtonPreferences(session.mediaButtonPreferences)
