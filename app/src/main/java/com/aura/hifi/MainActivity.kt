@@ -212,6 +212,9 @@ class MainActivity : Activity() {
         val allowRotation = prefs.getBoolean("screen_rotation", true)
         requestedOrientation = if (allowRotation) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         buildUi()
+        if (intent.getBooleanExtra("aura_show_controls", false)) {
+            handler.post { showCompactPlaybackControls() }
+        }
         val audioPermissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             audioPermissions += Manifest.permission.POST_NOTIFICATIONS
@@ -246,9 +249,57 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra("aura_open_player", false)) {
+        if (intent.getBooleanExtra("aura_show_controls", false)) {
+            showCompactPlaybackControls()
+        } else if (intent.getBooleanExtra("aura_open_player", false)) {
             openPlayerPage?.invoke()
         }
+    }
+
+    private fun showCompactPlaybackControls() {
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(12), dp(8), dp(8))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("AURA  •  LEJÁTSZÁS")
+            .setView(controls)
+            .setNegativeButton("BEZÁRÁS", null)
+            .create()
+
+        fun addControl(label: String, description: String, action: () -> Unit): Button {
+            val control = button(label, gold, Color.BLACK, action).apply {
+                contentDescription = description
+                textSize = 18f
+                minHeight = dp(48)
+                minimumHeight = dp(48)
+            }
+            controls.addView(control, LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                setMargins(dp(3), 0, dp(3), 0)
+            })
+            return control
+        }
+
+        addControl("⏮", "Előző szám") { AuraPlaybackService.previousFromWidget() }
+        val playPause = addControl(if (player?.isPlaying == true) "Ⅱ" else "▶", "Lejátszás vagy szünet") {
+            AuraPlaybackService.togglePlaybackFromWidget()
+        }
+        playPause.setOnClickListener {
+            AuraPlaybackService.togglePlaybackFromWidget()
+            playPause.text = if (player?.isPlaying == true) "Ⅱ" else "▶"
+        }
+        addControl("⏭", "Következő szám") { AuraPlaybackService.nextFromWidget() }
+        addControl("🔀", "Teljes zenetár keverése") {
+            AuraPlaybackService.shuffleAllFromNotification()
+            toast("A teljes zenetár keverése bekapcsolva")
+        }
+        addControl("✕", "AURA lejátszás bezárása") {
+            dialog.dismiss()
+            AuraPlaybackService.closeFromNotification()
+            finishAndRemoveTask()
+        }
+        dialog.show()
     }
 
     private fun openBackupExport() {
