@@ -414,8 +414,8 @@ class BlackOnixDeckView(
         }
 
         // Full-width BLACK-ONIX seek rail: four distinct visual styles.
-        val seekLeft = 279f
-        val seekRight = 620f
+        val seekLeft = 130f
+        val seekRight = 828f
         val seekY = 278f
         val fraction = if (trackDurationMs > 0L) (seekPreviewMs.toFloat() / trackDurationMs).coerceIn(0f, 1f) else 0f
         val activeX = seekLeft + (seekRight - seekLeft) * fraction
@@ -490,39 +490,6 @@ class BlackOnixDeckView(
         spectrumPaint.style = Paint.Style.FILL
         spectrumPaint.color = Color.rgb(220, 230, 240)
         canvas.drawCircle(activeX, seekY, 3.2f, spectrumPaint)
-
-        // Compact selectors use the original left-side PROGRESS BAR control area.
-        val styleLabels = arrayOf("1", "2", "3", "5")
-        val styleLefts = floatArrayOf(13f, 36f, 59f, 82f)
-        for (i in 0..3) {
-            val left = styleLefts[i]
-            spectrumPaint.style = Paint.Style.FILL
-            spectrumPaint.color = if (seekStyle == i) Color.rgb(24, 37, 52) else Color.rgb(8, 11, 16)
-            canvas.drawRoundRect(RectF(left, 250f, left + 19f, 268f), 2f, 2f, spectrumPaint)
-            spectrumPaint.style = Paint.Style.STROKE
-            spectrumPaint.strokeWidth = if (seekStyle == i) 1.5f else 0.8f
-            spectrumPaint.color = if (seekStyle == i) activeColor else Color.rgb(79, 87, 98)
-            canvas.drawRoundRect(RectF(left, 250f, left + 19f, 268f), 2f, 2f, spectrumPaint)
-            smallPaint.color = if (seekStyle == i) activeColor else Color.rgb(180, 188, 198)
-            smallPaint.textSize = 9f
-            smallPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(styleLabels[i], left + 9.5f, 262f, smallPaint)
-        }
-        smallPaint.textAlign = Paint.Align.LEFT
-        spectrumPaint.style = Paint.Style.FILL
-        if (seekStyle == 0) {
-            spectrumPaint.color = Color.rgb(0, 174, 255)
-            canvas.drawCircle(86f, 280f, 3.2f, spectrumPaint)
-            spectrumPaint.color = Color.rgb(255, 48, 48)
-            canvas.drawCircle(100f, 280f, 3.2f, spectrumPaint)
-            spectrumPaint.style = Paint.Style.STROKE
-            spectrumPaint.strokeWidth = 1.1f
-            spectrumPaint.color = if (seekColor == 0) Color.WHITE else Color.GRAY
-            canvas.drawCircle(86f, 280f, 5.3f, spectrumPaint)
-            spectrumPaint.color = if (seekColor == 1) Color.WHITE else Color.GRAY
-            canvas.drawCircle(100f, 280f, 5.3f, spectrumPaint)
-            spectrumPaint.style = Paint.Style.FILL
-        }
 
         // Original 341x32 VU mode background, followed by its animated level sprites.
         val ppmMode = vuMode >= 3
@@ -669,13 +636,14 @@ class BlackOnixDeckView(
         hitTargets += RectF(799f, 223f, 820f, 248f) to { cycleSpectrumGroup(0) }
         hitTargets += RectF(829f, 223f, 850f, 248f) to { cycleSpectrumGroup(1) }
         hitTargets += RectF(859f, 223f, 880f, 248f) to { cycleSpectrumGroup(2) }
-        hitTargets += RectF(13f, 250f, 32f, 268f) to { seekStyle = 0; onSeekStyleChanged(seekStyle); invalidate() }
-        hitTargets += RectF(36f, 250f, 55f, 268f) to { seekStyle = 1; onSeekStyleChanged(seekStyle); invalidate() }
-        hitTargets += RectF(59f, 250f, 78f, 268f) to { seekStyle = 2; onSeekStyleChanged(seekStyle); invalidate() }
-        hitTargets += RectF(82f, 250f, 101f, 268f) to { seekStyle = 3; onSeekStyleChanged(seekStyle); invalidate() }
+        // Activate the controls already printed on the original ONIX left panel.
+        hitTargets += RectF(18f, 250f, 37f, 269f) to { seekStyle = 0; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(41f, 250f, 60f, 269f) to { seekStyle = 1; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(64f, 250f, 83f, 269f) to { seekStyle = 2; onSeekStyleChanged(seekStyle); invalidate() }
+        hitTargets += RectF(87f, 250f, 106f, 269f) to { seekStyle = 3; onSeekStyleChanged(seekStyle); invalidate() }
         if (seekStyle == 0) {
-            hitTargets += RectF(80f, 274f, 92f, 286f) to { seekColor = 0; onSeekColorChanged(seekColor); invalidate() }
-            hitTargets += RectF(94f, 274f, 106f, 286f) to { seekColor = 1; onSeekColorChanged(seekColor); invalidate() }
+            hitTargets += RectF(18f, 286f, 42f, 307f) to { seekColor = 1; onSeekColorChanged(seekColor); invalidate() }
+            hitTargets += RectF(47f, 286f, 71f, 307f) to { seekColor = 0; onSeekColorChanged(seekColor); invalidate() }
         }
     }
 
@@ -696,7 +664,7 @@ class BlackOnixDeckView(
                 volumeTouchMoved = false
                 return true
             }
-            if (RectF(272f, 265f, 627f, 291f).contains(x, y) && trackDurationMs > 0L) {
+            if (RectF(123f, 265f, 835f, 291f).contains(x, y) && trackDurationMs > 0L) {
                 seekDragging = true
                 parent?.requestDisallowInterceptTouchEvent(true)
                 updateSeekPreview(x)
@@ -792,7 +760,7 @@ class BlackOnixDeckView(
     }
 
     private fun updateSeekPreview(x: Float) {
-        val fraction = ((x - 279f) / (620f - 279f)).coerceIn(0f, 1f)
+        val fraction = ((x - 130f) / (828f - 130f)).coerceIn(0f, 1f)
         seekPreviewMs = (trackDurationMs * fraction).toLong()
         invalidate()
     }
