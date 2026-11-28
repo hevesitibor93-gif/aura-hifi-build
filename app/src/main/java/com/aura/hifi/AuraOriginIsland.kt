@@ -20,6 +20,12 @@ import android.os.Bundle
  * ongoing media notification.
  */
 object AuraOriginIsland {
+    const val ACTION_SHUFFLE = "com.aura.hifi.action.SHUFFLE"
+    const val ACTION_PREVIOUS = "com.aura.hifi.action.PREVIOUS"
+    const val ACTION_PLAY_PAUSE = "com.aura.hifi.action.PLAY_PAUSE"
+    const val ACTION_NEXT = "com.aura.hifi.action.NEXT"
+    const val ACTION_CLOSE = "com.aura.hifi.action.CLOSE"
+
     private const val CHANNEL_ID = "aura_origin_island_v1"
     private const val CHANNEL_NAME = "AURA lejátszójelzés"
     private const val NOTIFICATION_TAG = "VIVO_SUPERX_TAG"
@@ -96,13 +102,51 @@ object AuraOriginIsland {
                 .setPriority(Notification.PRIORITY_HIGH)
                 .addExtras(extras)
 
-            // Mark this Vivo capsule notification as the active MediaSession surface.
-            // System UI can then render the session's five ordered media buttons and seek bar.
+            // Add real notification actions: attaching a MediaSession token alone
+            // does not populate actions on a notification built outside Media3.
+            builder
+                .addAction(mediaAction(context, android.R.drawable.ic_menu_sort_by_size,
+                    "Keverés", ACTION_SHUFFLE, 7137))
+                .addAction(mediaAction(context, android.R.drawable.ic_media_previous,
+                    "Előző", ACTION_PREVIOUS, 7138))
+                .addAction(mediaAction(context,
+                    if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                    if (isPlaying) "Szünet" else "Lejátszás", ACTION_PLAY_PAUSE, 7139))
+                .addAction(mediaAction(context, android.R.drawable.ic_media_next,
+                    "Következő", ACTION_NEXT, 7140))
+                .addAction(mediaAction(context, R.drawable.ic_notification_close,
+                    "Bezárás", ACTION_CLOSE, 7141))
+
             if (sessionToken != null) {
-                builder.setStyle(Notification.MediaStyle().setMediaSession(sessionToken))
+                builder.setStyle(
+                    Notification.MediaStyle()
+                        .setMediaSession(sessionToken)
+                        .setShowActionsInCompactView(1, 2, 3)
+                )
             }
             manager.notify(NOTIFICATION_TAG, NOTIFICATION_ID, builder.build())
         }
+    }
+
+    private fun mediaAction(
+        context: Context,
+        iconRes: Int,
+        title: String,
+        action: String,
+        requestCode: Int
+    ): Notification.Action {
+        val intent = Intent(context, AuraMediaActionReceiver::class.java).setAction(action)
+        val pending = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return Notification.Action.Builder(
+            Icon.createWithResource(context, iconRes),
+            title,
+            pending
+        ).build()
     }
 
     fun cancel(context: Context) {
