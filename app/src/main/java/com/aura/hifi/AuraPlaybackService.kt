@@ -418,7 +418,7 @@ class AuraPlaybackService : MediaSessionService() {
             ?: item.localConfiguration?.uri?.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')
             ?: "Ismeretlen cím"
         val artist = metadata.artist?.toString()?.takeIf { it.isNotBlank() } ?: "AURA Hi-Fi"
-        AuraOriginIsland.update(this, isPlaying, title, artist)
+        AuraOriginIsland.update(this, isPlaying, title, artist, mediaSession?.platformToken)
     }
 
     private fun createTrackNotificationChannel() {
