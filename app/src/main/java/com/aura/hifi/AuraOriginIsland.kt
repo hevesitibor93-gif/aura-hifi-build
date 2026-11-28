@@ -57,6 +57,7 @@ object AuraOriginIsland {
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra("aura_open_player", true)
+                putExtra("aura_show_controls", true)
             }
             val clickIntent = PendingIntent.getActivity(
                 context,
